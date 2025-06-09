@@ -40,7 +40,7 @@ export default function VerticalRightTabsBar() {
           <tab.icon className="h-5 w-5 mb-0.5" />
           <span 
             className="text-[10px] leading-tight"
-            style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap' }}
+            style={{ writingMode: 'vertical-rl', whiteSpace: 'nowrap' }}
           >
             {tab.label}
           </span>
@@ -49,3 +49,4 @@ export default function VerticalRightTabsBar() {
     </div>
   );
 }
+
