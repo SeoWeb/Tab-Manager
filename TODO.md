@@ -136,10 +136,10 @@
 
 ### Chrome Tab Integration
 
-- [ ] Implement Chrome tabs API wrapper
-- [ ] Create tab-to-collection drag functionality
-- [ ] Add visual feedback for tab dragging
-- [ ] Handle tab URL duplicate detection
+- [x] Implement Chrome tabs API wrapper
+- [x] Create tab-to-collection drag functionality
+- [x] Add visual feedback for tab dragging
+- [x] Handle tab URL duplicate detection
 - [ ] Test cross-window tab management
 
 ---
@@ -148,18 +148,18 @@
 
 ### Tabs API Integration
 
-- [ ] Create tabService utility functions
-- [ ] Implement getAllWindows functionality
-- [ ] Add real-time tab monitoring
-- [ ] Handle tab creation/deletion events
+- [x] Create tabService utility functions
+- [x] Implement getAllWindows functionality
+- [x] Add real-time tab monitoring
+- [x] Handle tab creation/deletion events
 - [ ] Test tab state synchronization
 
 ### Advanced Chrome Features
 
-- [ ] Implement tab moving between windows
-- [ ] Add tab closing functionality
-- [ ] Create new window from collection feature
-- [ ] Handle Chrome API permission errors
+- [x] Implement tab moving between windows
+- [x] Add tab closing functionality
+- [x] Create new window from collection feature
+- [x] Handle Chrome API permission errors
 - [ ] Test extension behavior across browser restarts
 
 ### Favicon Management

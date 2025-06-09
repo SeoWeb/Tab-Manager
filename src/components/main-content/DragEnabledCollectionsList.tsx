@@ -3,9 +3,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { DndContext } from '@dnd-kit/core';
-import { useDragAndDrop } from '@/hooks/useDragAndDrop';
-import { DragOverlay } from '@/components/drag-drop';
 import { SortableCollectionItem } from '@/components/drag-drop';
 import AddCollectionButton from './AddCollectionButton';
 import type { Project } from '@/types';
@@ -17,14 +14,6 @@ interface DragEnabledCollectionsListProps {
 export function DragEnabledCollectionsList({
   project,
 }: DragEnabledCollectionsListProps) {
-  const {
-    sensors,
-    activeItem,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-  } = useDragAndDrop();
-
   if (project.collections.length === 0) {
     return (
       <div className='text-center py-10'>
@@ -49,31 +38,23 @@ export function DragEnabledCollectionsList({
   const collectionIds = sortedCollections.map((collection) => collection.id);
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
+    <SortableContext
+      items={collectionIds}
+      strategy={verticalListSortingStrategy}
     >
-      <SortableContext
-        items={collectionIds}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className='space-y-6'>
-          {sortedCollections.map((collection) => (
-            <SortableCollectionItem
-              key={collection.id}
-              collection={collection}
-              projectId={project.id}
-            />
-          ))}
-          <div className='mt-6'>
-            <AddCollectionButton />
-          </div>
+      <div className='space-y-6'>
+        {sortedCollections.map((collection) => (
+          <SortableCollectionItem
+            key={collection.id}
+            collection={collection}
+            projectId={project.id}
+          />
+        ))}
+        <div className='mt-6'>
+          <AddCollectionButton />
         </div>
-      </SortableContext>
-      <DragOverlay activeItem={activeItem} />
-    </DndContext>
+      </div>
+    </SortableContext>
   );
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import DragEnabledCollection from './DragEnabledCollection';
+import { DroppableCollectionForTabs } from './DroppableCollectionForTabs';
 import type { Collection as CollectionType } from '@/types';
 
 interface SortableCollectionItemProps {
@@ -41,13 +42,18 @@ export function SortableCollectionItem({
       style={style}
       className={`${isDragging ? 'z-50' : ''}`}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className='cursor-grab active:cursor-grabbing'
-      >
-        <DragEnabledCollection collection={collection} projectId={projectId} />
-      </div>
+      <DroppableCollectionForTabs collection={collection} projectId={projectId}>
+        <div
+          {...attributes}
+          {...listeners}
+          className='cursor-grab active:cursor-grabbing'
+        >
+          <DragEnabledCollection
+            collection={collection}
+            projectId={projectId}
+          />
+        </div>
+      </DroppableCollectionForTabs>
     </div>
   );
 }

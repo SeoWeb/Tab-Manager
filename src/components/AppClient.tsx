@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
-// import { useSidebar } from '@/components/ui/sidebar'; // Import useSidebar
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
 import RightContentPanel from '@/components/right-vertical-tabs/RightContentPanel';
+import { GlobalDragDropProvider } from '@/components/drag-drop/GlobalDragDropProvider';
 import {
   useProjects,
   useActiveProjectId,
@@ -75,22 +75,24 @@ export default function AppClient() {
 
   return (
     <>
-      <div className='flex h-screen bg-background w-full'>
-        <LeftSidebar />
-        <div
-          className={cn(
-            'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out w-full'
-          )}
-        >
-          <main className='flex-1 w-full'>
-            <MainContentArea />
-          </main>
+      <GlobalDragDropProvider>
+        <div className='flex h-screen bg-background w-full'>
+          <LeftSidebar />
+          <div
+            className={cn(
+              'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out w-full'
+            )}
+          >
+            <main className='flex-1 w-full'>
+              <MainContentArea />
+            </main>
+          </div>
+          <div className='h-full z-30'>
+            <VerticalRightTabsBar />
+          </div>
+          {isRightContentPanelOpen && <RightContentPanel />}
         </div>
-        <div className='h-full z-30'>
-          <VerticalRightTabsBar />
-        </div>
-        {isRightContentPanelOpen && <RightContentPanel />}
-      </div>
+      </GlobalDragDropProvider>
       <AddProjectModal>
         <div />
       </AddProjectModal>

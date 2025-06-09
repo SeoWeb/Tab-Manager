@@ -1,6 +1,12 @@
 import { nanoid } from 'nanoid';
-import type { QuickLink, ChromeWindowInfo, VerticalTabId } from '@/types';
+import type {
+  QuickLink,
+  ChromeWindowInfo,
+  VerticalTabId,
+  ChromeTabInfo,
+} from '@/types';
 import type { ActiveViewType, AppState } from '../types';
+import { getAllWindows } from '@/lib/tabService';
 
 const generateId = () => nanoid();
 
@@ -169,6 +175,24 @@ export const createUIActions = (set: any, get: () => AppState) => ({
     })),
 
   // Chrome Windows/Tabs actions
+  refreshChromeWindows: async () => {
+    try {
+      const windows = await getAllWindows();
+      set((state: AppState) => ({
+        ...state,
+        chromeWindows: windows,
+      }));
+    } catch (error) {
+      console.error('Error refreshing Chrome windows:', error);
+    }
+  },
+
+  setChromeWindows: (windows: ChromeWindowInfo[]) =>
+    set((state: AppState) => ({
+      ...state,
+      chromeWindows: windows,
+    })),
+
   renameChromeWindow: (windowId: number, newName: string) =>
     set((state: AppState) => ({
       chromeWindows: state.chromeWindows.map((win: ChromeWindowInfo) =>
@@ -176,17 +200,66 @@ export const createUIActions = (set: any, get: () => AppState) => ({
       ),
     })),
 
+  updateChromeTab: (tabId: number, updatedTab: ChromeTabInfo) =>
+    set((state: AppState) => ({
+      chromeWindows: state.chromeWindows.map((window: ChromeWindowInfo) => ({
+        ...window,
+        tabs: window.tabs.map((tab: ChromeTabInfo) =>
+          tab.id === tabId ? { ...tab, ...updatedTab } : tab
+        ),
+      })),
+    })),
+
+  addChromeTab: (windowId: number, newTab: ChromeTabInfo) =>
+    set((state: AppState) => ({
+      chromeWindows: state.chromeWindows.map((window: ChromeWindowInfo) =>
+        window.id === windowId
+          ? { ...window, tabs: [...window.tabs, newTab] }
+          : window
+      ),
+    })),
+
+  removeChromeTab: (tabId: number) =>
+    set((state: AppState) => ({
+      chromeWindows: state.chromeWindows.map((window: ChromeWindowInfo) => ({
+        ...window,
+        tabs: window.tabs.filter((tab: ChromeTabInfo) => tab.id !== tabId),
+      })),
+    })),
+
   addChromeWindowToCollections: (windowInfo: ChromeWindowInfo) => {
     const activeProjectId = get().activeProjectId;
     if (!activeProjectId) {
-      console.error('No active project to add the window to.');
+      console.warn('No active project to add collection to.');
       return;
     }
 
+    const newCollectionName = windowInfo.name || `Window ${windowInfo.id} Tabs`;
+
+    // First create the collection
     get().addCollection(activeProjectId, {
-      name: windowInfo.name || 'New Window Collection',
+      name: newCollectionName,
     });
-    // TODO: After the collection is created, add the links to it.
-    // This might require a new action or modifying addCollection to return the new collection's ID.
+
+    // Find the newly created collection to add links to it
+    setTimeout(() => {
+      const state = get();
+      const project = state.projects.find((p) => p.id === activeProjectId);
+      if (!project) return;
+
+      const newCollection = project.collections.find(
+        (c) => c.name === newCollectionName
+      );
+      if (!newCollection) return;
+
+      // Add each tab as a link to the collection
+      windowInfo.tabs.forEach((tab) => {
+        get().addLink(activeProjectId, newCollection.id, {
+          title: tab.title,
+          url: tab.url,
+          favIconUrl: tab.favIconUrl,
+        });
+      });
+    }, 100); // Small delay to ensure collection is created
   },
 });

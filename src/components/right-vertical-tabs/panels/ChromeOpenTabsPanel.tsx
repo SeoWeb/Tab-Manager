@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
+import { useChromeTabsMonitoring } from '@/hooks/useChromeTabsMonitoring';
 import type { ChromeWindowInfo } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Edit2, PlusSquare, ExternalLink, Check, X } from 'lucide-react';
+import { Edit2, PlusSquare, Check, X, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
-import { getFaviconUrl } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { switchToTab, closeTab } from '@/lib/tabService';
+import { DraggableTab } from '@/components/drag-drop/DraggableTab';
 
 export default function ChromeOpenTabsPanel() {
   const chromeWindows = useAppStoreWithDefaults(
@@ -30,6 +32,10 @@ export default function ChromeOpenTabsPanel() {
   );
   const [editingWindowId, setEditingWindowId] = useState<number | null>(null);
   const [newWindowName, setNewWindowName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Set up Chrome tabs monitoring
+  const { refreshTabs } = useChromeTabsMonitoring();
 
   const handleRenameWindow = (windowId: number) => {
     if (newWindowName.trim()) {
@@ -47,6 +53,35 @@ export default function ChromeOpenTabsPanel() {
   const cancelRename = () => {
     setEditingWindowId(null);
     setNewWindowName('');
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshTabs();
+    } catch (error) {
+      console.error('Error refreshing tabs:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleTabClick = async (tabId: number) => {
+    try {
+      await switchToTab(tabId);
+    } catch (error) {
+      console.error('Error switching to tab:', error);
+    }
+  };
+
+  const handleCloseTab = async (tabId: number, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      await closeTab(tabId);
+    } catch (error) {
+      console.error('Error closing tab:', error);
+    }
   };
 
   const handleAddWindowAsCollection = (windowInfo: ChromeWindowInfo) => {
@@ -83,9 +118,23 @@ export default function ChromeOpenTabsPanel() {
 
   return (
     <div className='space-y-4 h-full flex flex-col'>
-      <h2 className='text-xl font-semibold text-foreground px-1 pt-1 pb-2 border-b border-border'>
-        Open Chrome Tabs
-      </h2>
+      <div className='flex items-center justify-between px-1 pt-1 pb-2 border-b border-border'>
+        <h2 className='text-xl font-semibold text-foreground'>
+          Open Chrome Tabs
+        </h2>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className='h-8 w-8'
+          title='Refresh Chrome tabs'
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+          />
+        </Button>
+      </div>
       <ScrollArea className='flex-grow pr-1'>
         <div className='space-y-4'>
           {chromeWindows.map((window) => (
@@ -150,48 +199,12 @@ export default function ChromeOpenTabsPanel() {
               </CardHeader>
               <CardContent className='p-3 space-y-2 max-h-60 overflow-y-auto'>
                 {window.tabs.map((tab) => (
-                  <div
+                  <DraggableTab
                     key={tab.id}
-                    className='flex items-center gap-2 p-1.5 bg-background hover:bg-secondary/50 rounded-md border border-input text-xs group'
-                  >
-                    {/* Placeholder for D&D handle <GripVertical className="h-3 w-3 text-muted-foreground cursor-grab" /> */}
-                    <Image
-                      src={tab.favIconUrl || getFaviconUrl(tab.url)}
-                      alt='favicon'
-                      width={16}
-                      height={16}
-                      className='rounded shrink-0'
-                      onError={(e) =>
-                        (e.currentTarget.src = 'https://placehold.co/16x16.png')
-                      }
-                      unoptimized
-                    />
-                    <a
-                      href={tab.url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='flex-1 truncate text-primary hover:underline'
-                      title={tab.url}
-                    >
-                      {tab.title}
-                    </a>
-                    <Button
-                      variant='ghost'
-                      size='icon'
-                      className='h-5 w-5 opacity-0 group-hover:opacity-100'
-                      asChild
-                    >
-                      <a
-                        href={tab.url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        aria-label='Open tab in new window'
-                      >
-                        <ExternalLink className='h-3 w-3 text-muted-foreground' />
-                      </a>
-                    </Button>
-                    {/* Placeholder for D&D: On drag start, pass tab info. Highlight collections on hover. If URL exists, show red. */}
-                  </div>
+                    tab={tab}
+                    onTabClick={handleTabClick}
+                    onCloseTab={handleCloseTab}
+                  />
                 ))}
               </CardContent>
             </Card>
@@ -199,7 +212,8 @@ export default function ChromeOpenTabsPanel() {
         </div>
       </ScrollArea>
       <p className='text-xs text-muted-foreground px-1 pt-2 text-center'>
-        Simulated Chrome tabs. Drag-and-drop to collections coming soon.
+        Live Chrome tabs. Click to switch, hover for actions. Drag-and-drop to
+        collections coming soon.
       </p>
     </div>
   );

@@ -39,17 +39,25 @@ export interface DragItem {
         favIconUrl?: string;
       }>;
     };
+    tab?: {
+      id: number;
+      title: string;
+      url: string;
+      favIconUrl?: string;
+      windowId: number;
+    };
     [key: string]: unknown;
   };
 }
 
 export function useDragAndDrop() {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
-  const { moveLink, reorderCollections, reorderLinks } = useAppStore(
+  const { moveLink, reorderCollections, reorderLinks, addLink } = useAppStore(
     (state) => ({
       moveLink: state.moveLink,
       reorderCollections: state.reorderCollections,
       reorderLinks: state.reorderLinks,
+      addLink: state.addLink,
     })
   );
 
@@ -122,11 +130,35 @@ export function useDragAndDrop() {
           const { projectId } = activeItem.data;
           reorderCollections(projectId, activeId, overId);
         }
+      } else if (activeItem.type === 'tab') {
+        if (overData?.type === 'collection') {
+          // Adding Chrome tab to collection
+          const tab = activeItem.data.tab;
+          const projectId = overData.projectId;
+          const collectionId = overData.collection?.id;
+
+          if (tab && projectId && collectionId) {
+            // Check if URL already exists in the collection
+            const collection = overData.collection;
+            const urlExists =
+              collection?.links?.some(
+                (link: { url: string }) => link.url === tab.url
+              ) || false;
+
+            if (!urlExists) {
+              addLink(projectId, collectionId, {
+                title: tab.title,
+                url: tab.url,
+                favIconUrl: tab.favIconUrl,
+              });
+            }
+          }
+        }
       }
 
       setActiveItem(null);
     },
-    [activeItem, moveLink, reorderCollections, reorderLinks]
+    [activeItem, moveLink, reorderCollections, reorderLinks, addLink]
   );
 
   return {

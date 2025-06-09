@@ -4,6 +4,7 @@ import type {
   Link,
   QuickLink,
   ChromeWindowInfo,
+  ChromeTabInfo,
   VerticalTabId,
 } from '@/types';
 
@@ -129,7 +130,12 @@ export interface AppState {
   ) => void;
 
   // Chrome Windows/Tabs actions
+  refreshChromeWindows: () => Promise<void>;
+  setChromeWindows: (windows: ChromeWindowInfo[]) => void;
   renameChromeWindow: (windowId: number, newName: string) => void;
+  updateChromeTab: (tabId: number, updatedTab: ChromeTabInfo) => void;
+  addChromeTab: (windowId: number, newTab: ChromeTabInfo) => void;
+  removeChromeTab: (tabId: number) => void;
   addChromeWindowToCollections: (windowInfo: ChromeWindowInfo) => void;
 
   // Drag & Drop actions

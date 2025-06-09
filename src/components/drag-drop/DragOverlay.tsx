@@ -69,6 +69,41 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
       );
     }
 
+    if (activeItem.type === 'tab') {
+      const tab = activeItem.data.tab;
+      if (!tab) return null;
+
+      return (
+        <Card className='w-80 shadow-lg border-2 border-primary/50 bg-background/95 backdrop-blur'>
+          <CardContent className='p-3'>
+            <div className='flex items-center gap-3'>
+              <GripVertical className='h-4 w-4 text-muted-foreground' />
+              <div className='flex items-center gap-2 flex-1 min-w-0'>
+                {tab.favIconUrl ? (
+                  <img
+                    src={tab.favIconUrl}
+                    alt=''
+                    className='w-4 h-4 flex-shrink-0 rounded'
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <ExternalLink className='h-4 w-4 text-muted-foreground flex-shrink-0' />
+                )}
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium truncate'>{tab.title}</p>
+                  <p className='text-xs text-muted-foreground truncate'>
+                    {tab.url}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return null;
   };
 
