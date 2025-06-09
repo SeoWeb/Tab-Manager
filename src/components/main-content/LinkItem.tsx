@@ -22,7 +22,7 @@ export default function LinkItem({
   const faviconUrl = getFaviconUrl(link.url);
 
   return (
-    <div className='flex items-center gap-3 p-3 bg-background hover:bg-secondary/50 rounded-lg border border-input transition-colors duration-150 shadow-sm'>
+    <div className='flex items-center gap-3 p-3 bg-background hover:bg-secondary/50 rounded-lg border border-input transition-colors duration-150 shadow-sm w-80'>
       {/* <Button variant="ghost" size="icon" className="cursor-grab h-7 w-7">
         <GripVertical className="h-4 w-4 text-muted-foreground" />
       </Button> */}

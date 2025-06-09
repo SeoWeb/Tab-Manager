@@ -96,7 +96,7 @@ const Collection: React.FC<CollectionProps> = ({ collection, projectId }) => {
         </div>
       </div>
       {isExpanded && (
-        <div className='p-3 space-y-2'>
+        <div className='flex p-3 gap-2'>
           {links.length > 0 ? (
             links.map((link: Link) => (
               <LinkItem

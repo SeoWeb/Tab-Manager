@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useSidebar } from '@/components/ui/sidebar'; // Import useSidebar
+// import { useSidebar } from '@/components/ui/sidebar'; // Import useSidebar
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
@@ -26,7 +26,7 @@ export default function AppClient() {
     initializeTabManagerRootFolder: state.initializeTabManagerRootFolder,
     _hasHydrated: state._hasHydrated,
   }));
-  const { open: sidebarOpen, isMobile } = useSidebar(); // Get sidebar state and mobile status
+  // const { open: sidebarOpen, isMobile } = useSidebar(); // Get sidebar state and mobile status
 
   useEffect(() => {
     // Call initializeTabManagerRootFolder after hydration
@@ -72,19 +72,18 @@ export default function AppClient() {
 
   return (
     <>
-      <div className='flex h-screen bg-background'>
+      <div className='flex h-screen bg-background w-full'>
         <LeftSidebar />
         <div
           className={cn(
-            'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out',
-            !isMobile && sidebarOpen ? 'ml-[256px]' : 'ml-[68px]'
+            'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out w-full'
           )}
         >
           <main className='flex-1 w-full'>
             <MainContentArea />
           </main>
         </div>
-        <div className='fixed right-0 top-0 h-full z-30'>
+        <div className='h-full z-30'>
           <VerticalRightTabsBar />
         </div>
         {isRightContentPanelOpen && <RightContentPanel />}
