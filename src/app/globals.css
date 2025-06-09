@@ -43,6 +43,14 @@ body {
     --sidebar-accent-foreground: 217 89% 30%; /* Darker blue text on hover */
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Custom theme variables */
+    --theme-primary-bg: #FFFFFF; /* White */
+    --theme-secondary-bg: #F3F4F6; /* gray-100 */
+    --theme-accent-bg: #E5E7EB; /* gray-200 */
+    --theme-text-primary: #1F2937; /* gray-800 */
+    --theme-text-secondary: #4B5563; /* gray-600 */
+    --theme-border-color: #D1D5DB; /* gray-300 */
   }
   .dark {
     --background: 240 10% 3.9%;

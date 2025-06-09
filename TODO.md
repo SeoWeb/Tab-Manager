@@ -14,22 +14,22 @@
 ### Chrome Extension Foundation
 - [x] Create manifest.json with proper permissions (bookmarks, storage, tabs, activeTab)
 - [x] Set up chrome_url_overrides for new tab replacement
-- [⚠] Create basic HTML entry point (index.html) - manifest points to index.html, Next.js build/export pending
-- [ ] Test basic extension loading in Chrome
+- [x] Create basic HTML entry point (index.html) - Next.js static export configured, basic content added.
+- [⚠] Test basic extension loading in Chrome - Instructions provided in BUILD_INSTRUCTIONS.md. Manual verification needed.
 - [⚠] Set up development build process - Configured for static export to 'out/' directory via Next.js. Full packaging/testing pending.
 - [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
-- [ ] Create MainLayout component with three-panel structure
-- [ ] Implement responsive grid layout with Tailwind
+- [⚠] Create MainLayout component with three-panel structure - Basic responsive three-column structure implemented and integrated.
+- [⚠] Implement responsive grid layout with Tailwind - Applied to MainLayout for small and medium screens.
 - [ ] Set up basic routing/navigation structure
 - [ ] Test layout responsiveness and proportions
-- [ ] Add basic CSS variables for theming
+- [⚠] Add basic CSS variables for theming - Defined in globals.css and applied to MainLayout.
 
 ### Initial State Management
-- [ ] Create basic Zustand store structure
-- [ ] Define TypeScript interfaces for Project, Collection, Link
-- [ ] Implement basic state actions (getters/setters)
+- [x] Create basic Zustand store structure - Aligned with core types, includes mock data and CRUD actions.
+- [x] Define TypeScript interfaces for Project, Collection, Link - Core interfaces created in src/types/index.ts.
+- [x] Implement basic state actions (getters/setters) - CRUD actions implemented in Zustand store.
 - [ ] Set up Chrome storage integration
 - [ ] Test state persistence across browser sessions
 
