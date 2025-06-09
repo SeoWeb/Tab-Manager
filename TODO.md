@@ -3,21 +3,21 @@
 ## 📋 Phase 1: Core Structure & Setup (Week 1-2)
 
 ### Project Setup
-- [ ] Initialize React + TypeScript project with Vite/Webpack
-- [ ] Install and configure Tailwind CSS
-- [ ] Install Zustand for state management
-- [ ] Set up project folder structure
-- [ ] Configure TypeScript with proper Chrome extension types
-- [ ] Set up ESLint and Prettier configuration
-- [ ] Create basic package.json with all dependencies
+- [x] Initialize React + TypeScript project with Vite/Webpack
+- [x] Install and configure Tailwind CSS
+- [x] Install Zustand for state management
+- [x] Set up project folder structure
+- [x] Configure TypeScript with proper Chrome extension types
+- [x] Set up ESLint and Prettier configuration
+- [x] Create basic package.json with all dependencies
 
 ### Chrome Extension Foundation
-- [ ] Create manifest.json with proper permissions (bookmarks, storage, tabs, activeTab)
-- [ ] Set up chrome_url_overrides for new tab replacement
-- [ ] Create basic HTML entry point (index.html)
+- [x] Create manifest.json with proper permissions (bookmarks, storage, tabs, activeTab)
+- [x] Set up chrome_url_overrides for new tab replacement
+- [⚠] Create basic HTML entry point (index.html) - manifest points to index.html, Next.js build/export pending
 - [ ] Test basic extension loading in Chrome
 - [ ] Set up development build process
-- [ ] Create extension icons (16x16, 48x48, 128x128)
+- [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
 - [ ] Create MainLayout component with three-panel structure
