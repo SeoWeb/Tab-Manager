@@ -217,7 +217,11 @@ interface AppState {
   setActiveView: (view: ActiveViewType) => void; // Added setActiveView
 
   // AI Suggestion
-  setCollectionName: (projectId: string, collectionId: string, name: string) => void;
+  setCollectionName: (
+    projectId: string,
+    collectionId: string,
+    name: string
+  ) => void;
 
   // Chrome Windows/Tabs actions (for mock data)
   renameChromeWindow: (windowId: number, newName: string) => void;
@@ -312,7 +316,8 @@ const initialProjects: Project[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
+      activeProjectId:
+        initialProjects.length > 0 ? initialProjects[0].id : null,
       activeView: 'projectDetail', // Initialized activeView
       isDarkMode: false,
 
@@ -330,7 +335,11 @@ export const useAppStore = create<AppState>()(
       isAddLinkModalOpen: false,
       editingCollectionIdForLink: null,
 
-      setActiveProject: (id) => set({ activeProjectId: id, activeView: id ? 'projectDetail' : get().activeView }), // Modified setActiveProject
+      setActiveProject: (id) =>
+        set({
+          activeProjectId: id,
+          activeView: id ? 'projectDetail' : get().activeView,
+        }), // Modified setActiveProject
       setActiveView: (view: ActiveViewType) => set({ activeView: view }), // Added setActiveView action
       toggleDarkMode: () => {
         set((state) => {
@@ -552,7 +561,9 @@ export const useAppStore = create<AppState>()(
         })),
 
       addQuickLink: (link) =>
-        set((state) => ({ quickLinks: [...state.quickLinks, { ...link, id: generateId() }] })),
+        set((state) => ({
+          quickLinks: [...state.quickLinks, { ...link, id: generateId() }],
+        })),
       removeQuickLink: (id) =>
         set((state) => ({
           quickLinks: state.quickLinks.filter((l) => l.id !== id),
@@ -580,7 +591,10 @@ export const useAppStore = create<AppState>()(
       openAddCollectionModal: () => set({ isAddCollectionModalOpen: true }),
       closeAddCollectionModal: () => set({ isAddCollectionModalOpen: false }),
       openAddLinkModal: (collectionId) =>
-        set({ isAddLinkModalOpen: true, editingCollectionIdForLink: collectionId }),
+        set({
+          isAddLinkModalOpen: true,
+          editingCollectionIdForLink: collectionId,
+        }),
       closeAddLinkModal: () =>
         set({ isAddLinkModalOpen: false, editingCollectionIdForLink: null }),
 
@@ -591,7 +605,9 @@ export const useAppStore = create<AppState>()(
               return {
                 ...p,
                 collections: p.collections.map((c) =>
-                  c.id === collectionId ? { ...c, name, updatedAt: new Date() } : c
+                  c.id === collectionId
+                    ? { ...c, name, updatedAt: new Date() }
+                    : c
                 ),
                 updatedAt: new Date(),
               };
@@ -609,7 +625,7 @@ export const useAppStore = create<AppState>()(
       addChromeWindowToCollections: (windowInfo) => {
         const activeProjectId = get().activeProjectId;
         if (!activeProjectId) {
-          console.error("No active project to add the window to.");
+          console.error('No active project to add the window to.');
           return;
         }
 

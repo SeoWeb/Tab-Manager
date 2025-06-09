@@ -1,12 +1,10 @@
 'use client';
 
-"use client";
-
-import { useAppStore } from "@/stores/appStore";
-import ProjectHeader from "./ProjectHeader";
-import CollectionsList from "./CollectionsList";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { useAppStore } from '@/stores/appStore';
+import ProjectHeader from './ProjectHeader';
+import CollectionsList from './CollectionsList';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import SettingsView from '@/components/views/SettingsView'; // Added import
 
 interface MainContentAreaProps {
@@ -22,7 +20,12 @@ export default function MainContentArea({ className }: MainContentAreaProps) {
 
   if (activeView === 'settings') {
     return (
-      <div className={cn("flex-1 flex flex-col bg-background overflow-hidden", className)}>
+      <div
+        className={cn(
+          'flex-1 flex flex-col bg-background overflow-hidden',
+          className
+        )}
+      >
         <SettingsView />
       </div>
     );
