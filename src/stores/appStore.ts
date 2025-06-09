@@ -1,21 +1,46 @@
-import { create } from 'zustand';
-import type { Project, Collection, Link, QuickLink } from '@/types';
-import {nanoid} from 'nanoid'; // Using nanoid for unique IDs, ensure it's installed or use Math.random based solution
 
-// Helper for unique IDs if nanoid is not preferred for this scaffolding
-const generateId = () => Math.random().toString(36).substr(2, 9);
+import { create } from 'zustand';
+import type { Project, Collection, Link, QuickLink, ChromeWindowInfo, ChromeTabInfo, VerticalTabId } from '@/types';
+import {nanoid} from 'nanoid'; 
+
+const generateId = () => nanoid(); // Using nanoid for unique IDs
+
+// Mock data for Chrome Windows and Tabs
+const mockChromeWindows: ChromeWindowInfo[] = [
+  {
+    id: 1,
+    name: 'Work Projects',
+    tabs: [
+      { id: 101, title: 'Q3 Planning Doc - Google Docs', url: 'https://docs.google.com/document/d/example1', favIconUrl: 'https://www.google.com/s2/favicons?domain=docs.google.com', windowId: 1 },
+      { id: 102, title: 'Competitor Analysis - Figma', url: 'https://www.figma.com/file/example2', favIconUrl: 'https://www.google.com/s2/favicons?domain=figma.com', windowId: 1 },
+      { id: 103, title: 'Internal Dashboard', url: 'https://internal.example.com/dashboard', favIconUrl: 'https://www.google.com/s2/favicons?domain=example.com', windowId: 1 },
+    ],
+    isFocused: true,
+  },
+  {
+    id: 2,
+    name: 'Research & News',
+    tabs: [
+      { id: 201, title: 'Tech News Today - TechCrunch', url: 'https://techcrunch.com', favIconUrl: 'https://www.google.com/s2/favicons?domain=techcrunch.com', windowId: 2 },
+      { id: 202, title: 'Next.js Official Docs', url: 'https://nextjs.org/docs', favIconUrl: 'https://www.google.com/s2/favicons?domain=nextjs.org', windowId: 2 },
+    ],
+  }
+];
 
 
 interface AppState {
   // UI State
   activeProjectId: string | null;
-  rightPanelTab: 'quickLinks' | 'bookmarks' | 'notes' | 'todos';
-  isRightPanelOpen: boolean;
-  isDarkMode: boolean; // Added as per proposal, though not fully implemented in this pass
+  isDarkMode: boolean; 
   
+  // New Right Panel State
+  activeVerticalTabId: VerticalTabId | null;
+  isRightContentPanelOpen: boolean;
+
   // Data
   projects: Project[];
-  quickLinks: QuickLink[]; // For the adapted "Open Tabs" panel
+  chromeWindows: ChromeWindowInfo[]; // For "Open Tabs" feature
+  quickLinks: QuickLink[]; 
   notes: string;
   todos: { id: string; text: string; completed: boolean }[];
 
@@ -23,13 +48,15 @@ interface AppState {
   isAddProjectModalOpen: boolean;
   isAddCollectionModalOpen: boolean;
   isAddLinkModalOpen: boolean;
-  editingCollectionIdForLink: string | null; // To know which collection to add link to
+  editingCollectionIdForLink: string | null; 
 
   // Actions
   setActiveProject: (id: string | null) => void;
-  setRightPanelTab: (tab: AppState['rightPanelTab']) => void;
-  toggleRightPanel: () => void;
   toggleDarkMode: () => void;
+
+  // New Right Panel Actions
+  setActiveVerticalTabId: (tabId: VerticalTabId | null) => void;
+  toggleRightContentPanel: (forceOpen?: boolean, tabId?: VerticalTabId) => void;
   
   // Project actions
   addProject: (project: Omit<Project, 'id' | 'collections'> & { collections?: Collection[] }) => void;
@@ -40,15 +67,13 @@ interface AppState {
   addCollection: (projectId: string, collection: Omit<Collection, 'id' | 'links' | 'order'> & { links?: Link[], order?: number }) => void;
   updateCollection: (projectId: string, collectionId: string, updates: Partial<Collection>) => void;
   deleteCollection: (projectId: string, collectionId: string) => void;
-  // moveCollection: (projectId: string, fromIndex: number, toIndex: number) => void; // Defer D&D
   
   // Link actions
   addLink: (projectId: string, collectionId: string, link: Omit<Link, 'id' | 'order'> & { order?: number }) => void;
   updateLink: (projectId: string, collectionId: string, linkId: string, updates: Partial<Link>) => void;
   deleteLink: (projectId: string, collectionId: string, linkId: string) => void;
-  // moveLink: (fromCollectionId: string, toCollectionId: string, linkId: string, projectId: string) => void; // Defer D&D
 
-  // Quick Links actions
+  // Quick Links actions (will be phased out or repurposed if "Open Tabs" takes over fully)
   addQuickLink: (link: Omit<QuickLink, 'id'>) => void;
   removeQuickLink: (id: string) => void;
 
@@ -70,6 +95,11 @@ interface AppState {
 
   // AI Suggestion
   setCollectionName: (projectId: string, collectionId: string, name: string) => void;
+
+  // Chrome Windows/Tabs actions (for mock data)
+  renameChromeWindow: (windowId: number, newName: string) => void;
+  addChromeWindowToCollections: (windowInfo: ChromeWindowInfo) => void;
+  // Placeholder for D&D: addChromeTabToCollection
 }
 
 const initialProjects: Project[] = [
@@ -110,11 +140,14 @@ const initialProjects: Project[] = [
 
 export const useAppStore = create<AppState>((set, get) => ({
   activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
-  rightPanelTab: 'quickLinks',
-  isRightPanelOpen: false,
   isDarkMode: false,
+  
+  activeVerticalTabId: null, 
+  isRightContentPanelOpen: false,
+
   projects: initialProjects,
-  quickLinks: [],
+  chromeWindows: mockChromeWindows,
+  quickLinks: [], // This might be deprecated by the new "Open Tabs"
   notes: '',
   todos: [],
 
@@ -124,8 +157,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   editingCollectionIdForLink: null,
 
   setActiveProject: (id) => set({ activeProjectId: id }),
-  setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
-  toggleRightPanel: () => set((state) => ({ isRightPanelOpen: !state.isRightPanelOpen })),
   toggleDarkMode: () => {
     set((state) => {
       const newIsDarkMode = !state.isDarkMode;
@@ -137,6 +168,32 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { isDarkMode: newIsDarkMode };
     });
   },
+
+  setActiveVerticalTabId: (tabId) => set({ activeVerticalTabId: tabId }),
+  toggleRightContentPanel: (forceOpen, tabId) => set((state) => {
+    let newOpenState = forceOpen !== undefined ? forceOpen : !state.isRightContentPanelOpen;
+    let newActiveTabId = state.activeVerticalTabId;
+
+    if (tabId) { // If a specific tab is clicked
+      if (state.isRightContentPanelOpen && state.activeVerticalTabId === tabId) {
+        // Clicking the active tab closes the panel
+        newOpenState = false;
+        newActiveTabId = null; // Or keep it to reopen to the same tab
+      } else {
+        // Clicking a new tab or opening the panel
+        newOpenState = true;
+        newActiveTabId = tabId;
+      }
+    } else if (forceOpen === false) { // Generic close
+        newActiveTabId = null; // Clear active tab when panel is forced closed
+    }
+
+
+    return { 
+      isRightContentPanelOpen: newOpenState,
+      activeVerticalTabId: newActiveTabId
+    };
+  }),
   
   addProject: (project) => set((state) => ({
     projects: [...state.projects, { ...project, id: generateId(), collections: project.collections || [] }],
@@ -259,4 +316,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCollectionName: (projectId, collectionId, name) => {
     get().updateCollection(projectId, collectionId, { name });
   },
+
+  renameChromeWindow: (windowId, newName) => set(state => ({
+    chromeWindows: state.chromeWindows.map(win => win.id === windowId ? { ...win, name: newName } : win)
+  })),
+  addChromeWindowToCollections: (windowInfo) => {
+    const activeProjectId = get().activeProjectId;
+    if (!activeProjectId) {
+      console.warn("No active project to add collection to.");
+      // Potentially open AddProjectModal or notify user
+      return;
+    }
+    const newCollectionName = windowInfo.name || `Window ${windowInfo.id} Tabs`;
+    const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
+      id: generateId(),
+      name: tab.title,
+      url: tab.url,
+      favicon: tab.favIconUrl,
+      order: index,
+    }));
+    get().addCollection(activeProjectId, {
+      name: newCollectionName,
+      links: newLinks,
+    });
+  }
 }));
+
+// Remove old state: rightPanelTab, isRightPanelOpen, setRightPanelTab, toggleRightPanel
+// Added: activeVerticalTabId, isRightContentPanelOpen, setActiveVerticalTabId, toggleRightContentPanel
+// Added: chromeWindows, renameChromeWindow, addChromeWindowToCollections

@@ -1,10 +1,10 @@
+
 export interface Link {
   id: string;
   name: string;
   url: string;
   favicon?: string; // URL to the favicon
   order: number;
-  // bookmarkId: string; // Less relevant for web app, kept for proposal consistency
 }
 
 export interface Collection {
@@ -13,7 +13,6 @@ export interface Collection {
   links: Link[];
   isMinimized: boolean;
   order: number;
-  // bookmarkFolderId: string; // Less relevant for web app
 }
 
 export interface Project {
@@ -21,13 +20,30 @@ export interface Project {
   name: string;
   color: string; // Hex color string
   collections: Collection[];
-  // bookmarkFolderId: string; // Less relevant for web app
 }
 
-// For Right Panel adapted "Open Tabs" / "Quick Add"
 export interface QuickLink {
-  id: string; // Can be temp ID or URL
+  id: string; 
   title: string;
   url: string;
   favicon?: string;
 }
+
+// New types for simulating Chrome tabs and windows
+export interface ChromeTabInfo {
+  id: number; // Simulated Chrome's tab ID
+  title: string;
+  url: string;
+  favIconUrl?: string;
+  windowId: number;
+}
+
+export interface ChromeWindowInfo {
+  id: number; // Simulated Chrome's window ID
+  name: string; // User-defined name, initially "Window X"
+  tabs: ChromeTabInfo[];
+  isFocused?: boolean; 
+  type?: string; 
+}
+
+export type VerticalTabId = 'openTabs' | 'bookmarks' | 'notes' | 'todos';

@@ -1,17 +1,21 @@
+
 "use client";
 
 import { useEffect } from 'react';
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import LeftSidebar from "@/components/left-sidebar/LeftSidebar";
 import MainContentArea from "@/components/main-content/MainContentArea";
-import RightSidePanel from "@/components/right-panel/RightSidePanel";
+// import RightSidePanel from "@/components/right-panel/RightSidePanel"; // Old panel
+import VerticalRightTabsBar from "@/components/right-vertical-tabs/VerticalRightTabsBar"; // New
+import RightContentPanel from "@/components/right-vertical-tabs/RightContentPanel"; // New
 import { useAppStore } from "@/stores/appStore";
 import AddProjectModal from './modals/AddProjectModal';
 import AddCollectionModal from './modals/AddCollectionModal';
 import AddLinkModal from './modals/AddLinkModal';
+import { cn } from '@/lib/utils';
 
 export default function AppClient() {
-  const { isRightPanelOpen, isDarkMode, activeProjectId } = useAppStore();
+  const { isDarkMode, activeProjectId, isRightContentPanelOpen } = useAppStore();
 
   useEffect(() => {
     if (isDarkMode) {
@@ -21,7 +25,6 @@ export default function AppClient() {
     }
   }, [isDarkMode]);
   
-  // Ensure there's always an active project if projects exist
   const projects = useAppStore(state => state.projects);
   const setActiveProject = useAppStore(state => state.setActiveProject);
 
@@ -29,10 +32,8 @@ export default function AppClient() {
     if (!activeProjectId && projects.length > 0) {
       setActiveProject(projects[0].id);
     } else if (activeProjectId && !projects.find(p => p.id === activeProjectId) && projects.length > 0) {
-      // Active project was deleted, set to first available
       setActiveProject(projects[0].id);
     } else if (projects.length === 0 && activeProjectId) {
-      // All projects deleted
       setActiveProject(null);
     }
   }, [projects, activeProjectId, setActiveProject]);
@@ -42,12 +43,11 @@ export default function AppClient() {
     <SidebarProvider defaultOpen={true}>
       <div className="flex h-screen bg-background">
         <LeftSidebar />
-        <SidebarInset>
-          <div className="flex flex-1 h-full overflow-hidden">
-            <MainContentArea />
-            {isRightPanelOpen && <RightSidePanel />}
-          </div>
+        <SidebarInset className={cn("flex flex-1 overflow-hidden")}> {/* SidebarInset now wraps the main area + content panel */}
+            <MainContentArea className="flex-grow" /> {/* Main content takes available space */}
+            {isRightContentPanelOpen && <RightContentPanel />} {/* Content panel slides in */}
         </SidebarInset>
+        <VerticalRightTabsBar /> {/* Vertical tabs always visible on the far right */}
       </div>
       <AddProjectModal />
       <AddCollectionModal />

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Project } from "@/types";
@@ -12,7 +13,8 @@ interface ProjectHeaderProps {
 }
 
 export default function ProjectHeader({ project }: ProjectHeaderProps) {
-  const { toggleRightPanel, isRightPanelOpen, toggleDarkMode, isDarkMode } = useAppStore();
+  const { toggleDarkMode, isDarkMode } = useAppStore();
+  // Removed toggleRightPanel, isRightPanelOpen as they are replaced by new vertical tab logic
 
   return (
     <header className="p-4 border-b border-border bg-card flex items-center justify-between shrink-0">
@@ -21,20 +23,10 @@ export default function ProjectHeader({ project }: ProjectHeaderProps) {
         <h2 className="text-xl font-semibold font-headline text-card-foreground">{project.name}</h2>
       </div>
       <div className="flex items-center gap-2">
-        {/* Search Input - Placeholder for now */}
-        {/* <div className="relative w-full max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Search links..." className="pl-8" />
-        </div> */}
         <Button variant="ghost" size="icon" onClick={toggleDarkMode} aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}>
           {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
-        {/* <Button variant="ghost" size="icon" aria-label="Project settings">
-          <Settings className="h-5 w-5" />
-        </Button> */}
-        <Button variant="ghost" size="icon" onClick={toggleRightPanel} aria-label={isRightPanelOpen ? "Close right panel" : "Open right panel"}>
-          {isRightPanelOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelRightOpen className="h-5 w-5" />}
-        </Button>
+        {/* The button to toggle the right panel is now part of VerticalRightTabsBar */}
       </div>
     </header>
   );
