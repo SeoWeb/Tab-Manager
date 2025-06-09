@@ -1,7 +1,7 @@
 // src/components/main-content/CollectionsList.tsx
 import React from 'react';
-import { Project } from '@/types';
-// import CollectionItem from './CollectionItem'; // For later use
+import { Project, Collection } from '@/types'; // Import Collection type
+import CollectionComponent from '@/components/Collection'; // Import the component created in the first subtask
 // import AddCollectionButton from './AddCollectionButton'; // For later use
 
 interface CollectionsListProps {
@@ -21,17 +21,8 @@ const CollectionsList: React.FC<CollectionsListProps> = ({ project }) => {
 
   return (
     <div className='space-y-4'>
-      {project.collections.map((collection) => (
-        // <CollectionItem key={collection.id} collection={collection} />
-        <div
-          key={collection.id}
-          className='p-4 border rounded-md bg-gray-50 dark:bg-gray-800'
-        >
-          <h3 className='font-semibold text-gray-700 dark:text-gray-200'>
-            {collection.name}
-          </h3>
-          {/* Display links later */}
-        </div>
+      {project.collections.map((collection: Collection) => ( // Added type for collection
+        <CollectionComponent key={collection.id} collection={collection} />
       ))}
     </div>
   );

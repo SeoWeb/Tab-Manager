@@ -1,66 +1,55 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import CollectionsList from './CollectionsList';
-import { useStore } from '../../store/store'; // Path to the store from this test file
-import { Project, Collection as CollectionType } from '../../../types'; // Path to types
+import CollectionsList from './CollectionsList'; // Path to the component being tested
+import { Project, Collection as CollectionType, Link } from '@/types'; // Adjusted import for Collection type
 
-jest.mock('../../store/store'); // Mock the store
+// No need to mock useAppStore for this component as it receives props directly
 
-const mockAppStore = useStore as jest.Mock; // Changed name to avoid conflict with useStore import
+describe('CollectionsList (main-content)', () => {
+  const mockLinks: Link[] = [
+    { id: 'link1', url: 'http://link1.com', title: 'Link 1', createdAt: new Date(), order: 0 },
+  ];
 
-describe('CollectionsList Component', () => {
-  const baseTime = new Date();
   const mockCollections: CollectionType[] = [
-    { id: 'col1', name: 'First Collection', links: [], createdAt: baseTime, updatedAt: baseTime },
-    { id: 'col2', name: 'Second Collection', links: [], createdAt: baseTime, updatedAt: baseTime },
+    { id: 'col1', name: 'Collection Alpha', links: mockLinks, createdAt: new Date(), updatedAt: new Date(), order: 0 },
+    { id: 'col2', name: 'Collection Beta', links: [], createdAt: new Date(), updatedAt: new Date(), order: 1 },
   ];
 
   const mockProject: Project = {
     id: 'proj1',
     name: 'Test Project',
     collections: mockCollections,
-    createdAt: baseTime,
-    updatedAt: baseTime,
-    // icon and color are optional and not directly used by CollectionsList rendering logic
+    icon: '🚀',
+    color: '#FFFFFF',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    description: 'A test project',
+    // bookmarkFolderId is optional
   };
 
-  // This is the component CollectionsList expects as its prop
-  // It doesn't use the store directly for its own props, but its child (Collection) might if we were testing deeper.
-  // However, CollectionsList itself *does* use the store to decide *which* project's collections to show.
-  // The prompt says `CollectionsList project={activeProject}` is in `MainContentArea.tsx`
-  // Let's re-check `src/components/main-content/CollectionsList.tsx`
-  // It is: `const CollectionsList: React.FC<{ project: Project }> = ({ project }) => { ... }`
-  // So it receives `project` as a prop, it does NOT use `useStore` to get the active project.
-  // This simplifies the test significantly as we don't need to mock `useStore` for this component.
-  // The parent `MainContentArea` is responsible for using the store and passing the correct project.
-
-  // Corrected understanding: CollectionsList *receives* a project prop.
-  // The previous plan to mock useStore for CollectionsList was based on a misunderstanding.
-
-  it('renders collections when a project with collections is provided', () => {
-    // The CollectionsList component itself is in `src/components/main-content/CollectionsList.tsx`
-    // It takes a `project` prop.
-    // The `Collection` component (from `src/components/Collection/Collection.tsx`) is rendered by this list.
+  it('renders a list of collections when a project has collections', () => {
     render(<CollectionsList project={mockProject} />);
-    expect(screen.getByText('First Collection')).toBeInTheDocument();
-    expect(screen.getByText('Second Collection')).toBeInTheDocument();
+
+    // Check if collection names are rendered (via CollectionComponent)
+    expect(screen.getByText('Collection Alpha')).toBeInTheDocument();
+    expect(screen.getByText('Collection Beta')).toBeInTheDocument();
+
+    // Check if link placeholders from CollectionComponent are rendered
+    // For "Collection Alpha" which has 1 link
+    expect(screen.getByText('Links will be displayed here. (1 links)')).toBeInTheDocument();
+    // For "Collection Beta" which has 0 links
+    expect(screen.getByText('Links will be displayed here. (0 links)')).toBeInTheDocument();
   });
 
-  it('shows "no collections" message when the project has no collections', () => {
-    const projectWithNoCollections: Project = {
-      ...mockProject,
-      collections: [],
-    };
+  it('renders "This project has no collections yet." when the project has no collections', () => {
+    const projectWithNoCollections: Project = { ...mockProject, collections: [] };
+
     render(<CollectionsList project={projectWithNoCollections} />);
-    // The component's actual message is:
-    // <p className='text-gray-500 dark:text-gray-400'>
-    //   This project doesn&apos;t have any collections yet.
-    // </p>
-    expect(screen.getByText(/This project doesn't have any collections yet./i)).toBeInTheDocument();
+
+    expect(screen.getByText('This project has no collections yet.')).toBeInTheDocument();
   });
 
-  // No "no active project" test for CollectionsList itself, as it *requires* a project prop.
-  // That logic is handled by its parent, MainContentArea.
-  // If project prop was optional, or if CollectionsList fetched its own data, then such a test would be here.
+  // The case for "no active project" is handled by MainContentArea, which would not render CollectionsList.
+  // Therefore, a specific test for that case is not applicable here as CollectionsList expects a valid project prop.
 });

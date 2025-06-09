@@ -1,33 +1,28 @@
 import React from 'react';
-import Collection from '../Collection';
-import { useStore } from '../../store/store';
-import { Collection as CollectionType } // Renaming to avoid conflict
-from '../../types';
+import { useAppStore } from '@/stores/appStore'; // Adjusted import path for the store
+import CollectionComponent from '@/components/Collection'; // Assuming Collection is default export
+import { Collection as CollectionType, Project } from '@/types'; // Ensure Collection type is imported
 
 const CollectionsList: React.FC = () => {
-  const activeProject = useStore((state) => state.getActiveProject());
-  const collections = activeProject?.collections || [];
+  const activeProjectId = useAppStore((state) => state.activeProjectId);
+  const projects = useAppStore((state) => state.projects);
+
+  const activeProject = projects.find(p => p.id === activeProjectId);
 
   if (!activeProject) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        <p>No active project selected or project not found.</p>
-      </div>
-    );
+    return <p className="text-center text-gray-500 py-4">Select a project to see collections.</p>;
   }
 
-  if (collections.length === 0) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        <p>No collections yet. Create one to get started!</p>
-      </div>
-    );
+  const collections = activeProject.collections;
+
+  if (!collections || collections.length === 0) {
+    return <p className="text-center text-gray-500 py-4">No collections in this project.</p>;
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       {collections.map((collection: CollectionType) => (
-        <Collection key={collection.id} collection={collection} />
+        <CollectionComponent key={collection.id} collection={collection} />
       ))}
     </div>
   );
