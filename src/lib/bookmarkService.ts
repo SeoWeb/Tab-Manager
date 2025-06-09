@@ -1,3 +1,5 @@
+import { showErrorToast } from './toast';
+
 // src/lib/bookmarkService.ts
 
 /**
@@ -18,6 +20,7 @@ export const bookmarkService = {
       return results;
     } catch (error) {
       console.error('Error searching bookmarks:', error);
+      showErrorToast('Error searching bookmarks.');
       // It's possible for search to be rejected if the query is invalid,
       // though the API docs don't explicitly state rejection conditions for search.
       // More often, it resolves to an empty array if nothing is found or query is empty.
@@ -46,6 +49,13 @@ export const bookmarkService = {
       return newFolder;
     } catch (error) {
       console.error(`Error creating bookmark folder "${title}":`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error creating bookmark folder: ${error.message}`);
+      } else {
+        showErrorToast(
+          'An unknown error occurred while creating the bookmark folder.'
+        );
+      }
       throw error; // Re-throw to allow caller to handle
     }
   },
@@ -76,6 +86,13 @@ export const bookmarkService = {
       return newBookmark;
     } catch (error) {
       console.error(`Error creating bookmark "${title}" (${url}):`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error creating bookmark: ${error.message}`);
+      } else {
+        showErrorToast(
+          'An unknown error occurred while creating the bookmark.'
+        );
+      }
       throw error;
     }
   },
@@ -105,6 +122,13 @@ export const bookmarkService = {
       return updatedNode;
     } catch (error) {
       console.error(`Error updating bookmark ID "${id}":`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error updating bookmark: ${error.message}`);
+      } else {
+        showErrorToast(
+          'An unknown error occurred while updating the bookmark.'
+        );
+      }
       throw error;
     }
   },
@@ -122,6 +146,13 @@ export const bookmarkService = {
     } catch (error) {
       // API throws error if folder is not empty. Use deleteBookmarkTree for that.
       console.error(`Error deleting bookmark/empty folder ID "${id}":`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error deleting bookmark: ${error.message}`);
+      } else {
+        showErrorToast(
+          'An unknown error occurred while deleting the bookmark.'
+        );
+      }
       throw error;
     }
   },
@@ -140,6 +171,13 @@ export const bookmarkService = {
       await chrome.bookmarks.removeTree(id);
     } catch (error) {
       console.error(`Error deleting bookmark tree ID "${id}":`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error deleting bookmark folder: ${error.message}`);
+      } else {
+        showErrorToast(
+          'An unknown error occurred while deleting the bookmark folder.'
+        );
+      }
       throw error;
     }
   },
@@ -160,6 +198,7 @@ export const bookmarkService = {
       return results && results.length > 0 ? results[0] : null;
     } catch (error) {
       console.error(`Error retrieving bookmark node ID "${id}":`, error);
+      showErrorToast('Error retrieving bookmark.');
       // This error occurs if the ID doesn't exist.
       return null;
     }
@@ -184,6 +223,7 @@ export const bookmarkService = {
         `Error retrieving children for folder ID "${folderId}":`,
         error
       );
+      showErrorToast('Error retrieving bookmark folder contents.');
       // This error can occur if folderId does not exist or is not a folder.
       return [];
     }

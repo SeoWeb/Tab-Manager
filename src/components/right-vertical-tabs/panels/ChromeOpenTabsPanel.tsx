@@ -7,7 +7,15 @@ import type { ChromeWindowInfo } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Edit2, PlusSquare, Check, X, RefreshCw } from 'lucide-react';
+import {
+  Edit2,
+  PlusSquare,
+  Check,
+  X,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { switchToTab, closeTab } from '@/lib/tabService';
@@ -33,6 +41,9 @@ export default function ChromeOpenTabsPanel() {
   const [editingWindowId, setEditingWindowId] = useState<number | null>(null);
   const [newWindowName, setNewWindowName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [minimizedWindows, setMinimizedWindows] = useState<Set<number>>(
+    new Set()
+  );
 
   // Set up Chrome tabs monitoring
   const { refreshTabs } = useChromeTabsMonitoring();
@@ -93,6 +104,18 @@ export default function ChromeOpenTabsPanel() {
         'Please select or create a project first to add this window as a collection.'
       );
     }
+  };
+
+  const toggleMinimizeWindow = (windowId: number) => {
+    setMinimizedWindows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(windowId)) {
+        newSet.delete(windowId);
+      } else {
+        newSet.add(windowId);
+      }
+      return newSet;
+    });
   };
 
   if (chromeWindows.length === 0) {
@@ -195,18 +218,38 @@ export default function ChromeOpenTabsPanel() {
                   >
                     <PlusSquare className='h-4 w-4' />
                   </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => toggleMinimizeWindow(window.id)}
+                    className='h-7 w-7'
+                    aria-label={
+                      minimizedWindows.has(window.id)
+                        ? 'Maximize window'
+                        : 'Minimize window'
+                    }
+                  >
+                    {minimizedWindows.has(window.id) ? (
+                      <ChevronDown className='h-4 w-4' />
+                    ) : (
+                      <ChevronUp className='h-4 w-4' />
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className='p-3 space-y-2 max-h-60 overflow-y-auto'>
-                {window.tabs.map((tab) => (
-                  <DraggableTab
-                    key={tab.id}
-                    tab={tab}
-                    onTabClick={handleTabClick}
-                    onCloseTab={handleCloseTab}
-                  />
-                ))}
-              </CardContent>
+              {!minimizedWindows.has(window.id) && (
+                <CardContent className='p-3 space-y-2 max-h-60 overflow-y-auto'>
+                  {window.tabs.filter(Boolean).map((tab) => (
+                    <DraggableTab
+                      key={tab.id}
+                      tab={tab}
+                      onTabClick={handleTabClick}
+                      onCloseTab={handleCloseTab}
+                      activeProjectId={activeProjectId}
+                    />
+                  ))}
+                </CardContent>
+              )}
             </Card>
           ))}
         </div>

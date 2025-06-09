@@ -18,6 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { highlightText } from '@/lib/highlight';
 
 interface CollectionHeaderProps {
   collection: CollectionType;
@@ -39,6 +40,7 @@ const CollectionHeader: React.FC<CollectionHeaderProps> = ({
   const openCollectionInNewWindow = useAppStore(
     (state) => state.openCollectionInNewWindow
   );
+  const searchQuery = useAppStore((state) => state.searchQuery);
 
   return (
     <div className='flex items-center p-3'>
@@ -47,6 +49,7 @@ const CollectionHeader: React.FC<CollectionHeaderProps> = ({
         size='icon'
         className='h-7 w-7'
         onClick={onToggleExpanded}
+        aria-label={isExpanded ? 'Collapse collection' : 'Expand collection'}
       >
         {isExpanded ? (
           <ChevronDown className='h-5 w-5' />
@@ -58,15 +61,25 @@ const CollectionHeader: React.FC<CollectionHeaderProps> = ({
         className='font-semibold text-lg flex-1 ml-2 cursor-pointer'
         onClick={onToggleExpanded}
       >
-        {name}
+        {highlightText(name, searchQuery)}
       </h3>
       <div className='flex items-center gap-2'>
-        <Button variant='ghost' size='icon' className='h-7 w-7'>
+        <Button
+          variant='ghost'
+          size='icon'
+          className='h-7 w-7'
+          aria-label='Add new link'
+        >
           <Plus className='h-5 w-5' />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant='ghost' size='icon' className='h-7 w-7'>
+            <Button
+              variant='ghost'
+              size='icon'
+              className='h-7 w-7'
+              aria-label='Collection options'
+            >
               <MoreHorizontal className='h-5 w-5' />
             </Button>
           </DropdownMenuTrigger>

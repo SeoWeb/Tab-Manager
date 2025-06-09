@@ -5,7 +5,9 @@ import { useAppStore } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { Trash2, ExternalLink, Edit3 } from 'lucide-react';
 import Image from 'next/image';
-import { getFaviconUrl } from '@/lib/utils';
+import { useFavicon } from '@/hooks/useFavicon';
+import { Skeleton } from '@/components/ui/skeleton';
+import { highlightText } from '@/lib/highlight';
 
 interface LinkItemProps {
   link: Link;
@@ -18,28 +20,32 @@ export default function LinkItem({
   projectId,
   collectionId,
 }: LinkItemProps) {
-  const { deleteLink, openEditLinkModal } = useAppStore((state) => ({
-    deleteLink: state.deleteLink,
-    openEditLinkModal: state.openEditLinkModal,
-  }));
-  const faviconUrl = getFaviconUrl(link.url);
+  const { deleteLink, openEditLinkModal, searchQuery } = useAppStore(
+    (state) => ({
+      deleteLink: state.deleteLink,
+      openEditLinkModal: state.openEditLinkModal,
+      searchQuery: state.searchQuery,
+    })
+  );
+  const { favicon, loading } = useFavicon(link.url);
 
   return (
     <div className='flex items-center gap-3 p-3 bg-background hover:bg-secondary/50 rounded-lg border border-input transition-colors duration-150 shadow-sm w-80'>
-      {/* <Button variant="ghost" size="icon" className="cursor-grab h-7 w-7">
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </Button> */}
-      <Image
-        src={faviconUrl}
-        alt='favicon'
-        width={20}
-        height={20}
-        className='rounded shrink-0'
-        onError={(e) =>
-          (e.currentTarget.src = 'https://placehold.co/20x20.png')
-        } // Fallback placeholder
-        unoptimized // For external URLs if not configured in next.config.js
-      />
+      {loading ? (
+        <Skeleton className='h-5 w-5 rounded' />
+      ) : (
+        <Image
+          src={favicon}
+          alt='favicon'
+          width={20}
+          height={20}
+          className='rounded shrink-0'
+          unoptimized
+          onError={(e) => {
+            e.currentTarget.src = 'https://placehold.co/20x20.png';
+          }}
+        />
+      )}
       <div className='flex-1 min-w-0'>
         <a
           href={link.url}
@@ -48,10 +54,12 @@ export default function LinkItem({
           className='text-sm font-medium text-primary hover:underline truncate block'
           title={link.url}
         >
-          {link.title || link.url}
+          {highlightText(link.title || link.url, searchQuery)}
         </a>
         {link.title && (
-          <p className='text-xs text-muted-foreground truncate'>{link.url}</p>
+          <p className='text-xs text-muted-foreground truncate'>
+            {highlightText(link.url, searchQuery)}
+          </p>
         )}
       </div>
       <div className='flex items-center gap-1 shrink-0'>

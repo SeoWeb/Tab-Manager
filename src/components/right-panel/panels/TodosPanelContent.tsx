@@ -23,11 +23,13 @@ export default function TodosPanelContent() {
     () => {}
   );
   const [newTodoText, setNewTodoText] = useState('');
+  const [newTodoCategory, setNewTodoCategory] = useState('');
 
   const handleAddTodo = () => {
     if (newTodoText.trim()) {
-      addTodo(newTodoText.trim());
+      addTodo(newTodoText.trim(), newTodoCategory.trim());
       setNewTodoText('');
+      setNewTodoCategory('');
     }
   };
 
@@ -41,6 +43,13 @@ export default function TodosPanelContent() {
           value={newTodoText}
           onChange={(e) => setNewTodoText(e.target.value)}
           onKeyPress={(e) => e.key === 'Enter' && handleAddTodo()}
+          className='text-sm'
+        />
+        <Input
+          type='text'
+          placeholder='Category (optional)'
+          value={newTodoCategory}
+          onChange={(e) => setNewTodoCategory(e.target.value)}
           className='text-sm'
         />
         <Button onClick={handleAddTodo} size='sm' className='shrink-0'>
@@ -69,6 +78,11 @@ export default function TodosPanelContent() {
                 )}
               >
                 {todo.text}
+                {todo.category && (
+                  <span className='ml-2 text-xs text-muted-foreground'>
+                    ({todo.category})
+                  </span>
+                )}
               </label>
               <Button
                 variant='ghost'

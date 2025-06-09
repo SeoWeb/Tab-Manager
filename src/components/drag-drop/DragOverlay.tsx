@@ -70,7 +70,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
     }
 
     if (activeItem.type === 'tab') {
-      const tab = activeItem.data.tab;
+      const tab = activeItem.data?.tab;
       if (!tab) return null;
 
       return (

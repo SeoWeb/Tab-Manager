@@ -80,8 +80,20 @@ export function useDragAndDrop() {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
-    const dragItem = active.data.current as DragItem;
-    setActiveItem(dragItem);
+    const { id, data } = active;
+    const current = data.current;
+
+    if (current && current.type && typeof current.projectId === 'string') {
+      const { type, projectId, ...restData } = current;
+      setActiveItem({
+        id: id.toString(),
+        type: type,
+        data: {
+          projectId: projectId,
+          ...restData,
+        },
+      });
+    }
   }, []);
 
   const handleDragOver = useCallback(() => {

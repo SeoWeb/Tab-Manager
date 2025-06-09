@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { Collection, Project, Link } from '@/types';
 import type { AppState } from '../types';
-import { bookmarkService } from '@/lib/bookmarkService';
+import { bookmarkStorage } from '@/lib/bookmarkStorage';
 
 const generateId = () => nanoid();
 
@@ -36,11 +36,10 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       if (project.bookmarkFolderId) {
         (async () => {
           try {
-            const newBookmarkFolder =
-              await bookmarkService.createBookmarkFolder(
-                newCollection.name,
-                project.bookmarkFolderId!
-              );
+            const newBookmarkFolder = await bookmarkStorage.createCollection(
+              newCollection.name,
+              project.bookmarkFolderId!
+            );
             get().updateCollection(
               projectId,
               newCollection.id,
@@ -113,9 +112,9 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       ) {
         (async () => {
           try {
-            await bookmarkService.updateBookmark(
+            await bookmarkStorage.updateCollection(
               collectionToUpdate.bookmarkFolderId!,
-              { title: newName }
+              newName
             );
             console.log(
               `Bookmark folder for collection ${collectionId} renamed to ${newName}`
@@ -156,7 +155,7 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       if (collectionToDelete && collectionToDelete.bookmarkFolderId) {
         (async () => {
           try {
-            await bookmarkService.deleteBookmarkTree(
+            await bookmarkStorage.deleteCollection(
               collectionToDelete.bookmarkFolderId!
             );
             console.log(
@@ -229,6 +228,24 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
 
     const urls = collection.links.map((link: Link) => link.url);
     chrome.windows.create({ url: urls });
+  },
+
+  toggleAllCollections: (projectId: string, isExpanded: boolean) => {
+    set((state: AppState) => {
+      const updatedProjects = state.projects.map((p: Project) => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            collections: p.collections.map((c: Collection) => ({
+              ...c,
+              minimized: !isExpanded,
+            })),
+          };
+        }
+        return p;
+      });
+      return { projects: updatedProjects };
+    });
   },
 
   setCollectionName: (projectId: string, collectionId: string, name: string) =>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import ThemeManager from '@/components/ThemeManager';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'TabSpace',
@@ -28,7 +30,10 @@ export default function RootLayout({
         />
       </head>
       <body className='font-body antialiased' suppressHydrationWarning>
-        <SidebarProvider>{children}</SidebarProvider>
+        <ThemeManager />
+        <ErrorBoundary>
+          <SidebarProvider>{children}</SidebarProvider>
+        </ErrorBoundary>
         <Toaster />
       </body>
     </html>

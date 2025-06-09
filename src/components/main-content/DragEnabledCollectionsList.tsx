@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -6,6 +6,7 @@ import {
 import { SortableCollectionItem } from '@/components/drag-drop';
 import AddCollectionButton from './AddCollectionButton';
 import type { Project } from '@/types';
+import { useHotkeys } from '@/hooks/useHotkeys';
 
 interface DragEnabledCollectionsListProps {
   project: Project;
@@ -14,6 +15,26 @@ interface DragEnabledCollectionsListProps {
 export function DragEnabledCollectionsList({
   project,
 }: DragEnabledCollectionsListProps) {
+  const [focusedCollectionIndex, setFocusedCollectionIndex] = useState(-1);
+
+  const handleNavigation = useCallback(
+    (direction: 'left' | 'right') => {
+      if (project.collections.length === 0) return;
+      const newIndex =
+        direction === 'left'
+          ? Math.max(0, focusedCollectionIndex - 1)
+          : Math.min(
+              project.collections.length - 1,
+              focusedCollectionIndex + 1
+            );
+      setFocusedCollectionIndex(newIndex);
+    },
+    [focusedCollectionIndex, project.collections.length]
+  );
+
+  useHotkeys('left', () => handleNavigation('left'));
+  useHotkeys('right', () => handleNavigation('right'));
+
   if (project.collections.length === 0) {
     return (
       <div className='text-center py-10'>
@@ -43,12 +64,20 @@ export function DragEnabledCollectionsList({
       strategy={verticalListSortingStrategy}
     >
       <div className='space-y-6'>
-        {sortedCollections.map((collection) => (
-          <SortableCollectionItem
+        {sortedCollections.map((collection, index) => (
+          <div
             key={collection.id}
-            collection={collection}
-            projectId={project.id}
-          />
+            className={
+              index === focusedCollectionIndex
+                ? 'ring-2 ring-primary rounded-lg'
+                : ''
+            }
+          >
+            <SortableCollectionItem
+              collection={collection}
+              projectId={project.id}
+            />
+          </div>
         ))}
         <div className='mt-6'>
           <AddCollectionButton />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useAppStore } from '@/stores/appStore';
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
@@ -31,22 +32,30 @@ export default function AppClient() {
     (state) => state.isRightContentPanelOpen,
     false
   );
-  const initializeTabManagerRootFolder = useAppStoreWithDefaults(
-    (state) => state.initializeTabManagerRootFolder,
-    () => {}
+  const detectSystemTheme = useAppStoreWithDefaults(
+    (state) => state.detectSystemTheme,
+    () => () => {}
   );
 
   useEffect(() => {
-    // Call initializeTabManagerRootFolder after hydration, but only once
-    if (_hasHydrated) {
-      // Add a flag to prevent multiple initializations
-      const hasInitialized = sessionStorage.getItem('tabManagerInitialized');
-      if (!hasInitialized) {
-        sessionStorage.setItem('tabManagerInitialized', 'true');
-        initializeTabManagerRootFolder();
+    const cleanup = detectSystemTheme();
+    return cleanup;
+  }, [detectSystemTheme]);
+
+  useEffect(() => {
+    const init = async () => {
+      if (_hasHydrated) {
+        const hasInitialized = sessionStorage.getItem('tabManagerInitialized');
+        if (!hasInitialized) {
+          sessionStorage.setItem('tabManagerInitialized', 'true');
+          const { bookmarkStorage } = await import('@/lib/bookmarkStorage');
+          const rootId = await bookmarkStorage.initialize();
+          useAppStore.getState().setTabManagerRootFolderId(rootId);
+        }
       }
-    }
-  }, [_hasHydrated, initializeTabManagerRootFolder]);
+    };
+    init();
+  }, [_hasHydrated]);
 
   useEffect(() => {
     // Only apply theme changes after hydration to prevent errors
@@ -90,7 +99,14 @@ export default function AppClient() {
           <div className='h-full z-30'>
             <VerticalRightTabsBar />
           </div>
-          {isRightContentPanelOpen && <RightContentPanel />}
+          <div
+            className={cn(
+              'fixed top-0 right-12 h-full z-20 transition-transform duration-300 ease-in-out',
+              isRightContentPanelOpen ? 'translate-x-0' : 'translate-x-full'
+            )}
+          >
+            <RightContentPanel />
+          </div>
         </div>
       </GlobalDragDropProvider>
       <AddProjectModal>

@@ -48,6 +48,22 @@ export const createUIActions = (set: any, get: () => AppState) => ({
     });
   },
 
+  detectSystemTheme: () => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const updateTheme = () => {
+      set({ isDarkMode: mediaQuery.matches });
+      if (mediaQuery.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+    updateTheme();
+    mediaQuery.addEventListener('change', updateTheme);
+    // Return a cleanup function to be called on component unmount
+    return () => mediaQuery.removeEventListener('change', updateTheme);
+  },
+
   setActiveVerticalTabId: (tabId: VerticalTabId | null) =>
     set((state: AppState) => ({
       ...state,
@@ -104,9 +120,12 @@ export const createUIActions = (set: any, get: () => AppState) => ({
     })),
 
   // Todos actions
-  addTodo: (text: string) =>
+  addTodo: (text: string, category?: string) =>
     set((state: AppState) => ({
-      todos: [...state.todos, { id: generateId(), text, completed: false }],
+      todos: [
+        ...state.todos,
+        { id: generateId(), text, completed: false, category },
+      ],
     })),
 
   toggleTodo: (id: string) =>

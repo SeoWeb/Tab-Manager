@@ -4,6 +4,7 @@
  */
 
 import type { ChromeTabInfo, ChromeWindowInfo } from '@/types';
+import { showErrorToast } from './toast';
 
 // Check if we're running in a Chrome extension context
 const isExtensionContext = (): boolean => {
@@ -40,6 +41,7 @@ export const getAllWindows = async (): Promise<ChromeWindowInfo[]> => {
     }));
   } catch (error) {
     console.error('Error fetching Chrome windows:', error);
+    showErrorToast('Error fetching Chrome windows.');
     return [];
   }
 };
@@ -66,6 +68,7 @@ export const getWindowTabs = async (
     }));
   } catch (error) {
     console.error('Error fetching window tabs:', error);
+    showErrorToast('Error fetching window tabs.');
     return [];
   }
 };
@@ -90,6 +93,7 @@ export const getAllTabs = async (): Promise<ChromeTabInfo[]> => {
     }));
   } catch (error) {
     console.error('Error fetching all tabs:', error);
+    showErrorToast('Error fetching all tabs.');
     return [];
   }
 };
@@ -122,6 +126,11 @@ export const createTab = async (
     };
   } catch (error) {
     console.error('Error creating tab:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error creating tab: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while creating the tab.');
+    }
     return null;
   }
 };
@@ -140,6 +149,11 @@ export const closeTab = async (tabId: number): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error closing tab:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error closing tab: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while closing the tab.');
+    }
     return false;
   }
 };
@@ -161,6 +175,11 @@ export const moveTabToWindow = async (
     return true;
   } catch (error) {
     console.error('Error moving tab:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error moving tab: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while moving the tab.');
+    }
     return false;
   }
 };
@@ -198,6 +217,11 @@ export const createWindow = async (
     };
   } catch (error) {
     console.error('Error creating window:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error creating window: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while creating the window.');
+    }
     return null;
   }
 };
@@ -216,6 +240,11 @@ export const focusWindow = async (windowId: number): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error focusing window:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error focusing window: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while focusing the window.');
+    }
     return false;
   }
 };
@@ -238,6 +267,11 @@ export const switchToTab = async (tabId: number): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('Error switching to tab:', error);
+    if (error instanceof Error) {
+      showErrorToast(`Error switching to tab: ${error.message}`);
+    } else {
+      showErrorToast('An unknown error occurred while switching to the tab.');
+    }
     return false;
   }
 };
@@ -267,6 +301,7 @@ export const findTabByUrl = async (
     return null;
   } catch (error) {
     console.error('Error finding tab by URL:', error);
+    showErrorToast('Error finding tab by URL.');
     return null;
   }
 };
@@ -345,6 +380,7 @@ export const checkTabsPermission = async (): Promise<boolean> => {
     });
   } catch (error) {
     console.error('Error checking tabs permission:', error);
+    showErrorToast('Error checking tabs permission.');
     return false;
   }
 };

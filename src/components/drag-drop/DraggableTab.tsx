@@ -17,6 +17,7 @@ interface DraggableTabProps {
   onTabClick: (tabId: number) => void;
   onCloseTab: (tabId: number, event: React.MouseEvent) => void;
   isDragOverlay?: boolean;
+  activeProjectId: string | null;
 }
 
 export function DraggableTab({
@@ -24,6 +25,7 @@ export function DraggableTab({
   onTabClick,
   onCloseTab,
   isDragOverlay = false,
+  activeProjectId,
 }: DraggableTabProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -31,7 +33,9 @@ export function DraggableTab({
       data: {
         type: 'tab',
         tab,
+        projectId: activeProjectId,
       },
+      disabled: !activeProjectId,
     });
 
   const style = {

@@ -23,17 +23,11 @@ export function isValidUrl(string: string) {
     return false;
   }
 }
-
 export function getFaviconUrl(pageUrl: string): string {
   try {
     const url = new URL(pageUrl);
-    // Using Google's favicon service as a reliable option.
-    // sz=32 for 32x32 pixels, adjust if needed.
     return `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=32`;
   } catch {
-    // Fallback or default icon if URL is invalid or hostname can't be extracted
-    // console.error("Error generating favicon URL:", error);
-    // For simplicity, returning a placeholder or a generic icon path
-    return `https://placehold.co/32x32.png`; // Placeholder
+    return `https://placehold.co/32x32.png`;
   }
 }

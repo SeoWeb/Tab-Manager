@@ -14,6 +14,14 @@ const initialState = {
   activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
   activeView: 'projectDetail' as const,
   isDarkMode: false,
+  searchQuery: '',
+  searchFilters: {
+    projects: true,
+    collections: true,
+    links: true,
+  },
+  sortOption: 'name' as const,
+  themeColor: '#3b82f6',
   activeVerticalTabId: null,
   isRightContentPanelOpen: false,
   projects: initialProjects,
@@ -36,6 +44,15 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       ...initialState,
+      setSearchQuery: (query) => set({ searchQuery: query }),
+      setSearchFilters: (filters) =>
+        set((state) => ({
+          searchFilters: { ...state.searchFilters, ...filters },
+        })),
+      setTabManagerRootFolderId: (id: string | null) =>
+        set({ tabManagerRootFolderId: id }),
+      setSortOption: (option) => set({ sortOption: option }),
+      setThemeColor: (color) => set({ themeColor: color }),
       // Combine all actions
       ...createUIActions(set, get),
       ...createProjectActions(set, get),
@@ -61,6 +78,7 @@ export const useAppStore = create<AppState>()(
             activeProjectId:
               state.activeProjectId ?? initialState.activeProjectId,
             isDarkMode: state.isDarkMode ?? initialState.isDarkMode,
+            themeColor: state.themeColor || initialState.themeColor,
             quickLinks: state.quickLinks || initialState.quickLinks,
             notes: state.notes || initialState.notes,
             todos: state.todos || initialState.todos,
@@ -185,4 +203,3 @@ export const useEditingCollection = () => {
 
 // Re-export types and constants for convenience
 export type { AppState, ActiveViewType } from './types';
-export { TAB_MANAGER_ROOT_FOLDER_NAME } from './constants';

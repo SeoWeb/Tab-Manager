@@ -1,91 +1,13 @@
 import { nanoid } from 'nanoid';
 import type { Project } from '@/types';
 import type { AppState } from '../types';
-import { bookmarkService } from '@/lib/bookmarkService';
+import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { bookmarkSyncService } from '@/lib/bookmarkSyncService';
-import { TAB_MANAGER_ROOT_FOLDER_NAME } from '../constants';
 
 const generateId = () => nanoid();
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createProjectActions = (set: any, get: () => AppState) => ({
-  initializeTabManagerRootFolder: async () => {
-    // Prevent multiple simultaneous initializations
-    const state = get();
-    if (state.tabManagerRootFolderId && state._hasHydrated) {
-      console.log('Tab Manager already initialized, skipping...');
-      return;
-    }
-
-    let currentRootId = state.tabManagerRootFolderId;
-
-    // Check if existing ID is valid
-    if (currentRootId) {
-      const existingFolder =
-        await bookmarkService.getBookmarkNode(currentRootId);
-      if (
-        existingFolder &&
-        existingFolder.title === TAB_MANAGER_ROOT_FOLDER_NAME &&
-        !existingFolder.url
-      ) {
-        // Check it's a folder
-        console.log(
-          'Tab Manager root folder already exists and ID is valid:',
-          currentRootId
-        );
-        // Initialize bookmark sync service
-        await bookmarkSyncService.initialize();
-        // Perform initial sync
-        await bookmarkSyncService.performFullSync();
-        return;
-      }
-      console.log(
-        'Previous Tab Manager root folder ID is invalid or folder mismatch. Re-searching/creating.'
-      );
-      currentRootId = null;
-    }
-
-    const parentIdForRoot = '2'; // "Other Bookmarks"
-    try {
-      const childrenOfOtherBookmarks =
-        await bookmarkService.getChildren(parentIdForRoot);
-      const foundFolder = childrenOfOtherBookmarks.find(
-        (node) => node.title === TAB_MANAGER_ROOT_FOLDER_NAME && !node.url
-      );
-
-      if (foundFolder) {
-        console.log('Found existing Tab Manager root folder:', foundFolder.id);
-        // Update the store with the found folder ID
-        set((state: AppState) => ({
-          ...state,
-          tabManagerRootFolderId: foundFolder.id,
-        }));
-        // Initialize bookmark sync service
-        await bookmarkSyncService.initialize();
-        // Perform initial sync
-        await bookmarkSyncService.performFullSync();
-      } else {
-        console.log(
-          `"${TAB_MANAGER_ROOT_FOLDER_NAME}" folder not found, creating under "Other Bookmarks"...`
-        );
-        const newFolder = await bookmarkService.createBookmarkFolder(
-          TAB_MANAGER_ROOT_FOLDER_NAME,
-          parentIdForRoot
-        );
-        console.log('Created Tab Manager root folder:', newFolder.id);
-        // Update the store with the new folder ID
-        set((state: AppState) => ({
-          ...state,
-          tabManagerRootFolderId: newFolder.id,
-        }));
-        // Initialize bookmark sync service
-        await bookmarkSyncService.initialize();
-      }
-    } catch (error) {
-      console.error('Error initializing Tab Manager root folder:', error);
-    }
-  },
-
   addProject: (
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>
   ) => {
@@ -107,11 +29,10 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
         const rootFolderId = get().tabManagerRootFolderId;
         if (rootFolderId) {
           try {
-            const newBookmarkFolder =
-              await bookmarkService.createBookmarkFolder(
-                newProject.name,
-                rootFolderId
-              );
+            const newBookmarkFolder = await bookmarkStorage.createProject(
+              newProject.name,
+              rootFolderId
+            );
             // Update the project in the store with the bookmarkFolderId
             get().updateProject(
               newProject.id,
@@ -160,9 +81,9 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       ) {
         (async () => {
           try {
-            await bookmarkService.updateBookmark(
+            await bookmarkStorage.updateProject(
               projectToUpdate.bookmarkFolderId!,
-              { title: newName }
+              newName
             );
             console.log(
               `Bookmark folder for project ${id} renamed to ${newName}`
@@ -196,7 +117,7 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       if (projectToDelete && projectToDelete.bookmarkFolderId) {
         (async () => {
           try {
-            await bookmarkService.deleteBookmarkTree(
+            await bookmarkStorage.deleteProject(
               projectToDelete.bookmarkFolderId!
             );
             console.log(`Bookmark folder for project ${id} deleted.`);

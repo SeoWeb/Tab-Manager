@@ -1,7 +1,7 @@
 import { nanoid } from 'nanoid';
 import type { Link, Project, Collection } from '@/types';
 import type { AppState } from '../types';
-import { bookmarkService } from '@/lib/bookmarkService';
+import { bookmarkStorage } from '@/lib/bookmarkStorage';
 
 const generateId = () => nanoid();
 
@@ -35,10 +35,10 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
       if (collection.bookmarkFolderId) {
         (async () => {
           try {
-            const newBookmark = await bookmarkService.createBookmark(
-              collection.bookmarkFolderId!,
+            const newBookmark = await bookmarkStorage.createLink(
               newLink.title!,
-              newLink.url
+              newLink.url,
+              collection.bookmarkFolderId!
             );
             get().updateLink(
               projectId,
@@ -134,7 +134,7 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
       ) {
         (async () => {
           try {
-            await bookmarkService.updateBookmark(linkToUpdate.bookmarkId!, {
+            await bookmarkStorage.updateLink(linkToUpdate.bookmarkId!, {
               title: newTitle || oldTitle,
               url: newUrl || oldUrl,
             });
@@ -184,7 +184,7 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
       if (linkToDelete && linkToDelete.bookmarkId) {
         (async () => {
           try {
-            await bookmarkService.deleteBookmark(linkToDelete.bookmarkId!);
+            await bookmarkStorage.deleteLink(linkToDelete.bookmarkId!);
             console.log(`Bookmark for link ${linkId} deleted.`);
           } catch (error) {
             console.error(
