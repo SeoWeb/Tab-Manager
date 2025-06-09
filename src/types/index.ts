@@ -9,6 +9,7 @@ export interface Link {
   tags?: string[]; // Optional tags for categorization
   notes?: string; // Optional user notes for the link
   order?: number; // Optional field for explicit ordering within a collection
+  bookmarkId?: string | null; // Store ID of the associated bookmark
 }
 
 export interface Collection {
@@ -21,6 +22,7 @@ export interface Collection {
   color?: string; // e.g., a hex code for custom theming of the collection
   minimized?: boolean; // If the collection is rendered in a minimized state
   order?: number; // Optional field for explicit ordering of collections within a project
+  bookmarkFolderId?: string | null; // Store ID of the associated bookmark folder
 }
 
 export interface Project {
@@ -32,7 +34,7 @@ export interface Project {
   updatedAt: Date; // Date of last update
   icon?: string; // e.g., initials, emoji, or an icon name
   color?: string; // e.g., a hex code for the project's theme color
-  bookmarkFolderId?: string; // ID of the associated Chrome bookmark folder for sync
+  bookmarkFolderId?: string | null; // Store ID of the associated bookmark folder
 }
 
 // Preserved existing types

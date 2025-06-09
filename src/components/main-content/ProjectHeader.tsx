@@ -1,45 +1,108 @@
-'use client';
-
-import type { Project } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { Project } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun } from 'lucide-react';
-import { useAppStore } from '@/stores/appStore';
-import { SidebarTrigger } from '@/components/ui/sidebar'; // Import SidebarTrigger
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { SettingsIcon, SunIcon, MoonIcon } from 'lucide-react';
+import EditProjectModal from '@/components/modals/EditProjectModal'; // Import EditProjectModal
 
 interface ProjectHeaderProps {
   project: Project;
 }
 
-export default function ProjectHeader({ project }: ProjectHeaderProps) {
-  const { toggleDarkMode, isDarkMode } = useAppStore();
-  // Removed toggleRightPanel, isRightPanelOpen as they are replaced by new vertical tab logic
+const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
+  // --- Placeholder Theme Logic (Retained from previous step) ---
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const storedTheme = localStorage.getItem('app-theme') as 'light' | 'dark';
+      if (storedTheme) return storedTheme;
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = window.document.documentElement;
+      root.classList.remove(currentTheme === 'light' ? 'dark' : 'light');
+      root.classList.add(currentTheme);
+      localStorage.setItem('app-theme', currentTheme);
+    }
+  }, [currentTheme]);
+
+  const handleThemeToggle = () => {
+    setCurrentTheme(currentTheme === 'light' ? 'dark' : 'light');
+  };
+  // --- End Placeholder Theme Logic ---
+
+  // State for EditProjectModal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  if (!project) {
+    return (
+      <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <h1 className="text-2xl font-semibold text-gray-500 dark:text-gray-400">No project selected</h1>
+        <div className="flex items-center space-x-3"></div>
+      </header>
+    );
+  }
+
+  const handleEditProjectTrigger = () => {
+    setIsEditModalOpen(true);
+  };
+
+  const handleDeleteProjectTrigger = () => {
+    // This will also open the EditProjectModal, where the user can then click the delete button.
+    setIsEditModalOpen(true);
+  };
 
   return (
-    <header className='p-4 border-b border-border bg-card flex items-center justify-between shrink-0'>
-      <div className='flex items-center gap-2'>
-        <SidebarTrigger className='md:hidden' />{' '}
-        {/* Hidden on md and larger screens */}
-        <h2 className='text-xl font-semibold font-headline text-card-foreground'>
+    <> {/* Use Fragment to allow modal to be a sibling */}
+      <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate" title={project.name}>
           {project.name}
-        </h2>
-      </div>
-      <div className='flex items-center gap-2'>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={toggleDarkMode}
-          aria-label={
-            isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'
-          }
-        >
-          {isDarkMode ? (
-            <Sun className='h-5 w-5' />
-          ) : (
-            <Moon className='h-5 w-5' />
-          )}
-        </Button>
-        {/* The button to toggle the right panel is now part of VerticalRightTabsBar */}
-      </div>
-    </header>
+        </h1>
+
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" onClick={handleThemeToggle} aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}>
+            {currentTheme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Project settings">
+                <SettingsIcon className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleEditProjectTrigger}>
+                Edit Project
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDeleteProjectTrigger} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-700/20 dark:focus:text-red-500">
+                Delete Project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {/* Edit Project Modal Instance */}
+      <EditProjectModal
+        project={project}
+        isOpen={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+      >
+        {/* Children are not needed here as the trigger is external and visibility is controlled by isOpen */}
+      </EditProjectModal>
+    </>
   );
-}
+};
+
+export default ProjectHeader;

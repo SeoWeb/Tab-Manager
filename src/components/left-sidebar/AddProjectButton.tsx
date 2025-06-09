@@ -1,21 +1,26 @@
-'use client';
-
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import { useAppStore } from '@/stores/appStore';
+import { PlusIcon } from 'lucide-react';
+import AddProjectModal from '@/components/modals/AddProjectModal';
 
-export default function AddProjectButton() {
-  const openAddProjectModal = useAppStore((state) => state.openAddProjectModal);
+const AddProjectButton: React.FC = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <Button
-      variant='ghost'
-      className='w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center'
-      onClick={openAddProjectModal}
-      aria-label='Add new project'
-    >
-      <PlusCircle className='mr-2 h-5 w-5 group-data-[collapsible=icon]:mr-0' />
-      <span className='group-data-[collapsible=icon]:hidden'>New Project</span>
-    </Button>
+    <>
+      <AddProjectModal isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-start text-sm"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <PlusIcon className="mr-2 h-4 w-4" />
+          Add Project
+        </Button>
+      </AddProjectModal>
+    </>
   );
-}
+};
+
+export default AddProjectButton;

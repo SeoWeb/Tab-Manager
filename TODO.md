@@ -50,21 +50,21 @@
 
 ### Project Management
 
-- [ ] Create AddProjectModal component
-- [ ] Implement project creation form with validation
-- [ ] Add EditProjectModal for project settings
-- [ ] Implement project deletion with confirmation
-- [ ] Add project switching functionality
-- [ ] Test project state management
+- [x] Create AddProjectModal component
+- [x] Implement project creation form with validation
+- [x] Add EditProjectModal for project settings
+- [x] Implement project deletion with confirmation
+- [x] Add project switching functionality
+- [x] Test project state management
 
 ### Chrome Bookmarks Integration
 
-- [ ] Create bookmarkService utility functions
-- [ ] Implement "Tab Manager Projects" root folder creation
-- [ ] Add project-to-bookmark-folder synchronization
-- [ ] Handle bookmark folder creation/deletion
-- [ ] Test bookmark persistence and recovery
-- [ ] Handle edge cases (deleted folders, conflicts)
+- [x] Create bookmarkService utility functions
+- [x] Implement "Tab Manager Projects" root folder creation
+- [x] Add project-to-bookmark-folder synchronization
+- [x] Handle bookmark folder creation/deletion
+- [x] Test bookmark persistence and recovery
+- [x] Handle edge cases (deleted folders, conflicts)
 
 ---
 
@@ -72,12 +72,12 @@
 
 ### Project Header
 
-- [ ] Create ProjectHeader component
-- [ ] Add project name display
-- [ ] Implement settings icon and dropdown
-- [ ] Add dark/light mode toggle button
+- [x] Create ProjectHeader component
+- [x] Add project name display
+- [x] Implement settings icon and dropdown
+- [x] Add dark/light mode toggle button
 - [ ] Create search input with real-time filtering
-- [ ] Style header with proper spacing and icons
+- [x] Style header with proper spacing and icons
 
 ### Collection Management
 
