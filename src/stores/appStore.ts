@@ -191,6 +191,12 @@ export interface AppState {
     isInternalCall?: boolean // Added isInternalCall
   ) => void;
   deleteCollection: (projectId: string, collectionId: string) => void;
+  moveCollection: (
+    projectId: string,
+    collectionId: string,
+    direction: 'up' | 'down'
+  ) => void;
+  openCollectionInNewWindow: (projectId: string, collectionId: string) => void;
 
   // Link actions
   addLink: (
@@ -741,6 +747,59 @@ export const useAppStore = create<AppState>()(
           }
           return { projects: updatedProjects };
         });
+      },
+
+      moveCollection: (projectId, collectionId, direction) => {
+        set((state) => {
+          const projectIndex = state.projects.findIndex(
+            (p) => p.id === projectId
+          );
+          if (projectIndex === -1) return {};
+
+          const project = state.projects[projectIndex];
+          const collectionIndex = project.collections.findIndex(
+            (c) => c.id === collectionId
+          );
+          if (collectionIndex === -1) return {};
+
+          const newCollections = [...project.collections];
+          const [movedCollection] = newCollections.splice(collectionIndex, 1);
+
+          if (direction === 'up') {
+            newCollections.splice(
+              Math.max(0, collectionIndex - 1),
+              0,
+              movedCollection
+            );
+          } else {
+            newCollections.splice(
+              Math.min(newCollections.length, collectionIndex + 1),
+              0,
+              movedCollection
+            );
+          }
+
+          const updatedProjects = [...state.projects];
+          updatedProjects[projectIndex] = {
+            ...project,
+            collections: newCollections,
+          };
+
+          return { projects: updatedProjects };
+        });
+      },
+
+      openCollectionInNewWindow: (projectId, collectionId) => {
+        const project = get().projects.find((p) => p.id === projectId);
+        if (!project) return;
+
+        const collection = project.collections.find(
+          (c) => c.id === collectionId
+        );
+        if (!collection || collection.links.length === 0) return;
+
+        const urls = collection.links.map((link) => link.url);
+        chrome.windows.create({ url: urls });
       },
 
       addLink: (projectId, collectionId, linkData) => {

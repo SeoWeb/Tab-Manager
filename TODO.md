@@ -78,27 +78,27 @@
 - [x] Add project name display
 - [x] Implement settings icon and dropdown
 - [x] Add dark/light mode toggle button
-- [ ] Create search input with real-time filtering
+- [x] Create search input with real-time filtering
 - [x] Style header with proper spacing and icons
 
 ### Collection Management
 
-- [ ] Create Collection component with header and content
-- [ ] Implement CollectionsList container component
-- [ ] Add AddCollectionModal with form validation
-- [ ] Create collection editing functionality
-- [ ] Implement collection minimize/expand toggle
-- [ ] Add collection reordering (up/down arrows)
-- [ ] Create "Open in new window" functionality
+- [x] Create Collection component with header and content
+- [x] Implement CollectionsList container component
+- [x] Add AddCollectionModal with form validation
+- [x] Create collection editing functionality
+- [x] Implement collection minimize/expand toggle
+- [x] Add collection reordering (up/down arrows)
+- [x] Create "Open in new window" functionality
 
 ### Link Management
 
-- [ ] Create LinkItem component with favicon, name, URL
+- [x] Create LinkItem component with favicon, name, URL
 - [ ] Implement AddLinkModal with URL validation
 - [ ] Add EditLinkModal for link modifications
-- [ ] Create link deletion with confirmation
-- [ ] Add "Open in new tab" functionality
-- [ ] Implement favicon loading and fallback handling
+- [x] Create link deletion with confirmation
+- [x] Add "Open in new tab" functionality
+- [x] Implement favicon loading and fallback handling
 
 ### Collection-Bookmark Sync
 

@@ -30,7 +30,11 @@ const CollectionsList: React.FC = () => {
   return (
     <div className='space-y-4 p-4'>
       {collections.map((collection: CollectionType) => (
-        <CollectionComponent key={collection.id} collection={collection} />
+        <CollectionComponent
+          key={collection.id}
+          collection={collection}
+          projectId={activeProjectId!}
+        />
       ))}
     </div>
   );

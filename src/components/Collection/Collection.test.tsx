@@ -17,7 +17,12 @@ describe('CollectionComponent', () => {
       minimized: false,
     };
 
-    render(<CollectionComponent collection={mockCollection} />);
+    render(
+      <CollectionComponent
+        collection={mockCollection}
+        projectId='test-project-id'
+      />
+    );
     expect(screen.getByText('My Test Collection')).toBeInTheDocument();
     expect(
       screen.getByText('Links will be displayed here. (0 links)')
@@ -48,7 +53,12 @@ describe('CollectionComponent', () => {
       updatedAt: new Date(),
     };
 
-    render(<CollectionComponent collection={mockCollectionWithLinks} />);
+    render(
+      <CollectionComponent
+        collection={mockCollectionWithLinks}
+        projectId='test-project-id'
+      />
+    );
     expect(screen.getByText('Collection With Links')).toBeInTheDocument();
     expect(
       screen.getByText('Links will be displayed here. (2 links)')

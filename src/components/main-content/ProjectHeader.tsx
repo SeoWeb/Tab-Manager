@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Project } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,14 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SettingsIcon, SunIcon, MoonIcon } from 'lucide-react';
+import { SettingsIcon, SunIcon, MoonIcon, SearchIcon } from 'lucide-react';
 import EditProjectModal from '@/components/modals/EditProjectModal'; // Import EditProjectModal
 
 interface ProjectHeaderProps {
   project: Project;
+  onSearch: (query: string) => void;
 }
 
-const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
+const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project, onSearch }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    onSearch(searchQuery);
+  }, [searchQuery, onSearch]);
   // --- Placeholder Theme Logic (Retained from previous step) ---
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -74,13 +81,27 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
         >
           {project.name}
         </h1>
+        <div className='flex-1 max-w-md px-4'>
+          <div className='relative'>
+            <SearchIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400' />
+            <Input
+              type='search'
+              placeholder='Search collections and links...'
+              className='pl-10 w-full'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
 
         <div className='flex items-center space-x-3'>
           <Button
             variant='ghost'
             size='icon'
             onClick={handleThemeToggle}
-            aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}
+            aria-label={`Switch to ${
+              currentTheme === 'light' ? 'dark' : 'light'
+            } mode`}
           >
             {currentTheme === 'light' ? (
               <MoonIcon className='h-5 w-5' />

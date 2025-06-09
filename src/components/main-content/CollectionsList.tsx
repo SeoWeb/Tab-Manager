@@ -25,7 +25,11 @@ const CollectionsList: React.FC<CollectionsListProps> = ({ project }) => {
         (
           collection: Collection // Added type for collection
         ) => (
-          <CollectionComponent key={collection.id} collection={collection} />
+          <CollectionComponent
+            key={collection.id}
+            collection={collection}
+            projectId={project.id}
+          />
         )
       )}
     </div>
