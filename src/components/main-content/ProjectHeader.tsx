@@ -45,9 +45,11 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
 
   if (!project) {
     return (
-      <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-2xl font-semibold text-gray-500 dark:text-gray-400">No project selected</h1>
-        <div className="flex items-center space-x-3"></div>
+      <header className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700'>
+        <h1 className='text-2xl font-semibold text-gray-500 dark:text-gray-400'>
+          No project selected
+        </h1>
+        <div className='flex items-center space-x-3'></div>
       </header>
     );
   }
@@ -62,44 +64,60 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project }) => {
   };
 
   return (
-    <> {/* Use Fragment to allow modal to be a sibling */}
-      <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate" title={project.name}>
+    <>
+      {' '}
+      {/* Use Fragment to allow modal to be a sibling */}
+      <header className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700'>
+        <h1
+          className='text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate'
+          title={project.name}
+        >
           {project.name}
         </h1>
 
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" onClick={handleThemeToggle} aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}>
-            {currentTheme === 'light' ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}
+        <div className='flex items-center space-x-3'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleThemeToggle}
+            aria-label={`Switch to ${currentTheme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {currentTheme === 'light' ? (
+              <MoonIcon className='h-5 w-5' />
+            ) : (
+              <SunIcon className='h-5 w-5' />
+            )}
           </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Project settings">
-                <SettingsIcon className="h-5 w-5" />
+              <Button variant='ghost' size='icon' aria-label='Project settings'>
+                <SettingsIcon className='h-5 w-5' />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align='end'>
               <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleEditProjectTrigger}>
                 Edit Project
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDeleteProjectTrigger} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-700/20 dark:focus:text-red-500">
+              <DropdownMenuItem
+                onClick={handleDeleteProjectTrigger}
+                className='text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-700/20 dark:focus:text-red-500'
+              >
                 Delete Project
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
-
       {/* Edit Project Modal Instance */}
       <EditProjectModal
         project={project}
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
       >
-        {/* Children are not needed here as the trigger is external and visibility is controlled by isOpen */}
+        <></>
       </EditProjectModal>
     </>
   );

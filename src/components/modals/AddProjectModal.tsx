@@ -25,7 +25,11 @@ interface AddProjectModalProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-const AddProjectModal: React.FC<AddProjectModalProps> = ({ children, isOpen, onOpenChange }) => {
+const AddProjectModal: React.FC<AddProjectModalProps> = ({
+  children,
+  isOpen,
+  onOpenChange,
+}) => {
   const [projectName, setProjectName] = useState('');
   const [projectColor, setProjectColor] = useState('#FFFFFF'); // Default color
   const addProject = useAppStore((state) => state.addProject);
@@ -70,44 +74,47 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ children, isOpen, onO
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle>Add New Project</DialogTitle>
           <DialogDescription>
-            Enter the details for your new project. Click save when you're done.
+            Enter the details for your new project. Click save when you&apos;re
+            done.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="projectName" className="text-right">
+        <div className='grid gap-4 py-4'>
+          <div className='grid grid-cols-4 items-center gap-4'>
+            <Label htmlFor='projectName' className='text-right'>
               Name
             </Label>
             <Input
-              id="projectName"
+              id='projectName'
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="col-span-3"
-              placeholder="Project name"
+              className='col-span-3'
+              placeholder='Project name'
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="projectColor" className="text-right">
+          <div className='grid grid-cols-4 items-center gap-4'>
+            <Label htmlFor='projectColor' className='text-right'>
               Color
             </Label>
             <Input
-              id="projectColor"
-              type="color"
+              id='projectColor'
+              type='color'
               value={projectColor}
               onChange={(e) => setProjectColor(e.target.value)}
-              className="col-span-3 h-8"
+              className='col-span-3 h-8'
             />
           </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant='outline'>Cancel</Button>
           </DialogClose>
-          <Button type="submit" onClick={handleSubmit}>Save Project</Button>
+          <Button type='submit' onClick={handleSubmit}>
+            Save Project
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

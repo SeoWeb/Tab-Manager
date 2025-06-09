@@ -53,11 +53,13 @@ export default function ChromeOpenTabsPanel() {
   if (chromeWindows.length === 0) {
     return (
       <div className='text-center py-10'>
-        <img
+        <Image
           src='https://placehold.co/200x150.png?text=No+Open+Tabs'
           alt='No open tabs'
           className='mx-auto mb-4 rounded-md'
           data-ai-hint='empty state illustration'
+          width={200}
+          height={150}
         />
         <p className='text-muted-foreground'>
           No open Chrome tabs detected or mocked.

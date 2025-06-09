@@ -127,7 +127,7 @@ const mockChromeWindows: ChromeWindowInfo[] = [
 // Define ActiveViewType
 export type ActiveViewType = 'projectDetail' | 'settings';
 
-export const TAB_MANAGER_ROOT_FOLDER_NAME = "Tab Manager Projects"; // Added constant
+export const TAB_MANAGER_ROOT_FOLDER_NAME = 'Tab Manager Projects'; // Added constant
 
 interface AppState {
   // UI State
@@ -167,14 +167,20 @@ interface AppState {
 
   // Project actions
   initializeTabManagerRootFolder: () => Promise<void>; // Added action
-  addProject: ( // Adjusted based on previous findings for AddProjectModal
+  addProject: (
+    // Adjusted based on previous findings for AddProjectModal
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>
   ) => void;
-  updateProject: (id: string, updates: Partial<Project>, isInternalCall?: boolean) => void; // Added isInternalCall
+  updateProject: (
+    id: string,
+    updates: Partial<Project>,
+    isInternalCall?: boolean
+  ) => void; // Added isInternalCall
   deleteProject: (id: string) => void;
 
   // Collection actions
-  addCollection: ( // Renamed from addCollectionToProject for consistency with existing, payload adjusted
+  addCollection: (
+    // Renamed from addCollectionToProject for consistency with existing, payload adjusted
     projectId: string,
     collectionData: Pick<Collection, 'name' | 'description' | 'color'> // Adjusted payload
   ) => void;
@@ -187,7 +193,8 @@ interface AppState {
   deleteCollection: (projectId: string, collectionId: string) => void;
 
   // Link actions
-  addLink: ( // Renamed from addLinkToCollection, payload adjusted
+  addLink: (
+    // Renamed from addLinkToCollection, payload adjusted
     projectId: string,
     collectionId: string,
     linkData: Pick<Link, 'title' | 'url' | 'favIconUrl' | 'tags' | 'notes'> // Adjusted payload, 'title' for name
@@ -342,17 +349,17 @@ export const useAppStore = create<AppState>()(
       isAddCollectionModalOpen: false,
       isAddLinkModalOpen: false,
       editingCollectionIdForLink: null,
-  tabManagerRootFolderId: null, // Initial state for root folder ID
-  _hasHydrated: false, // Initial hydration state
+      tabManagerRootFolderId: null, // Initial state for root folder ID
+      _hasHydrated: false, // Initial hydration state
 
-  setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
+      setHasHydrated: (hydrated) => set({ _hasHydrated: hydrated }),
 
       setActiveProject: (id) =>
         set({
           activeProjectId: id,
           activeView: id ? 'projectDetail' : get().activeView,
-    }),
-  setActiveView: (view: ActiveViewType) => set({ activeView: view }),
+        }),
+      setActiveView: (view: ActiveViewType) => set({ activeView: view }),
       toggleDarkMode: () => {
         set((state) => {
           const newIsDarkMode = !state.isDarkMode;
@@ -366,42 +373,58 @@ export const useAppStore = create<AppState>()(
       },
 
       initializeTabManagerRootFolder: async () => {
-        const { set, getState } = useAppStore.getState();
-        let currentRootId = getState().tabManagerRootFolderId;
+        let currentRootId = get().tabManagerRootFolderId;
 
         // Check if existing ID is valid
         if (currentRootId) {
-          const existingFolder = await bookmarkService.getBookmarkNode(currentRootId);
-          if (existingFolder && existingFolder.title === TAB_MANAGER_ROOT_FOLDER_NAME && !existingFolder.url) { // Check it's a folder
-            console.log('Tab Manager root folder already exists and ID is valid:', currentRootId);
+          const existingFolder =
+            await bookmarkService.getBookmarkNode(currentRootId);
+          if (
+            existingFolder &&
+            existingFolder.title === TAB_MANAGER_ROOT_FOLDER_NAME &&
+            !existingFolder.url
+          ) {
+            // Check it's a folder
+            console.log(
+              'Tab Manager root folder already exists and ID is valid:',
+              currentRootId
+            );
             return;
           }
-          console.log('Previous Tab Manager root folder ID is invalid or folder mismatch. Re-searching/creating.');
+          console.log(
+            'Previous Tab Manager root folder ID is invalid or folder mismatch. Re-searching/creating.'
+          );
           currentRootId = null;
         }
 
         const parentIdForRoot = '2'; // "Other Bookmarks"
         try {
-          const childrenOfOtherBookmarks = await bookmarkService.getChildren(parentIdForRoot);
-          let foundFolder = childrenOfOtherBookmarks.find(
+          const childrenOfOtherBookmarks =
+            await bookmarkService.getChildren(parentIdForRoot);
+          const foundFolder = childrenOfOtherBookmarks.find(
             (node) => node.title === TAB_MANAGER_ROOT_FOLDER_NAME && !node.url
           );
 
           if (foundFolder) {
-            console.log('Found existing Tab Manager root folder:', foundFolder.id);
-            set({ tabManagerRootFolderId: foundFolder.id });
+            console.log(
+              'Found existing Tab Manager root folder:',
+              foundFolder.id
+            );
+            get().setHasHydrated(true);
           } else {
-            console.log(`"${TAB_MANAGER_ROOT_FOLDER_NAME}" folder not found, creating under "Other Bookmarks"...`);
+            console.log(
+              `"${TAB_MANAGER_ROOT_FOLDER_NAME}" folder not found, creating under "Other Bookmarks"...`
+            );
             const newFolder = await bookmarkService.createBookmarkFolder(
               TAB_MANAGER_ROOT_FOLDER_NAME,
               parentIdForRoot
             );
             console.log('Created Tab Manager root folder:', newFolder.id);
-            set({ tabManagerRootFolderId: newFolder.id });
+            get().setHasHydrated(true);
           }
         } catch (error) {
           console.error('Error initializing Tab Manager root folder:', error);
-          set({ tabManagerRootFolderId: null });
+          get().setHasHydrated(true);
         }
       },
 
@@ -458,17 +481,29 @@ export const useAppStore = create<AppState>()(
             const rootFolderId = useAppStore.getState().tabManagerRootFolderId;
             if (rootFolderId) {
               try {
-                const newBookmarkFolder = await bookmarkService.createBookmarkFolder(
-                  newProject.name,
-                  rootFolderId
-                );
+                const newBookmarkFolder =
+                  await bookmarkService.createBookmarkFolder(
+                    newProject.name,
+                    rootFolderId
+                  );
                 // Update the project in the store with the bookmarkFolderId
-                useAppStore.getState().updateProject(newProject.id, { bookmarkFolderId: newBookmarkFolder.id }, true);
+                useAppStore
+                  .getState()
+                  .updateProject(
+                    newProject.id,
+                    { bookmarkFolderId: newBookmarkFolder.id },
+                    true
+                  );
               } catch (error) {
-                console.error(`Failed to create bookmark folder for project ${newProject.name}:`, error);
+                console.error(
+                  `Failed to create bookmark folder for project ${newProject.name}:`,
+                  error
+                );
               }
             } else {
-              console.warn('Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.');
+              console.warn(
+                'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
+              );
             }
           })();
 
@@ -488,13 +523,26 @@ export const useAppStore = create<AppState>()(
           );
 
           // Asynchronous part for bookmark update
-          if (!isInternalCall && newName && newName !== oldName && projectToUpdate.bookmarkFolderId) {
+          if (
+            !isInternalCall &&
+            newName &&
+            newName !== oldName &&
+            projectToUpdate.bookmarkFolderId
+          ) {
             (async () => {
               try {
-                await bookmarkService.updateBookmark(projectToUpdate.bookmarkFolderId!, { title: newName });
-                console.log(`Bookmark folder for project ${id} renamed to ${newName}`);
+                await bookmarkService.updateBookmark(
+                  projectToUpdate.bookmarkFolderId!,
+                  { title: newName }
+                );
+                console.log(
+                  `Bookmark folder for project ${id} renamed to ${newName}`
+                );
               } catch (error) {
-                console.error(`Failed to update bookmark folder name for project ${id}:`, error);
+                console.error(
+                  `Failed to update bookmark folder name for project ${id}:`,
+                  error
+                );
               }
             })();
           }
@@ -508,17 +556,23 @@ export const useAppStore = create<AppState>()(
           let newActiveProjectId = state.activeProjectId;
 
           if (state.activeProjectId === id) {
-            newActiveProjectId = updatedProjects.length > 0 ? updatedProjects[0].id : null;
+            newActiveProjectId =
+              updatedProjects.length > 0 ? updatedProjects[0].id : null;
           }
 
           // Asynchronous part for bookmark deletion
           if (projectToDelete && projectToDelete.bookmarkFolderId) {
             (async () => {
               try {
-                await bookmarkService.deleteBookmarkTree(projectToDelete.bookmarkFolderId!);
+                await bookmarkService.deleteBookmarkTree(
+                  projectToDelete.bookmarkFolderId!
+                );
                 console.log(`Bookmark folder for project ${id} deleted.`);
               } catch (error) {
-                console.error(`Failed to delete bookmark folder for project ${id}:`, error);
+                console.error(
+                  `Failed to delete bookmark folder for project ${id}:`,
+                  error
+                );
               }
             })();
           }
@@ -531,9 +585,11 @@ export const useAppStore = create<AppState>()(
 
       addCollection: (projectId, collectionData) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) {
-            console.error(`Project with ID ${projectId} not found for adding collection.`);
+            console.error(
+              `Project with ID ${projectId} not found for adding collection.`
+            );
             return state;
           }
 
@@ -553,10 +609,11 @@ export const useAppStore = create<AppState>()(
           if (project.bookmarkFolderId) {
             (async () => {
               try {
-                const newBookmarkFolder = await bookmarkService.createBookmarkFolder(
-                  newCollection.name,
-                  project.bookmarkFolderId!
-                );
+                const newBookmarkFolder =
+                  await bookmarkService.createBookmarkFolder(
+                    newCollection.name,
+                    project.bookmarkFolderId!
+                  );
                 useAppStore.getState().updateCollection(
                   projectId,
                   newCollection.id,
@@ -564,37 +621,55 @@ export const useAppStore = create<AppState>()(
                   true // isInternalCall
                 );
               } catch (error) {
-                console.error(`Failed to create bookmark folder for collection ${newCollection.name}:`, error);
+                console.error(
+                  `Failed to create bookmark folder for collection ${newCollection.name}:`,
+                  error
+                );
               }
             })();
           } else {
-            console.warn(`Project ${projectId} does not have a bookmarkFolderId. Cannot create collection bookmark folder.`);
+            console.warn(
+              `Project ${projectId} does not have a bookmarkFolderId. Cannot create collection bookmark folder.`
+            );
           }
 
-          const updatedProjects = state.projects.map(p =>
+          const updatedProjects = state.projects.map((p) =>
             p.id === projectId
-              ? { ...p, collections: [...p.collections, newCollection], updatedAt: new Date() }
+              ? {
+                  ...p,
+                  collections: [...p.collections, newCollection],
+                  updatedAt: new Date(),
+                }
               : p
           );
           return { projects: updatedProjects };
         });
       },
-      updateCollection: (projectId, collectionId, updates, isInternalCall = false) => {
+      updateCollection: (
+        projectId,
+        collectionId,
+        updates,
+        isInternalCall = false
+      ) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) return state;
-          const collectionToUpdate = project.collections.find(c => c.id === collectionId);
+          const collectionToUpdate = project.collections.find(
+            (c) => c.id === collectionId
+          );
           if (!collectionToUpdate) return state;
 
           const oldName = collectionToUpdate.name;
           const newName = updates.name;
 
-          const updatedProjects = state.projects.map(p => {
+          const updatedProjects = state.projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                collections: p.collections.map(c =>
-                  c.id === collectionId ? { ...c, ...updates, updatedAt: new Date() } : c
+                collections: p.collections.map((c) =>
+                  c.id === collectionId
+                    ? { ...c, ...updates, updatedAt: new Date() }
+                    : c
                 ),
                 updatedAt: new Date(),
               };
@@ -602,13 +677,26 @@ export const useAppStore = create<AppState>()(
             return p;
           });
 
-          if (!isInternalCall && newName && newName !== oldName && collectionToUpdate.bookmarkFolderId) {
+          if (
+            !isInternalCall &&
+            newName &&
+            newName !== oldName &&
+            collectionToUpdate.bookmarkFolderId
+          ) {
             (async () => {
               try {
-                await bookmarkService.updateBookmark(collectionToUpdate.bookmarkFolderId!, { title: newName });
-                console.log(`Bookmark folder for collection ${collectionId} renamed to ${newName}`);
+                await bookmarkService.updateBookmark(
+                  collectionToUpdate.bookmarkFolderId!,
+                  { title: newName }
+                );
+                console.log(
+                  `Bookmark folder for collection ${collectionId} renamed to ${newName}`
+                );
               } catch (error) {
-                console.error(`Failed to update bookmark folder name for collection ${collectionId}:`, error);
+                console.error(
+                  `Failed to update bookmark folder name for collection ${collectionId}:`,
+                  error
+                );
               }
             })();
           }
@@ -617,15 +705,17 @@ export const useAppStore = create<AppState>()(
       },
       deleteCollection: (projectId, collectionId) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) return state;
-          const collectionToDelete = project.collections.find(c => c.id === collectionId);
+          const collectionToDelete = project.collections.find(
+            (c) => c.id === collectionId
+          );
 
-          const updatedProjects = state.projects.map(p => {
+          const updatedProjects = state.projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                collections: p.collections.filter(c => c.id !== collectionId),
+                collections: p.collections.filter((c) => c.id !== collectionId),
                 updatedAt: new Date(),
               };
             }
@@ -635,10 +725,17 @@ export const useAppStore = create<AppState>()(
           if (collectionToDelete && collectionToDelete.bookmarkFolderId) {
             (async () => {
               try {
-                await bookmarkService.deleteBookmarkTree(collectionToDelete.bookmarkFolderId!);
-                console.log(`Bookmark folder for collection ${collectionId} deleted.`);
+                await bookmarkService.deleteBookmarkTree(
+                  collectionToDelete.bookmarkFolderId!
+                );
+                console.log(
+                  `Bookmark folder for collection ${collectionId} deleted.`
+                );
               } catch (error) {
-                console.error(`Failed to delete bookmark folder for collection ${collectionId}:`, error);
+                console.error(
+                  `Failed to delete bookmark folder for collection ${collectionId}:`,
+                  error
+                );
               }
             })();
           }
@@ -648,9 +745,11 @@ export const useAppStore = create<AppState>()(
 
       addLink: (projectId, collectionId, linkData) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) return state;
-          const collection = project.collections.find(c => c.id === collectionId);
+          const collection = project.collections.find(
+            (c) => c.id === collectionId
+          );
           if (!collection) return state;
 
           const newLink: Link = {
@@ -681,20 +780,29 @@ export const useAppStore = create<AppState>()(
                   true // isInternalCall
                 );
               } catch (error) {
-                console.error(`Failed to create bookmark for link ${newLink.title}:`, error);
+                console.error(
+                  `Failed to create bookmark for link ${newLink.title}:`,
+                  error
+                );
               }
             })();
           } else {
-            console.warn(`Collection ${collectionId} does not have a bookmarkFolderId. Cannot create link bookmark.`);
+            console.warn(
+              `Collection ${collectionId} does not have a bookmarkFolderId. Cannot create link bookmark.`
+            );
           }
 
-          const updatedProjects = state.projects.map(p => {
+          const updatedProjects = state.projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                collections: p.collections.map(c => {
+                collections: p.collections.map((c) => {
                   if (c.id === collectionId) {
-                    return { ...c, links: [...c.links, newLink], updatedAt: new Date() };
+                    return {
+                      ...c,
+                      links: [...c.links, newLink],
+                      updatedAt: new Date(),
+                    };
                   }
                   return c;
                 }),
@@ -706,13 +814,21 @@ export const useAppStore = create<AppState>()(
           return { projects: updatedProjects };
         });
       },
-      updateLink: (projectId, collectionId, linkId, updates, isInternalCall = false) => {
+      updateLink: (
+        projectId,
+        collectionId,
+        linkId,
+        updates,
+        isInternalCall = false
+      ) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) return state;
-          const collection = project.collections.find(c => c.id === collectionId);
+          const collection = project.collections.find(
+            (c) => c.id === collectionId
+          );
           if (!collection) return state;
-          const linkToUpdate = collection.links.find(l => l.id === linkId);
+          const linkToUpdate = collection.links.find((l) => l.id === linkId);
           if (!linkToUpdate) return state;
 
           const oldTitle = linkToUpdate.title;
@@ -720,16 +836,16 @@ export const useAppStore = create<AppState>()(
           const oldUrl = linkToUpdate.url;
           const newUrl = updates.url;
 
-          const updatedProjects = state.projects.map(p => {
+          const updatedProjects = state.projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                collections: p.collections.map(c => {
+                collections: p.collections.map((c) => {
                   if (c.id === collectionId) {
                     return {
                       ...c,
-                      links: c.links.map(l =>
-                        l.id === linkId ? { ...l, ...updates } : l // Assuming Link has updatedAt, or handle it here
+                      links: c.links.map(
+                        (l) => (l.id === linkId ? { ...l, ...updates } : l) // Assuming Link has updatedAt, or handle it here
                       ),
                       updatedAt: new Date(),
                     };
@@ -742,13 +858,24 @@ export const useAppStore = create<AppState>()(
             return p;
           });
 
-          if (!isInternalCall && linkToUpdate.bookmarkId && ( (newTitle && newTitle !== oldTitle) || (newUrl && newUrl !== oldUrl) ) ) {
+          if (
+            !isInternalCall &&
+            linkToUpdate.bookmarkId &&
+            ((newTitle && newTitle !== oldTitle) ||
+              (newUrl && newUrl !== oldUrl))
+          ) {
             (async () => {
               try {
-                await bookmarkService.updateBookmark(linkToUpdate.bookmarkId!, { title: newTitle || oldTitle, url: newUrl || oldUrl });
+                await bookmarkService.updateBookmark(linkToUpdate.bookmarkId!, {
+                  title: newTitle || oldTitle,
+                  url: newUrl || oldUrl,
+                });
                 console.log(`Bookmark for link ${linkId} updated.`);
               } catch (error) {
-                console.error(`Failed to update bookmark for link ${linkId}:`, error);
+                console.error(
+                  `Failed to update bookmark for link ${linkId}:`,
+                  error
+                );
               }
             })();
           }
@@ -757,19 +884,25 @@ export const useAppStore = create<AppState>()(
       },
       deleteLink: (projectId, collectionId, linkId) => {
         set((state) => {
-          const project = state.projects.find(p => p.id === projectId);
+          const project = state.projects.find((p) => p.id === projectId);
           if (!project) return state;
-          const collection = project.collections.find(c => c.id === collectionId);
+          const collection = project.collections.find(
+            (c) => c.id === collectionId
+          );
           if (!collection) return state;
-          const linkToDelete = collection.links.find(l => l.id === linkId);
+          const linkToDelete = collection.links.find((l) => l.id === linkId);
 
-          const updatedProjects = state.projects.map(p => {
+          const updatedProjects = state.projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                collections: p.collections.map(c => {
+                collections: p.collections.map((c) => {
                   if (c.id === collectionId) {
-                    return { ...c, links: c.links.filter(l => l.id !== linkId), updatedAt: new Date() };
+                    return {
+                      ...c,
+                      links: c.links.filter((l) => l.id !== linkId),
+                      updatedAt: new Date(),
+                    };
                   }
                   return c;
                 }),
@@ -785,7 +918,10 @@ export const useAppStore = create<AppState>()(
                 await bookmarkService.deleteBookmark(linkToDelete.bookmarkId!); // Not deleteBookmarkTree
                 console.log(`Bookmark for link ${linkId} deleted.`);
               } catch (error) {
-                console.error(`Failed to delete bookmark for link ${linkId}:`, error);
+                console.error(
+                  `Failed to delete bookmark for link ${linkId}:`,
+                  error
+                );
               }
             })();
           }
@@ -862,21 +998,23 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
-          id: generateId(),
-          url: tab.url || '',
-          title: tab.title || 'Untitled Tab',
-          favIconUrl: tab.favIconUrl || '',
-          createdAt: new Date(),
-          order: index,
-          tags: [],
-          notes: '',
-        }));
+        // const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
+        //   id: generateId(),
+        //   url: tab.url || '',
+        //   title: tab.title || 'Untitled Tab',
+        //   favIconUrl: tab.favIconUrl || '',
+        //   createdAt: new Date(),
+        //   order: index,
+        //   tags: [],
+        //   notes: '',
+        // }));
 
         get().addCollection(activeProjectId, {
           name: windowInfo.name || 'New Window Collection',
-          links: newLinks,
+          // links: newLinks, // This needs to be handled separately, as addCollection doesn't accept links directly.
         });
+        // TODO: After the collection is created, add the links to it.
+        // This might require a new action or modifying addCollection to return the new collection's ID.
       },
     }),
     {
@@ -892,7 +1030,7 @@ export const useAppStore = create<AppState>()(
         activeView: state.activeView,
         tabManagerRootFolderId: state.tabManagerRootFolderId,
         // _hasHydrated: state._hasHydrated, // Typically, _hasHydrated itself doesn't need to be persisted.
-                                         // It's a transient state for coordinating actions post-hydration.
+        // It's a transient state for coordinating actions post-hydration.
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) {

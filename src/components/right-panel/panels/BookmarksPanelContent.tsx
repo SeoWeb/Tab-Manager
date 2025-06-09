@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 // This is a placeholder for a more complex bookmark management feature.
 // For now, it could mirror Quick Links or offer different functionality.
 
@@ -26,11 +27,13 @@ export default function BookmarksPanelContent() {
             <p className='text-xs text-center text-muted-foreground'>
               Bookmark integration feature coming soon!
             </p>
-            <img
+            <Image
               src='https://placehold.co/200x100.png?text=Bookmarks+Soon'
               alt='Bookmarks coming soon'
               className='mt-2 mx-auto rounded'
               data-ai-hint='feature comingsoon'
+              width={200}
+              height={100}
             />
           </div>
         </CardContent>

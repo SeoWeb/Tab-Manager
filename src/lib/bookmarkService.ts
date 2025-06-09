@@ -93,15 +93,17 @@ export const bookmarkService = {
       if (!id) {
         throw new Error('Bookmark ID is required for update.');
       }
-      if ((changes.title !== undefined && changes.title.trim() === "") || (changes.url !== undefined && changes.url.trim() === "")) {
+      if (
+        (changes.title !== undefined && changes.title.trim() === '') ||
+        (changes.url !== undefined && changes.url.trim() === '')
+      ) {
         // Note: API might allow empty title for folders, but disallow for bookmarks.
         // For simplicity, we can enforce non-empty title if provided.
         // URL must not be empty if provided for a bookmark.
       }
       const updatedNode = await chrome.bookmarks.update(id, changes);
       return updatedNode;
-    } catch (error)
-    {
+    } catch (error) {
       console.error(`Error updating bookmark ID "${id}":`, error);
       throw error;
     }
@@ -131,7 +133,9 @@ export const bookmarkService = {
   async deleteBookmarkTree(id: string): Promise<void> {
     try {
       if (!id) {
-        throw new Error('Bookmark folder ID is required for recursive deletion.');
+        throw new Error(
+          'Bookmark folder ID is required for recursive deletion.'
+        );
       }
       await chrome.bookmarks.removeTree(id);
     } catch (error) {
@@ -144,7 +148,9 @@ export const bookmarkService = {
    * Retrieves a bookmark tree node by its ID.
    * @param id The ID of the bookmark node to retrieve.
    */
-  async getBookmarkNode(id: string): Promise<chrome.bookmarks.BookmarkTreeNode | null> {
+  async getBookmarkNode(
+    id: string
+  ): Promise<chrome.bookmarks.BookmarkTreeNode | null> {
     try {
       if (!id) {
         // console.warn('getBookmarkNode: ID is required.'); // Or throw error
@@ -159,11 +165,13 @@ export const bookmarkService = {
     }
   },
 
-   /**
+  /**
    * Retrieves the children of a bookmark folder.
    * @param folderId The ID of the folder.
    */
-  async getChildren(folderId: string): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+  async getChildren(
+    folderId: string
+  ): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
     try {
       if (!folderId) {
         // console.warn('getChildren: folderId is required.'); // Or throw error
@@ -172,11 +180,14 @@ export const bookmarkService = {
       const children = await chrome.bookmarks.getChildren(folderId);
       return children;
     } catch (error) {
-      console.error(`Error retrieving children for folder ID "${folderId}":`, error);
+      console.error(
+        `Error retrieving children for folder ID "${folderId}":`,
+        error
+      );
       // This error can occur if folderId does not exist or is not a folder.
       return [];
     }
-  }
+  },
 };
 
 // Ensure chrome types are available. If not, this might indicate an issue with @types/chrome installation or tsconfig.

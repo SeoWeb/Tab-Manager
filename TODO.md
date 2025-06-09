@@ -22,6 +22,7 @@
 - [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
+
 - [x] Create MainLayout component with three-panel structure - Basic responsive three-column structure implemented and integrated. (Superseded by AppClient layout)
 - [x] Implement responsive grid layout with Tailwind - Applied to MainLayout for small and medium screens. (Superseded by AppClient layout)
 - [x] Set up basic routing/navigation structure
@@ -41,6 +42,7 @@
 ## 📋 Phase 2: Left Sidebar & Projects (Week 3)
 
 ### Project Display System
+
 - [x] Create ProjectsList component
 - [x] Implement ProjectItem component with circular icon
 - [x] Add project name initials extraction logic

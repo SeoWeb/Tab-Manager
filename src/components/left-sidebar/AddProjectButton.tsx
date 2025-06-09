@@ -10,12 +10,12 @@ const AddProjectButton: React.FC = () => {
     <>
       <AddProjectModal isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
         <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-start text-sm"
+          variant='outline'
+          size='sm'
+          className='w-full justify-start text-sm'
           onClick={() => setIsModalOpen(true)}
         >
-          <PlusIcon className="mr-2 h-4 w-4" />
+          <PlusIcon className='mr-2 h-4 w-4' />
           Add Project
         </Button>
       </AddProjectModal>

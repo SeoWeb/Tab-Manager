@@ -34,18 +34,14 @@ export default function AppClient() {
       initializeTabManagerRootFolder();
     }
 
-    const unsubscribe = useAppStore.subscribe(
-      (state) => state._hasHydrated,
-      (hydrated) => {
-        if (hydrated) {
-          initializeTabManagerRootFolder();
-          unsubscribe();
-        }
-      }
-    );
+    // This is a temporary workaround to ensure the root folder is initialized.
+    // A better solution would be to use a dedicated initialization state.
+    if (_hasHydrated) {
+      initializeTabManagerRootFolder();
+    }
 
     return () => {
-      unsubscribe();
+      // No cleanup needed
     };
   }, [_hasHydrated, initializeTabManagerRootFolder]); // Add dependencies
 
@@ -87,7 +83,7 @@ export default function AppClient() {
             !isMobile && !sidebarOpen && 'md:pl-[var(--sidebar-width-icon)]' // 3rem by default
           )}
         >
-          <MainContentArea className='flex-grow' />
+          <MainContentArea />
           {isRightContentPanelOpen && <RightContentPanel />}
         </div>
         {/* Vertical Right Tabs Bar - Positioned as an overlay */}
@@ -95,7 +91,9 @@ export default function AppClient() {
           <VerticalRightTabsBar />
         </div>
       </div>
-      <AddProjectModal />
+      <AddProjectModal>
+        <></>
+      </AddProjectModal>
       <AddCollectionModal />
       <AddLinkModal />
     </>
