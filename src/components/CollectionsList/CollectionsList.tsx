@@ -1,37 +1,31 @@
 import React from 'react';
-import Collection from '../Collection';
-import { useActiveProject } from '../../stores/appStore';
-import {
-  Collection as CollectionType, // Renaming to avoid conflict
-} from '../../types/index';
+import { useAppStore } from '@/stores/appStore';
+import CollectionComponent from '@/components/Collection';
+import { Collection as CollectionType } from '@/types';
 
 const CollectionsList: React.FC = () => {
-  const activeProject = useActiveProject();
-  const collections = activeProject?.collections || [];
+ const activeProjectId = useAppStore((state) => state.activeProjectId);
+ const projects = useAppStore((state) => state.projects);
 
-  if (!activeProject) {
-    return (
-      <div className='p-4 text-center text-gray-500'>
-        <p>No active project selected or project not found.</p>
-      </div>
-    );
-  }
+ const activeProject = projects.find(p => p.id === activeProjectId);
 
-  if (collections.length === 0) {
-    return (
-      <div className='p-4 text-center text-gray-500'>
-        <p>No collections yet. Create one to get started!</p>
-      </div>
-    );
-  }
+ if (!activeProject) {
+ return <p className="text-center text-gray-500 py-4">Select a project to see collections.</p>;
+ }
 
-  return (
-    <div className='p-4 space-y-4'>
-      {collections.map((collection: CollectionType) => (
-        <Collection key={collection.id} collection={collection} />
-      ))}
-    </div>
-  );
+ const collections = activeProject.collections;
+
+ if (!collections || collections.length ===0) {
+ return <p className="text-center text-gray-500 py-4">No collections in this project.</p>;
+ }
+
+ return (
+ <div className="space-y-4 p-4">
+ {collections.map((collection: CollectionType) => (
+ <CollectionComponent key={collection.id} collection={collection} />
+ ))}
+ </div>
+ );
 };
 
 export default CollectionsList;

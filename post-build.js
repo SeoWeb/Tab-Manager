@@ -41,7 +41,7 @@ async function externalizeScriptsAndUpdateCsp() {
   await fs.ensureDir(scriptsDir);
 
   const $ = cheerio.load(await fs.readFile(htmlPath, 'utf8'));
-  
+<<<<<<< HEAD
   $('script').each((i, el) => {
     const scriptContent = $(el).html();
     if (scriptContent) {
