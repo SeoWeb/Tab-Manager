@@ -59,17 +59,17 @@ interface AppState {
   toggleRightContentPanel: (forceOpen?: boolean, tabId?: VerticalTabId) => void;
   
   // Project actions
-  addProject: (project: Omit<Project, 'id' | 'collections'> & { collections?: Collection[] }) => void;
+  addProject: (project: Omit<Project, 'id' | 'collections' | 'createdAt' | 'updatedAt'>) => void; // collections is optional here
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   
   // Collection actions
-  addCollection: (projectId: string, collection: Omit<Collection, 'id' | 'links' | 'order'> & { links?: Link[], order?: number }) => void;
+  addCollection: (projectId: string, collection: Omit<Collection, 'id' | 'links' | 'order' | 'createdAt' | 'updatedAt'> & { links?: Link[], order?: number }) => void;
   updateCollection: (projectId: string, collectionId: string, updates: Partial<Collection>) => void;
   deleteCollection: (projectId: string, collectionId: string) => void;
   
   // Link actions
-  addLink: (projectId: string, collectionId: string, link: Omit<Link, 'id' | 'order'> & { order?: number }) => void;
+  addLink: (projectId: string, collectionId: string, link: Omit<Link, 'id' | 'order' | 'createdAt'> & { order?: number }) => void;
   updateLink: (projectId: string, collectionId: string, linkId: string, updates: Partial<Link>) => void;
   deleteLink: (projectId: string, collectionId: string, linkId: string) => void;
 
@@ -106,33 +106,51 @@ const initialProjects: Project[] = [
   {
     id: generateId(),
     name: 'Work',
+    description: 'Projects related to work tasks and responsibilities.',
     color: '#4285F4',
+    icon: '💼',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    bookmarkFolderId: undefined,
     collections: [
       {
         id: generateId(),
         name: 'Q3 Planning',
+        description: 'Planning documents and resources for the third quarter.',
         links: [
-          { id: generateId(), name: 'Project Brief', url: 'https://docs.example.com/brief', order: 0 },
-          { id: generateId(), name: 'Roadmap', url: 'https://sheets.example.com/roadmap', order: 1 },
+          { id: generateId(), title: 'Project Brief', url: 'https://docs.example.com/brief', order: 0, createdAt: new Date(), favIconUrl: 'https://www.google.com/s2/favicons?domain=docs.example.com', tags: ['planning', 'brief'], notes: 'Main project brief document.' },
+          { id: generateId(), title: 'Roadmap', url: 'https://sheets.example.com/roadmap', order: 1, createdAt: new Date(), favIconUrl: 'https://www.google.com/s2/favicons?domain=sheets.example.com', tags: ['planning', 'roadmap'], notes: 'Product and feature roadmap.' },
         ],
-        isMinimized: false,
+        minimized: false,
         order: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        color: undefined,
       },
     ],
   },
   {
     id: generateId(),
     name: 'Personal',
+    description: 'Personal projects, hobbies, and interests.',
     color: '#34A853',
+    icon: '🏠',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    bookmarkFolderId: undefined,
     collections: [
       {
         id: generateId(),
         name: 'Recipes',
+        description: 'Collection of favorite recipes.',
         links: [
-          { id: generateId(), name: 'Pasta Recipe', url: 'https://recipes.example.com/pasta', order: 0 },
+          { id: generateId(), title: 'Pasta Recipe', url: 'https://recipes.example.com/pasta', order: 0, createdAt: new Date(), favIconUrl: 'https://www.google.com/s2/favicons?domain=recipes.example.com', tags: ['food', 'pasta'], notes: 'Delicious pasta recipe.' },
         ],
-        isMinimized: false,
+        minimized: false,
         order: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        color: undefined,
       }
     ],
   },
@@ -195,28 +213,43 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
   }),
   
-  addProject: (project) => set((state) => ({
-    projects: [...state.projects, { ...project, id: generateId(), collections: project.collections || [] }],
-  })),
+  addProject: (projectInput) => set((state) => {
+    const newProject: Project = {
+      id: generateId(),
+      name: projectInput.name,
+      description: projectInput.description || '',
+      color: projectInput.color || '#CCCCCC', // Default color
+      icon: projectInput.icon || '',
+      collections: [], // New projects start with no collections by default
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      bookmarkFolderId: projectInput.bookmarkFolderId || undefined,
+    };
+    return { projects: [...state.projects, newProject] };
+  }),
   updateProject: (id, updates) => set((state) => ({
-    projects: state.projects.map(p => p.id === id ? { ...p, ...updates } : p),
+    projects: state.projects.map(p => p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p),
   })),
   deleteProject: (id) => set((state) => ({
     projects: state.projects.filter(p => p.id !== id),
     activeProjectId: state.activeProjectId === id ? (state.projects.length > 1 ? state.projects.find(p => p.id !== id)?.id ?? null : null) : state.activeProjectId,
   })),
 
-  addCollection: (projectId, collection) => set((state) => ({
+  addCollection: (projectId, collectionInput) => set((state) => ({
     projects: state.projects.map(p => {
       if (p.id === projectId) {
         const newCollection: Collection = {
-          ...collection,
           id: generateId(),
-          links: collection.links || [],
-          isMinimized: false,
-          order: collection.order !== undefined ? collection.order : p.collections.length,
+          name: collectionInput.name,
+          description: collectionInput.description || '',
+          links: collectionInput.links || [],
+          minimized: false,
+          order: collectionInput.order !== undefined ? collectionInput.order : p.collections.length,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          color: collectionInput.color || undefined,
         };
-        return { ...p, collections: [...p.collections, newCollection] };
+        return { ...p, collections: [...p.collections, newCollection], updatedAt: new Date() };
       }
       return p;
     }),
@@ -226,7 +259,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (p.id === projectId) {
         return {
           ...p,
-          collections: p.collections.map(c => c.id === collectionId ? { ...c, ...updates } : c),
+          collections: p.collections.map(c => c.id === collectionId ? { ...c, ...updates, updatedAt: new Date() } : c),
+          updatedAt: new Date(),
         };
       }
       return p;
@@ -241,7 +275,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
   })),
 
-  addLink: (projectId, collectionId, link) => set((state) => ({
+  addLink: (projectId, collectionId, linkInput) => set((state) => ({
     projects: state.projects.map(p => {
       if (p.id === projectId) {
         return {
@@ -249,14 +283,20 @@ export const useAppStore = create<AppState>((set, get) => ({
           collections: p.collections.map(c => {
             if (c.id === collectionId) {
               const newLink: Link = {
-                ...link,
                 id: generateId(),
-                order: link.order !== undefined ? link.order : c.links.length,
+                url: linkInput.url,
+                title: linkInput.title || 'Untitled Link',
+                favIconUrl: linkInput.favIconUrl || '',
+                createdAt: new Date(),
+                tags: linkInput.tags || [],
+                notes: linkInput.notes || '',
+                order: linkInput.order !== undefined ? linkInput.order : c.links.length,
               };
-              return { ...c, links: [...c.links, newLink] };
+              return { ...c, links: [...c.links, newLink], updatedAt: new Date() };
             }
             return c;
           }),
+          updatedAt: new Date(),
         };
       }
       return p;
@@ -269,10 +309,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...p,
           collections: p.collections.map(c => {
             if (c.id === collectionId) {
-              return { ...c, links: c.links.map(l => l.id === linkId ? { ...l, ...updates } : l) };
+              return {
+                ...c,
+                links: c.links.map(l => l.id === linkId ? { ...l, ...updates } : l),
+                updatedAt: new Date(),
+              };
             }
             return c;
           }),
+          updatedAt: new Date(),
         };
       }
       return p;
@@ -330,13 +375,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newCollectionName = windowInfo.name || `Window ${windowInfo.id} Tabs`;
     const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
       id: generateId(),
-      name: tab.title,
+      title: tab.title, // Changed from name to title
       url: tab.url,
-      favicon: tab.favIconUrl,
+      favIconUrl: tab.favIconUrl, // Changed from favicon to favIconUrl
+      createdAt: new Date(),
+      tags: ['chrome-import'],
+      notes: `Imported from window: ${windowInfo.name}`,
       order: index,
     }));
     get().addCollection(activeProjectId, {
-      name: newCollectionName,
+      name: newCollectionName, // This will be used as 'title' for the collection
+      description: `Contains tabs from Chrome window "${windowInfo.name}"`,
       links: newLinks,
     });
   }
