@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar"; // Import useSidebar
 import LeftSidebar from "@/components/left-sidebar/LeftSidebar";
 import MainContentArea from "@/components/main-content/MainContentArea";
 import VerticalRightTabsBar from "@/components/right-vertical-tabs/VerticalRightTabsBar";
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 
 export default function AppClient() {
   const { isDarkMode, activeProjectId, isRightContentPanelOpen } = useAppStore();
+  const { open: sidebarOpen, isMobile } = useSidebar(); // Get sidebar state and mobile status
 
   useEffect(() => {
     if (isDarkMode) {
@@ -39,17 +40,21 @@ export default function AppClient() {
 
 
   return (
-    <SidebarProvider defaultOpen={true}>
-      {/* SidebarProvider's root div is already 'flex' */}
-      {/* This inner div will be the main flex container for content if LeftSidebar is out of flow */}
-      <div className="h-screen bg-background"> {/* This div is the child of SidebarProvider's flex div */}
+    // SidebarProvider is now in page.tsx
+    // The root div of SidebarProvider is flex, this div is its direct child.
+    <>
+      <div className="h-screen bg-background">
         
-        {/* Left Sidebar - Now fixed via its own internal className, so it's an overlay */}
-        <LeftSidebar />
+        <LeftSidebar /> {/* This is fixed and overlays */}
 
-        {/* Main Content Wrapper - Takes full width as LeftSidebar is out of normal flow */}
-        {/* This div becomes the primary content area, effectively flex-1 within SidebarProvider's root flex */}
-        <div className={cn("flex flex-1 w-full h-full overflow-hidden")}>
+        {/* Main Content Wrapper - Takes full width, with padding for the LeftSidebar */}
+        <div className={cn(
+            "flex flex-1 w-full h-full overflow-hidden transition-all duration-200 ease-linear",
+            // Apply padding-left on md screens and up, based on sidebar state
+            !isMobile && sidebarOpen && "md:pl-[var(--sidebar-width)]", // 16rem by default
+            !isMobile && !sidebarOpen && "md:pl-[var(--sidebar-width-icon)]" // 3rem by default
+          )}
+        >
             <MainContentArea className="flex-grow" />
             {isRightContentPanelOpen && <RightContentPanel />}
         </div>
@@ -62,7 +67,6 @@ export default function AppClient() {
       <AddProjectModal />
       <AddCollectionModal />
       <AddLinkModal />
-    </SidebarProvider>
+    </>
   );
 }
-
