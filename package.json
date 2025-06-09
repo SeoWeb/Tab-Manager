@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
-    "build": "pnpm run lint && pnpm run typecheck && next build",
+    "build": "pnpm run lint && pnpm run typecheck && next build && node post-build.js",
     "start": "next start",
     "lint": "next lint",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx",
