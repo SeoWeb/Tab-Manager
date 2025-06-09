@@ -16,7 +16,7 @@
 - [x] Set up chrome_url_overrides for new tab replacement
 - [⚠] Create basic HTML entry point (index.html) - manifest points to index.html, Next.js build/export pending
 - [ ] Test basic extension loading in Chrome
-- [ ] Set up development build process
+- [⚠] Set up development build process - Configured for static export to 'out/' directory via Next.js. Full packaging/testing pending.
 - [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
