@@ -30,8 +30,8 @@
 - [x] Create basic Zustand store structure - Aligned with core types, includes mock data and CRUD actions.
 - [x] Define TypeScript interfaces for Project, Collection, Link - Core interfaces created in src/types/index.ts.
 - [x] Implement basic state actions (getters/setters) - CRUD actions implemented in Zustand store.
-- [ ] Set up Chrome storage integration
-- [ ] Test state persistence across browser sessions
+- [x] Set up Chrome storage integration - Zustand persist middleware configured with chrome.storage.local.
+- [⚠] Test state persistence across browser sessions - Ready for manual testing via chrome.storage integration.
 
 ---
 

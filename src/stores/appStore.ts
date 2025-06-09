@@ -1,7 +1,49 @@
 
 import { create } from 'zustand';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import type { Project, Collection, Link, QuickLink, ChromeWindowInfo, ChromeTabInfo, VerticalTabId } from '@/types';
-import {nanoid} from 'nanoid'; 
+import {nanoid} from 'nanoid';
+
+// Custom storage adapter for chrome.storage.local
+const chromeStorageApi: StateStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([name], (result) => {
+          resolve(result[name] || null);
+        });
+      } else {
+        // Chrome storage API is not available (e.g., during SSR or in a non-extension environment)
+        console.warn('chrome.storage.local is not available. Persisted state will not be loaded.');
+        resolve(null);
+      }
+    });
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ [name]: value }, () => {
+          resolve();
+        });
+      } else {
+        console.warn('chrome.storage.local is not available. State will not be persisted.');
+        resolve();
+      }
+    });
+  },
+  removeItem: async (name: string): Promise<void> => {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove([name], () => {
+          resolve();
+        });
+      } else {
+        console.warn('chrome.storage.local is not available. Item will not be removed from persisted state.');
+        resolve();
+      }
+    });
+  },
+};
 
 const generateId = () => nanoid(); // Using nanoid for unique IDs
 
@@ -156,15 +198,17 @@ const initialProjects: Project[] = [
   },
 ];
 
-export const useAppStore = create<AppState>((set, get) => ({
-  activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
-  isDarkMode: false,
-  
-  activeVerticalTabId: null, 
-  isRightContentPanelOpen: false,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
+      isDarkMode: false,
 
-  projects: initialProjects,
-  chromeWindows: mockChromeWindows,
+      activeVerticalTabId: null,
+      isRightContentPanelOpen: false,
+
+      projects: initialProjects,
+      chromeWindows: mockChromeWindows,
   quickLinks: [], // This might be deprecated by the new "Open Tabs"
   notes: '',
   todos: [],
@@ -389,7 +433,59 @@ export const useAppStore = create<AppState>((set, get) => ({
       links: newLinks,
     });
   }
-}));
+}),
+    {
+      name: 'tab-manager-storage', // Name of the item in chrome.storage.local
+      storage: createJSONStorage(() => chromeStorageApi),
+      partialize: (state) => ({
+        projects: state.projects,
+        activeProjectId: state.activeProjectId,
+        isDarkMode: state.isDarkMode,
+        notes: state.notes,
+        todos: state.todos,
+        // Explicitly exclude transient UI state:
+        // chromeWindows, quickLinks, modal states, editingCollectionIdForLink,
+        // activeVerticalTabId, isRightContentPanelOpen are not persisted.
+      }),
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error("Zustand persist: An error occurred during rehydration:", error);
+          return;
+        }
+        if (state) {
+          // Apply theme based on rehydrated state
+          if (state.isDarkMode) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          // Validate activeProjectId
+          const projectExists = state.projects?.some(p => p.id === state.activeProjectId);
+          if (!projectExists && state.projects?.length > 0) {
+            // If activeProjectId is invalid, set to the first project's ID
+            // This needs to be done carefully, potentially by calling an action or directly using setState if safe
+            // For now, we'll log this. A better approach might be an action or selector logic.
+            // console.log("Persisted activeProjectId is invalid, defaulting to first project if available.");
+            // Zustand's persist middleware handles setting the state, this is more for side effects or validation.
+            // To actually change the activeProjectId if invalid, it's better to do it in the store's initialization
+            // or via a component that observes this.
+            // For this step, just applying theme is the main goal of onRehydrateStorage.
+          } else if (!projectExists && state.activeProjectId !== null) {
+            // console.log("Persisted activeProjectId is invalid and no projects exist.");
+          }
+        } else {
+          // No persisted state found, apply theme based on initial store state (which is isDarkMode: false)
+          if (useAppStore.getState().isDarkMode) { // Check initial state (pre-hydration)
+             document.documentElement.classList.add('dark');
+          } else {
+             document.documentElement.classList.remove('dark');
+          }
+        }
+      },
+      // version: 1, // Example: for migrations
+    }
+  )
+);
 
 // Remove old state: rightPanelTab, isRightPanelOpen, setRightPanelTab, toggleRightPanel
 // Added: activeVerticalTabId, isRightContentPanelOpen, setActiveVerticalTabId, toggleRightContentPanel
