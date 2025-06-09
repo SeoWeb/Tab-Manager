@@ -18,7 +18,9 @@ describe('Collection Component', () => {
     render(<Collection collection={mockCollectionData} />);
 
     expect(screen.getByText('My Test Collection')).toBeInTheDocument();
-    expect(screen.getByText('Links will be displayed here. (0 links)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Links will be displayed here. (0 links)')
+    ).toBeInTheDocument();
   });
 
   it('renders the collection name and correct link count', () => {
@@ -36,6 +38,8 @@ describe('Collection Component', () => {
     render(<Collection collection={mockCollectionData} />);
 
     expect(screen.getByText('Another Collection')).toBeInTheDocument();
-    expect(screen.getByText('Links will be displayed here. (2 links)')).toBeInTheDocument();
+    expect(
+      screen.getByText('Links will be displayed here. (2 links)')
+    ).toBeInTheDocument();
   });
 });

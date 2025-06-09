@@ -129,7 +129,7 @@ export type ActiveViewType = 'projectDetail' | 'settings';
 
 export const TAB_MANAGER_ROOT_FOLDER_NAME = 'Tab Manager Projects'; // Added constant
 
-interface AppState {
+export interface AppState {
   // UI State
   activeProjectId: string | null;
   activeView: ActiveViewType; // Added activeView

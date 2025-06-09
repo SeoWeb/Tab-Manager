@@ -2,18 +2,27 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CollectionsList from './CollectionsList';
-import { useStore } from '../../store/store'; // Path to the store from this test file
-import { Project, Collection as CollectionType } from '../../../types'; // Path to types
+import { Project, Collection as CollectionType } from '@/types'; // Path to types
 
 jest.mock('../../store/store'); // Mock the store
-
-const mockAppStore = useStore as jest.Mock; // Changed name to avoid conflict with useStore import
 
 describe('CollectionsList Component', () => {
   const baseTime = new Date();
   const mockCollections: CollectionType[] = [
-    { id: 'col1', name: 'First Collection', links: [], createdAt: baseTime, updatedAt: baseTime },
-    { id: 'col2', name: 'Second Collection', links: [], createdAt: baseTime, updatedAt: baseTime },
+    {
+      id: 'col1',
+      name: 'First Collection',
+      links: [],
+      createdAt: baseTime,
+      updatedAt: baseTime,
+    },
+    {
+      id: 'col2',
+      name: 'Second Collection',
+      links: [],
+      createdAt: baseTime,
+      updatedAt: baseTime,
+    },
   ];
 
   const mockProject: Project = {
@@ -57,7 +66,9 @@ describe('CollectionsList Component', () => {
     // <p className='text-gray-500 dark:text-gray-400'>
     //   This project doesn&apos;t have any collections yet.
     // </p>
-    expect(screen.getByText(/This project doesn't have any collections yet./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This project doesn't have any collections yet./i)
+    ).toBeInTheDocument();
   });
 
   // No "no active project" test for CollectionsList itself, as it *requires* a project prop.
