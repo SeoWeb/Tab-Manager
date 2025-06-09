@@ -2,12 +2,11 @@
 "use client";
 
 import { useEffect } from 'react';
-import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import LeftSidebar from "@/components/left-sidebar/LeftSidebar";
 import MainContentArea from "@/components/main-content/MainContentArea";
-// import RightSidePanel from "@/components/right-panel/RightSidePanel"; // Old panel
-import VerticalRightTabsBar from "@/components/right-vertical-tabs/VerticalRightTabsBar"; // New
-import RightContentPanel from "@/components/right-vertical-tabs/RightContentPanel"; // New
+import VerticalRightTabsBar from "@/components/right-vertical-tabs/VerticalRightTabsBar";
+import RightContentPanel from "@/components/right-vertical-tabs/RightContentPanel";
 import { useAppStore } from "@/stores/appStore";
 import AddProjectModal from './modals/AddProjectModal';
 import AddCollectionModal from './modals/AddCollectionModal';
@@ -41,13 +40,24 @@ export default function AppClient() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="flex h-screen bg-background">
+      {/* SidebarProvider's root div is already 'flex' */}
+      {/* This inner div will be the main flex container for content if LeftSidebar is out of flow */}
+      <div className="h-screen bg-background"> {/* This div is the child of SidebarProvider's flex div */}
+        
+        {/* Left Sidebar - Now fixed via its own internal className, so it's an overlay */}
         <LeftSidebar />
-        <SidebarInset className={cn("flex flex-1 overflow-hidden")}> {/* SidebarInset now wraps the main area + content panel */}
-            <MainContentArea className="flex-grow" /> {/* Main content takes available space */}
-            {isRightContentPanelOpen && <RightContentPanel />} {/* Content panel slides in */}
-        </SidebarInset>
-        <VerticalRightTabsBar /> {/* Vertical tabs always visible on the far right */}
+
+        {/* Main Content Wrapper - Takes full width as LeftSidebar is out of normal flow */}
+        {/* This div becomes the primary content area, effectively flex-1 within SidebarProvider's root flex */}
+        <div className={cn("flex flex-1 w-full h-full overflow-hidden")}>
+            <MainContentArea className="flex-grow" />
+            {isRightContentPanelOpen && <RightContentPanel />}
+        </div>
+
+        {/* Vertical Right Tabs Bar - Positioned as an overlay */}
+        <div className="fixed right-0 top-0 h-full z-10">
+          <VerticalRightTabsBar />
+        </div>
       </div>
       <AddProjectModal />
       <AddCollectionModal />
@@ -55,3 +65,4 @@ export default function AppClient() {
     </SidebarProvider>
   );
 }
+

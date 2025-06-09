@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Sidebar, SidebarHeader, SidebarContent, SidebarFooter } from "@/components/ui/sidebar";
@@ -8,7 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function LeftSidebar() {
   return (
-    <Sidebar variant="sidebar" collapsible="icon">
+    <Sidebar 
+      variant="sidebar" 
+      collapsible="icon" 
+      className="fixed left-0 top-0 h-full z-20"
+    >
       <SidebarHeader className="p-4">
         <h1 className="text-2xl font-semibold font-headline text-sidebar-foreground group-data-[collapsible=icon]:hidden">TabSpace</h1>
          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg group-data-[collapsible=icon]:block hidden">
@@ -30,3 +35,4 @@ export default function LeftSidebar() {
     </Sidebar>
   );
 }
+
