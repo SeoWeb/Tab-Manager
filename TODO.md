@@ -3,6 +3,7 @@
 ## 📋 Phase 1: Core Structure & Setup (Week 1-2)
 
 ### Project Setup
+
 - [x] Initialize React + TypeScript project with Vite/Webpack
 - [x] Install and configure Tailwind CSS
 - [x] Install Zustand for state management
@@ -12,6 +13,7 @@
 - [x] Create basic package.json with all dependencies
 
 ### Chrome Extension Foundation
+
 - [x] Create manifest.json with proper permissions (bookmarks, storage, tabs, activeTab)
 - [x] Set up chrome_url_overrides for new tab replacement
 - [x] Create basic HTML entry point (index.html) - Next.js static export configured, basic content added.
@@ -20,6 +22,7 @@
 - [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
+
 - [⚠] Create MainLayout component with three-panel structure - Basic responsive three-column structure implemented and integrated.
 - [⚠] Implement responsive grid layout with Tailwind - Applied to MainLayout for small and medium screens.
 - [ ] Set up basic routing/navigation structure
@@ -27,6 +30,7 @@
 - [⚠] Add basic CSS variables for theming - Defined in globals.css and applied to MainLayout.
 
 ### Initial State Management
+
 - [x] Create basic Zustand store structure - Aligned with core types, includes mock data and CRUD actions.
 - [x] Define TypeScript interfaces for Project, Collection, Link - Core interfaces created in src/types/index.ts.
 - [x] Implement basic state actions (getters/setters) - CRUD actions implemented in Zustand store.
@@ -38,6 +42,7 @@
 ## 📋 Phase 2: Left Sidebar & Projects (Week 3)
 
 ### Project Display System
+
 - [ ] Create ProjectsList component
 - [ ] Implement ProjectItem component with circular icon
 - [ ] Add project name initials extraction logic
@@ -46,6 +51,7 @@
 - [ ] Add active project highlighting
 
 ### Project Management
+
 - [ ] Create AddProjectModal component
 - [ ] Implement project creation form with validation
 - [ ] Add EditProjectModal for project settings
@@ -54,6 +60,7 @@
 - [ ] Test project state management
 
 ### Chrome Bookmarks Integration
+
 - [ ] Create bookmarkService utility functions
 - [ ] Implement "Tab Manager Projects" root folder creation
 - [ ] Add project-to-bookmark-folder synchronization
@@ -66,6 +73,7 @@
 ## 📋 Phase 3: Main Content & Collections (Week 4-5)
 
 ### Project Header
+
 - [ ] Create ProjectHeader component
 - [ ] Add project name display
 - [ ] Implement settings icon and dropdown
@@ -74,6 +82,7 @@
 - [ ] Style header with proper spacing and icons
 
 ### Collection Management
+
 - [ ] Create Collection component with header and content
 - [ ] Implement CollectionsList container component
 - [ ] Add AddCollectionModal with form validation
@@ -83,6 +92,7 @@
 - [ ] Create "Open in new window" functionality
 
 ### Link Management
+
 - [ ] Create LinkItem component with favicon, name, URL
 - [ ] Implement AddLinkModal with URL validation
 - [ ] Add EditLinkModal for link modifications
@@ -91,6 +101,7 @@
 - [ ] Implement favicon loading and fallback handling
 
 ### Collection-Bookmark Sync
+
 - [ ] Sync collections to bookmark subfolders
 - [ ] Implement link-to-bookmark synchronization
 - [ ] Handle bookmark creation/update/deletion
@@ -102,12 +113,14 @@
 ## 📋 Phase 4: Drag & Drop System (Week 5-6)
 
 ### Drag & Drop Setup
+
 - [ ] Install and configure drag & drop library (@dnd-kit/core)
 - [ ] Create reusable drag & drop hooks
 - [ ] Implement drag preview components
 - [ ] Set up drop zone visual feedback
 
 ### Link Drag & Drop
+
 - [ ] Enable link dragging within collections
 - [ ] Implement link dropping between collections
 - [ ] Add duplicate URL validation on drop
@@ -115,12 +128,14 @@
 - [ ] Handle drag cancellation and cleanup
 
 ### Collection Drag & Drop
+
 - [ ] Enable collection reordering within projects
 - [ ] Implement smooth animations for reordering
 - [ ] Update bookmark folder order on drag
 - [ ] Test performance with many collections
 
 ### Chrome Tab Integration
+
 - [ ] Implement Chrome tabs API wrapper
 - [ ] Create tab-to-collection drag functionality
 - [ ] Add visual feedback for tab dragging
@@ -132,6 +147,7 @@
 ## 📋 Phase 5: Chrome Integration (Week 6)
 
 ### Tabs API Integration
+
 - [ ] Create tabService utility functions
 - [ ] Implement getAllWindows functionality
 - [ ] Add real-time tab monitoring
@@ -139,6 +155,7 @@
 - [ ] Test tab state synchronization
 
 ### Advanced Chrome Features
+
 - [ ] Implement tab moving between windows
 - [ ] Add tab closing functionality
 - [ ] Create new window from collection feature
@@ -146,6 +163,7 @@
 - [ ] Test extension behavior across browser restarts
 
 ### Favicon Management
+
 - [ ] Implement favicon extraction from URLs
 - [ ] Add favicon caching system
 - [ ] Create fallback favicon handling
@@ -157,12 +175,14 @@
 ## 📋 Phase 6: Right Panel Features (Week 7)
 
 ### Right Panel Structure
+
 - [ ] Create RightTabs component with rotated text
 - [ ] Implement tab switching functionality
 - [ ] Add slide-out panel animation
 - [ ] Style rotated tab navigation
 
 ### Open Tabs Panel
+
 - [ ] Create OpenTabsPanel component
 - [ ] Display Chrome windows with tab lists
 - [ ] Add window renaming functionality
@@ -171,6 +191,7 @@
 - [ ] Add tab drag-to-collection functionality
 
 ### Bookmarks Panel
+
 - [ ] Create BookmarksPanel component
 - [ ] Display Chrome bookmarks (non-project bookmarks)
 - [ ] Add bookmark search functionality
@@ -178,6 +199,7 @@
 - [ ] Handle bookmark folder navigation
 
 ### Notes System
+
 - [ ] Create NotesPanel component
 - [ ] Implement note creation/editing
 - [ ] Add note persistence to Chrome storage
@@ -185,6 +207,7 @@
 - [ ] Add rich text formatting options
 
 ### Todos System
+
 - [ ] Create TodosPanel component
 - [ ] Implement todo creation with checkboxes
 - [ ] Add todo completion tracking
@@ -196,6 +219,7 @@
 ## 📋 Phase 7: Search & Polish (Week 8)
 
 ### Search Functionality
+
 - [ ] Implement global search across projects/collections/links
 - [ ] Add search result highlighting
 - [ ] Create search filters and sorting
@@ -203,6 +227,7 @@
 - [ ] Test search performance with large datasets
 
 ### Theme System
+
 - [ ] Implement complete dark/light mode toggle
 - [ ] Add theme persistence to Chrome storage
 - [ ] Create custom color scheme options
@@ -210,6 +235,7 @@
 - [ ] Add system theme detection
 
 ### Keyboard Shortcuts
+
 - [ ] Add keyboard navigation for projects
 - [ ] Implement collection expand/collapse shortcuts
 - [ ] Create link opening shortcuts
@@ -217,6 +243,7 @@
 - [ ] Document all keyboard shortcuts
 
 ### Performance Optimization
+
 - [ ] Implement component lazy loading
 - [ ] Add virtualization for large lists
 - [ ] Optimize re-rendering with React.memo
@@ -228,6 +255,7 @@
 ## 📋 Phase 8: Testing & Deployment (Week 8)
 
 ### Error Handling
+
 - [ ] Add comprehensive error boundaries
 - [ ] Implement Chrome API error handling
 - [ ] Create user-friendly error messages
@@ -235,6 +263,7 @@
 - [ ] Test offline functionality
 
 ### Accessibility
+
 - [ ] Add proper ARIA labels to all components
 - [ ] Implement keyboard navigation
 - [ ] Test with screen readers
@@ -242,6 +271,7 @@
 - [ ] Ensure proper focus management
 
 ### Quality Assurance
+
 - [ ] Test extension with various Chrome versions
 - [ ] Verify bookmark synchronization edge cases
 - [ ] Test with large numbers of tabs/bookmarks
@@ -249,6 +279,7 @@
 - [ ] Test extension updates and data migration
 
 ### Chrome Web Store Preparation
+
 - [ ] Create extension screenshots and descriptions
 - [ ] Write comprehensive user documentation
 - [ ] Create privacy policy and terms of service
@@ -261,6 +292,7 @@
 ## 📋 Additional Features (Future Enhancements)
 
 ### Advanced Features
+
 - [ ] Add import/export functionality for projects
 - [ ] Implement project sharing/collaboration
 - [ ] Add URL categorization and tagging
@@ -268,6 +300,7 @@
 - [ ] Add project templates and presets
 
 ### Integration Features
+
 - [ ] Add support for other browsers (Firefox, Edge)
 - [ ] Implement cloud synchronization
 - [ ] Add mobile companion app support
@@ -275,6 +308,7 @@
 - [ ] Add browser history integration
 
 ### Analytics & Insights
+
 - [ ] Add usage analytics dashboard
 - [ ] Implement link click tracking
 - [ ] Create productivity insights
@@ -284,15 +318,18 @@
 ---
 
 ## 📋 Checklist Legend
+
 - [ ] **Not Started** - Task hasn't been begun
 - [x] **Completed** - Task is fully implemented and tested
 - [⚠] **In Progress** - Task is currently being worked on
 - [❌] **Blocked** - Task is blocked by dependencies or issues
 
 ## Notes Section
+
 Use this space to track:
+
 - Current blockers and dependencies
-- Technical decisions and rationale  
+- Technical decisions and rationale
 - Performance benchmarks and targets
 - User feedback and feature requests
 - Bug reports and fixes needed

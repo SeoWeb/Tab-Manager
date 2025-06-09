@@ -11,7 +11,7 @@
 
 ## Style Guidelines:
 
-- Primary color: Saturated blue (#4285F4) to reflect trust and stability.  The hue of blue can subtly convey different nuances of security, communication, and intelligence.
+- Primary color: Saturated blue (#4285F4) to reflect trust and stability. The hue of blue can subtly convey different nuances of security, communication, and intelligence.
 - Background color: Light gray (#F5F5F5) to provide a clean and neutral backdrop.
 - Accent color: Soft purple (#A64FCF) to highlight interactive elements and calls to action.
 - Body and headline font: 'Inter', a grotesque sans-serif, provides a modern, neutral aesthetic suitable for both headlines and body text.

@@ -45,12 +45,12 @@ body {
     --sidebar-ring: 217.2 91.2% 59.8%;
 
     /* Custom theme variables */
-    --theme-primary-bg: #FFFFFF; /* White */
-    --theme-secondary-bg: #F3F4F6; /* gray-100 */
-    --theme-accent-bg: #E5E7EB; /* gray-200 */
-    --theme-text-primary: #1F2937; /* gray-800 */
-    --theme-text-secondary: #4B5563; /* gray-600 */
-    --theme-border-color: #D1D5DB; /* gray-300 */
+    --theme-primary-bg: #ffffff; /* White */
+    --theme-secondary-bg: #f3f4f6; /* gray-100 */
+    --theme-accent-bg: #e5e7eb; /* gray-200 */
+    --theme-text-primary: #1f2937; /* gray-800 */
+    --theme-text-secondary: #4b5563; /* gray-600 */
+    --theme-border-color: #d1d5db; /* gray-300 */
   }
   .dark {
     --background: 240 10% 3.9%;

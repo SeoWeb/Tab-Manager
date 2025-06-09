@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from 'react';
 import {
@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 interface ModalWrapperProps {
   isOpen: boolean;
@@ -38,14 +38,10 @@ export default function ModalWrapper({
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        
+
         {children}
-        
-        {footerContent && (
-          <DialogFooter>
-            {footerContent}
-          </DialogFooter>
-        )}
+
+        {footerContent && <DialogFooter>{footerContent}</DialogFooter>}
       </DialogContent>
     </Dialog>
   );
