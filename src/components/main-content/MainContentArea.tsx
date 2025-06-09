@@ -52,15 +52,13 @@ const MainContentArea: React.FC = () => {
   }
 
   return (
-    <div className='flex-1 p-6 flex flex-col bg-white dark:bg-gray-900'>
+    <div className='flex-1 flex flex-col bg-white dark:bg-gray-900'>
       <ProjectHeader project={filteredProject} onSearch={handleSearch} />
-      <div className='mt-6'>
+      <div className='flex-1 p-6 overflow-y-auto'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-xl font-semibold text-gray-700 dark:text-gray-200'>
             Collections
           </h2>
-          {/* <AddCollectionButton projectId={activeProject.id} /> */}{' '}
-          {/* For later use */}
         </div>
         <CollectionsList project={filteredProject} />
       </div>

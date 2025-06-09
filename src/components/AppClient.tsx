@@ -72,24 +72,22 @@ export default function AppClient() {
 
   return (
     <>
-      <div className='h-screen bg-background'>
-        <LeftSidebar /> {/* This is fixed and overlays */}
-        {/* Main Content Wrapper - Takes full width, with padding for the LeftSidebar */}
+      <div className='flex h-screen bg-background'>
+        <LeftSidebar />
         <div
           className={cn(
-            'flex flex-1 w-full h-full overflow-hidden transition-all duration-200 ease-linear',
-            // Apply padding-left on md screens and up, based on sidebar state
-            !isMobile && sidebarOpen && 'md:pl-[var(--sidebar-width)]', // 16rem by default
-            !isMobile && !sidebarOpen && 'md:pl-[var(--sidebar-width-icon)]' // 3rem by default
+            'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out',
+            !isMobile && sidebarOpen ? 'ml-[256px]' : 'ml-[68px]'
           )}
         >
-          <MainContentArea />
-          {isRightContentPanelOpen && <RightContentPanel />}
+          <main className='flex-1 w-full'>
+            <MainContentArea />
+          </main>
         </div>
-        {/* Vertical Right Tabs Bar - Positioned as an overlay */}
-        <div className='fixed right-0 top-0 h-full z-10'>
+        <div className='fixed right-0 top-0 h-full z-30'>
           <VerticalRightTabsBar />
         </div>
+        {isRightContentPanelOpen && <RightContentPanel />}
       </div>
       <AddProjectModal>
         <></>

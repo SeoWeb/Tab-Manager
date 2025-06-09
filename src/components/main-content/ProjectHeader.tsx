@@ -25,21 +25,20 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project, onSearch }) => {
     onSearch(searchQuery);
   }, [searchQuery, onSearch]);
   // --- Placeholder Theme Logic (Retained from previous step) ---
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      const storedTheme = localStorage.getItem('app-theme') as 'light' | 'dark';
-      if (storedTheme) return storedTheme;
-    }
-    return 'light';
-  });
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const root = window.document.documentElement;
-      root.classList.remove(currentTheme === 'light' ? 'dark' : 'light');
-      root.classList.add(currentTheme);
-      localStorage.setItem('app-theme', currentTheme);
+    const storedTheme = localStorage.getItem('app-theme') as 'light' | 'dark';
+    if (storedTheme) {
+      setCurrentTheme(storedTheme);
     }
+  }, []);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove(currentTheme === 'light' ? 'dark' : 'light');
+    root.classList.add(currentTheme);
+    localStorage.setItem('app-theme', currentTheme);
   }, [currentTheme]);
 
   const handleThemeToggle = () => {
