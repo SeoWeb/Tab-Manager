@@ -114,25 +114,25 @@
 
 ### Drag & Drop Setup
 
-- [ ] Install and configure drag & drop library (@dnd-kit/core)
-- [ ] Create reusable drag & drop hooks
-- [ ] Implement drag preview components
-- [ ] Set up drop zone visual feedback
+- [x] Install and configure drag & drop library (@dnd-kit/core)
+- [x] Create reusable drag & drop hooks
+- [x] Implement drag preview components
+- [x] Set up drop zone visual feedback
 
 ### Link Drag & Drop
 
-- [ ] Enable link dragging within collections
-- [ ] Implement link dropping between collections
-- [ ] Add duplicate URL validation on drop
-- [ ] Create visual indicators for valid/invalid drops
-- [ ] Handle drag cancellation and cleanup
+- [x] Enable link dragging within collections
+- [x] Implement link dropping between collections
+- [x] Add duplicate URL validation on drop
+- [x] Create visual indicators for valid/invalid drops
+- [x] Handle drag cancellation and cleanup
 
 ### Collection Drag & Drop
 
-- [ ] Enable collection reordering within projects
-- [ ] Implement smooth animations for reordering
-- [ ] Update bookmark folder order on drag
-- [ ] Test performance with many collections
+- [x] Enable collection reordering within projects
+- [x] Implement smooth animations for reordering
+- [⚠] Update bookmark folder order on drag - Implemented in store but needs bookmark sync integration
+- [x] Test performance with many collections
 
 ### Chrome Tab Integration
 

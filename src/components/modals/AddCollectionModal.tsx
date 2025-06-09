@@ -1,25 +1,39 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import ModalWrapper from '@/components/shared/ModalWrapper';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import CollectionForm from './CollectionForm';
 
 export default function AddCollectionModal() {
-  const {
-    isAddCollectionModalOpen,
-    closeAddCollectionModal,
-    addCollection,
-    activeProjectId,
-  } = useAppStore();
+  const isAddCollectionModalOpen = useAppStoreWithDefaults(
+    (state) => state.isAddCollectionModalOpen,
+    false
+  );
+  const closeAddCollectionModal = useAppStoreWithDefaults(
+    (state) => state.closeAddCollectionModal,
+    () => {}
+  );
+  const addCollection = useAppStoreWithDefaults(
+    (state) => state.addCollection,
+    () => {}
+  );
+  const activeProjectId = useAppStoreWithDefaults(
+    (state) => state.activeProjectId,
+    null
+  );
   const [collectionName, setCollectionName] = useState('');
+  const [collectionDescription, setCollectionDescription] = useState('');
 
   const handleSubmit = () => {
     if (collectionName.trim() && activeProjectId) {
-      addCollection(activeProjectId, { name: collectionName.trim() });
+      addCollection(activeProjectId, {
+        name: collectionName.trim(),
+        description: collectionDescription.trim() || undefined,
+      });
       setCollectionName('');
+      setCollectionDescription('');
       closeAddCollectionModal();
     }
   };
@@ -31,17 +45,14 @@ export default function AddCollectionModal() {
       title='Create New Collection'
       description='Organize your links into collections.'
     >
-      <div className='space-y-4 py-4'>
-        <div className='space-y-2'>
-          <Label htmlFor='collectionName'>Collection Name</Label>
-          <Input
-            id='collectionName'
-            value={collectionName}
-            onChange={(e) => setCollectionName(e.target.value)}
-            placeholder='e.g., Social Media Assets'
-          />
-        </div>
-      </div>
+      <CollectionForm
+        collectionName={collectionName}
+        collectionDescription={collectionDescription}
+        onNameChange={setCollectionName}
+        onDescriptionChange={setCollectionDescription}
+        collectionId='new-collection'
+      />
+
       <div className='flex justify-end gap-2'>
         <Button variant='outline' onClick={closeAddCollectionModal}>
           Cancel

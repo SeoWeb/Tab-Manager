@@ -10,14 +10,9 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useAppStore } from '@/stores/appStore';
-// Project type is not strictly needed here for a new project,
-// as appStore's addProject defines the creation signature.
-// However, if we were to use the full Project type for `newProject`
-// we would import it: import { Project } from '@/types';
+import { useAddProject } from '@/hooks/useAppStoreWithDefaults';
 import { useToast } from '@/hooks/use-toast';
+import ProjectForm from './ProjectForm';
 
 interface AddProjectModalProps {
   children: React.ReactNode;
@@ -31,9 +26,9 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
   onOpenChange,
 }) => {
   const [projectName, setProjectName] = useState('');
-  const [projectColor, setProjectColor] = useState('#FFFFFF'); // Default color
-  const addProject = useAppStore((state) => state.addProject);
-  const { toast } = useToast(); // For displaying notifications
+  const [projectColor, setProjectColor] = useState('#FFFFFF');
+  const addProject = useAddProject();
+  const { toast } = useToast();
 
   const handleSubmit = () => {
     if (projectName.trim() === '') {
@@ -45,18 +40,11 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
       return;
     }
 
-    // The appStore's addProject action expects an object with only the properties
-    // that are not auto-generated (id, collections, createdAt, updatedAt).
-    // Default values for description and icon are also handled by the store.
     const projectInput = {
       name: projectName.trim(),
       color: projectColor,
-      // No need to specify id, collections, createdAt, updatedAt here
-      // Optional: description: '', icon: ''
     };
 
-    // The store will create the full Project object.
-    // We pass only the necessary fields.
     addProject(projectInput);
 
     toast({
@@ -67,7 +55,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
     setProjectName('');
     setProjectColor('#FFFFFF');
     if (onOpenChange) {
-      onOpenChange(false); // Close modal on submit
+      onOpenChange(false);
     }
   };
 
@@ -82,32 +70,15 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
             done.
           </DialogDescription>
         </DialogHeader>
-        <div className='grid gap-4 py-4'>
-          <div className='grid grid-cols-4 items-center gap-4'>
-            <Label htmlFor='projectName' className='text-right'>
-              Name
-            </Label>
-            <Input
-              id='projectName'
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className='col-span-3'
-              placeholder='Project name'
-            />
-          </div>
-          <div className='grid grid-cols-4 items-center gap-4'>
-            <Label htmlFor='projectColor' className='text-right'>
-              Color
-            </Label>
-            <Input
-              id='projectColor'
-              type='color'
-              value={projectColor}
-              onChange={(e) => setProjectColor(e.target.value)}
-              className='col-span-3 h-8'
-            />
-          </div>
-        </div>
+
+        <ProjectForm
+          projectName={projectName}
+          projectColor={projectColor}
+          onNameChange={setProjectName}
+          onColorChange={setProjectColor}
+          projectId='new-project'
+        />
+
         <DialogFooter>
           <DialogClose asChild>
             <Button variant='outline'>Cancel</Button>

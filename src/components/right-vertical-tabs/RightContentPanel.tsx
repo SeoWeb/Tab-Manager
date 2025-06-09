@@ -1,13 +1,13 @@
 'use client';
 
-import { useAppStore } from '@/stores/appStore';
+import { useActiveVerticalTabId } from '@/hooks/useAppStoreWithDefaults';
 import BookmarksPanelContent from '@/components/right-panel/panels/BookmarksPanelContent';
 import NotesPanelContent from '@/components/right-panel/panels/NotesPanelContent';
 import TodosPanelContent from '@/components/right-panel/panels/TodosPanelContent';
 import ChromeOpenTabsPanel from './panels/ChromeOpenTabsPanel'; // New panel
 
 export default function RightContentPanel() {
-  const { activeVerticalTabId } = useAppStore();
+  const activeVerticalTabId = useActiveVerticalTabId();
 
   const renderPanelContent = () => {
     switch (activeVerticalTabId) {

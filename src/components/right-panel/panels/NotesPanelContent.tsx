@@ -1,10 +1,14 @@
 'use client';
 
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Textarea } from '@/components/ui/textarea';
 
 export default function NotesPanelContent() {
-  const { notes, updateNotes } = useAppStore();
+  const notes = useAppStoreWithDefaults((state) => state.notes, '');
+  const updateNotes = useAppStoreWithDefaults(
+    (state) => state.updateNotes,
+    () => {}
+  );
 
   return (
     <div className='space-y-4'>

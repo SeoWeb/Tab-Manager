@@ -11,25 +11,12 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useAppStore } from '@/stores/appStore';
 import { Collection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2Icon } from 'lucide-react';
+import CollectionForm from './CollectionForm';
+import DeleteCollectionConfirmation from './DeleteCollectionConfirmation';
 
 interface EditCollectionModalProps {
   collection: Collection;
@@ -77,7 +64,7 @@ const EditCollectionModal: React.FC<EditCollectionModalProps> = ({
     });
     toast({
       title: 'Collection Updated',
-      description: `&apos;${collectionName.trim()}&apos; has been successfully updated.`,
+      description: `'${collectionName.trim()}' has been successfully updated.`,
     });
     if (onOpenChange) onOpenChange(false);
   };
@@ -86,7 +73,7 @@ const EditCollectionModal: React.FC<EditCollectionModalProps> = ({
     deleteCollection(projectId, collection.id);
     toast({
       title: 'Collection Deleted',
-      description: `&apos;${collection.name}&apos; has been successfully deleted.`,
+      description: `'${collection.name}' has been successfully deleted.`,
       variant: 'destructive',
     });
     if (onOpenChange) onOpenChange(false);
@@ -105,64 +92,20 @@ const EditCollectionModal: React.FC<EditCollectionModalProps> = ({
             done.
           </DialogDescription>
         </DialogHeader>
-        <div className='grid gap-4 py-4'>
-          <div className='grid grid-cols-4 items-center gap-4'>
-            <Label
-              htmlFor={`edit-collectionName-${collection.id}`}
-              className='text-right'
-            >
-              Name
-            </Label>
-            <Input
-              id={`edit-collectionName-${collection.id}`}
-              value={collectionName}
-              onChange={(e) => setCollectionName(e.target.value)}
-              className='col-span-3'
-              placeholder='Collection name'
-            />
-          </div>
-          <div className='grid grid-cols-4 items-center gap-4'>
-            <Label
-              htmlFor={`edit-collectionDescription-${collection.id}`}
-              className='text-right'
-            >
-              Description
-            </Label>
-            <Textarea
-              id={`edit-collectionDescription-${collection.id}`}
-              value={collectionDescription}
-              onChange={(e) => setCollectionDescription(e.target.value)}
-              className='col-span-3'
-              placeholder='A brief description of this collection.'
-            />
-          </div>
-        </div>
+
+        <CollectionForm
+          collectionName={collectionName}
+          collectionDescription={collectionDescription}
+          onNameChange={setCollectionName}
+          onDescriptionChange={setCollectionDescription}
+          collectionId={collection.id}
+        />
+
         <DialogFooter className='sm:justify-between'>
-          <div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant='destructive' size='sm'>
-                  <Trash2Icon className='mr-2 h-4 w-4' /> Delete Collection
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete
-                    the collection &quot;{collection.name}&quot; and all its
-                    links.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteConfirmed}>
-                    Yes, delete collection
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <DeleteCollectionConfirmation
+            collection={collection}
+            onDeleteConfirmed={handleDeleteConfirmed}
+          />
           <div className='flex gap-2'>
             <DialogClose asChild>
               <Button variant='outline'>Cancel</Button>

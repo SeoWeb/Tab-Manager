@@ -2,7 +2,12 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { RefreshCw, CheckCircle, AlertCircle, Bookmark } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
@@ -15,7 +20,7 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
   const [isSync, setIsSync] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  
+
   const syncBookmarks = useAppStore((state) => state.syncBookmarks);
 
   const handleManualSync = async () => {
@@ -38,15 +43,15 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
 
   const getSyncStatusIcon = () => {
     if (isSync) {
-      return <RefreshCw className="h-4 w-4 animate-spin" />;
+      return <RefreshCw className='h-4 w-4 animate-spin' />;
     }
     if (syncError) {
-      return <AlertCircle className="h-4 w-4 text-destructive" />;
+      return <AlertCircle className='h-4 w-4 text-destructive' />;
     }
     if (lastSyncTime) {
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className='h-4 w-4 text-green-500' />;
     }
-    return <Bookmark className="h-4 w-4" />;
+    return <Bookmark className='h-4 w-4' />;
   };
 
   const getSyncStatusText = () => {
@@ -74,8 +79,8 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="ghost"
-            size="sm"
+            variant='ghost'
+            size='sm'
             onClick={handleManualSync}
             disabled={isSync}
             className={cn(
@@ -87,14 +92,14 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
             {getSyncStatusIcon()}
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs">
-          <div className="text-center">
-            <p className="font-medium">Bookmark Sync</p>
-            <p className="text-xs text-muted-foreground mt-1">
+        <TooltipContent side='bottom' className='max-w-xs'>
+          <div className='text-center'>
+            <p className='font-medium'>Bookmark Sync</p>
+            <p className='text-xs text-muted-foreground mt-1'>
               {getSyncStatusText()}
             </p>
             {!isSync && (
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className='text-xs text-muted-foreground mt-1'>
                 Keeps your bookmarks and collections in sync
               </p>
             )}

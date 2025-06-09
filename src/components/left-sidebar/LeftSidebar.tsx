@@ -12,10 +12,10 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button'; // Added
 import { Settings as SettingsIcon } from 'lucide-react'; // Added
-import { useAppStore } from '@/stores/appStore'; // Added
+import { useSetActiveView } from '@/hooks/useAppStoreWithDefaults'; // Added
 
 export default function LeftSidebar() {
-  const setActiveView = useAppStore((state) => state.setActiveView);
+  const setActiveView = useSetActiveView();
 
   return (
     <Sidebar
@@ -25,10 +25,10 @@ export default function LeftSidebar() {
     >
       <SidebarHeader className='p-4'>
         <h1 className='text-2xl font-semibold font-headline text-sidebar-foreground group-data-[collapsible=icon]:hidden'>
-          TabSpace
+          Tab Manager
         </h1>
-        <div className='w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg group-data-[collapsible=icon]:block hidden'>
-          TS
+        <div className='w-8 h-8 bg-primary rounded-full items-center justify-center text-primary-foreground font-bold text-lg group-data-[collapsible=icon]:block hidden'>
+          TM
         </div>
       </SidebarHeader>
       <Separator className='bg-sidebar-border' />

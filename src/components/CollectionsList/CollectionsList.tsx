@@ -1,11 +1,14 @@
 import React from 'react';
-import { useAppStore } from '@/stores/appStore';
+import {
+  useProjects,
+  useActiveProjectId,
+} from '@/hooks/useAppStoreWithDefaults';
 import CollectionComponent from '@/components/Collection';
 import { Collection as CollectionType } from '@/types';
 
 const CollectionsList: React.FC = () => {
-  const activeProjectId = useAppStore((state) => state.activeProjectId);
-  const projects = useAppStore((state) => state.projects);
+  const activeProjectId = useActiveProjectId();
+  const projects = useProjects();
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
 

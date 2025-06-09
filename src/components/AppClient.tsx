@@ -6,7 +6,14 @@ import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
 import RightContentPanel from '@/components/right-vertical-tabs/RightContentPanel';
-import { useAppStore } from '@/stores/appStore';
+import {
+  useProjects,
+  useActiveProjectId,
+  useIsDarkMode,
+  useHasHydrated,
+  useSetActiveProject,
+  useAppStoreWithDefaults,
+} from '@/hooks/useAppStoreWithDefaults';
 import AddProjectModal from './modals/AddProjectModal';
 import AddCollectionModal from './modals/AddCollectionModal';
 import AddLinkModal from './modals/AddLinkModal';
@@ -14,48 +21,43 @@ import EditLinkModal from './modals/EditLinkModal';
 import { cn } from '@/lib/utils';
 
 export default function AppClient() {
-  const {
-    isDarkMode,
-    activeProjectId,
-    isRightContentPanelOpen,
-    initializeTabManagerRootFolder, // Get the action
-    _hasHydrated, // Get hydration status
-  } = useAppStore((state) => ({
-    isDarkMode: state.isDarkMode,
-    activeProjectId: state.activeProjectId,
-    isRightContentPanelOpen: state.isRightContentPanelOpen,
-    initializeTabManagerRootFolder: state.initializeTabManagerRootFolder,
-    _hasHydrated: state._hasHydrated,
-  }));
-  // const { open: sidebarOpen, isMobile } = useSidebar(); // Get sidebar state and mobile status
+  const isDarkMode = useIsDarkMode();
+  const activeProjectId = useActiveProjectId();
+  const projects = useProjects();
+  const _hasHydrated = useHasHydrated();
+  const setActiveProject = useSetActiveProject();
+
+  const isRightContentPanelOpen = useAppStoreWithDefaults(
+    (state) => state.isRightContentPanelOpen,
+    false
+  );
+  const initializeTabManagerRootFolder = useAppStoreWithDefaults(
+    (state) => state.initializeTabManagerRootFolder,
+    () => {}
+  );
 
   useEffect(() => {
-    // Call initializeTabManagerRootFolder after hydration
+    // Call initializeTabManagerRootFolder after hydration, but only once
     if (_hasHydrated) {
-      initializeTabManagerRootFolder();
+      // Add a flag to prevent multiple initializations
+      const hasInitialized = sessionStorage.getItem('tabManagerInitialized');
+      if (!hasInitialized) {
+        sessionStorage.setItem('tabManagerInitialized', 'true');
+        initializeTabManagerRootFolder();
+      }
     }
-
-    // This is a temporary workaround to ensure the root folder is initialized.
-    // A better solution would be to use a dedicated initialization state.
-    if (_hasHydrated) {
-      initializeTabManagerRootFolder();
-    }
-
-    return () => {
-      // No cleanup needed
-    };
-  }, [_hasHydrated, initializeTabManagerRootFolder]); // Add dependencies
+  }, [_hasHydrated, initializeTabManagerRootFolder]);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    // Only apply theme changes after hydration to prevent errors
+    if (_hasHydrated) {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
-  }, [isDarkMode]);
-
-  const projects = useAppStore((state) => state.projects);
-  const setActiveProject = useAppStore((state) => state.setActiveProject);
+  }, [isDarkMode, _hasHydrated]);
 
   useEffect(() => {
     if (!activeProjectId && projects.length > 0) {
@@ -90,7 +92,7 @@ export default function AppClient() {
         {isRightContentPanelOpen && <RightContentPanel />}
       </div>
       <AddProjectModal>
-        <></>
+        <div />
       </AddProjectModal>
       <AddCollectionModal />
       <AddLinkModal />

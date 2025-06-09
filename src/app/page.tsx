@@ -1,4 +1,10 @@
 import AppClient from '@/components/AppClient';
+import { StoreWrapper } from '@/stores/storeWrapper';
+
 export default function Home() {
-  return <AppClient />;
+  return (
+    <StoreWrapper>
+      <AppClient />
+    </StoreWrapper>
+  );
 }

@@ -1,7 +1,11 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useAppStore } from '@/stores/appStore';
+import {
+  useActiveVerticalTabId,
+  useToggleRightContentPanel,
+  useIsRightContentPanelOpen,
+} from '@/hooks/useAppStoreWithDefaults';
 import type { VerticalTabId } from '@/types';
 import { cn } from '@/lib/utils';
 import { PanelRight, Bookmark, FileText, ListChecks } from 'lucide-react'; // Using PanelRight for Open Tabs
@@ -14,11 +18,9 @@ const TABS: { id: VerticalTabId; label: string; icon: React.ElementType }[] = [
 ];
 
 export default function VerticalRightTabsBar() {
-  const {
-    activeVerticalTabId,
-    toggleRightContentPanel,
-    isRightContentPanelOpen,
-  } = useAppStore();
+  const activeVerticalTabId = useActiveVerticalTabId();
+  const toggleRightContentPanel = useToggleRightContentPanel();
+  const isRightContentPanelOpen = useIsRightContentPanelOpen();
 
   const handleTabClick = (tabId: VerticalTabId) => {
     toggleRightContentPanel(undefined, tabId);

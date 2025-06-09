@@ -1,24 +1,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import ModalWrapper from '@/components/shared/ModalWrapper';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { isValidUrl, cn } from '@/lib/utils';
+import { isValidUrl } from '@/lib/utils';
 import { Link } from '@/types';
+import LinkForm from './LinkForm';
 
 export default function EditLinkModal() {
-  const {
-    isEditLinkModalOpen,
-    closeEditLinkModal,
-    updateLink,
-    activeProjectId,
-    editingCollectionId,
-    editingLinkId,
-    projects,
-  } = useAppStore();
+  const isEditLinkModalOpen = useAppStoreWithDefaults(
+    (state) => state.isEditLinkModalOpen,
+    false
+  );
+  const closeEditLinkModal = useAppStoreWithDefaults(
+    (state) => state.closeEditLinkModal,
+    () => {}
+  );
+  const updateLink = useAppStoreWithDefaults(
+    (state) => state.updateLink,
+    () => {}
+  );
+  const activeProjectId = useAppStoreWithDefaults(
+    (state) => state.activeProjectId,
+    null
+  );
+  const editingCollectionId = useAppStoreWithDefaults(
+    (state) => state.editingCollectionId,
+    null
+  );
+  const editingLinkId = useAppStoreWithDefaults(
+    (state) => state.editingLinkId,
+    null
+  );
+  const projects = useAppStoreWithDefaults((state) => state.projects, []);
 
   const [linkName, setLinkName] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
@@ -58,13 +73,6 @@ export default function EditLinkModal() {
     projects,
   ]);
 
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLinkUrl(e.target.value);
-    if (urlError) {
-      setUrlError('');
-    }
-  };
-
   const handleSubmit = () => {
     if (!linkUrl.trim() || !isValidUrl(linkUrl)) {
       setUrlError('Please enter a valid URL (e.g., https://example.com)');
@@ -93,38 +101,17 @@ export default function EditLinkModal() {
       title='Edit Link'
       description='Update the details of your saved link.'
     >
-      <div className='space-y-4 py-4'>
-        <div className='space-y-2'>
-          <Label htmlFor='editLinkName'>Link Name (Optional)</Label>
-          <Input
-            id='editLinkName'
-            value={linkName}
-            onChange={(e) => setLinkName(e.target.value)}
-            placeholder='e.g., Company Website'
-          />
-        </div>
-        <div className='space-y-2'>
-          <Label htmlFor='editLinkUrl'>Link URL</Label>
-          <Input
-            id='editLinkUrl'
-            type='url'
-            value={linkUrl}
-            onChange={handleUrlChange}
-            onBlur={() => {
-              if (linkUrl.trim() && !isValidUrl(linkUrl)) {
-                setUrlError(
-                  'Please enter a valid URL (e.g., https://example.com)'
-                );
-              }
-            }}
-            placeholder='https://example.com'
-            className={cn(
-              urlError && 'border-red-500 focus-visible:ring-red-500'
-            )}
-          />
-          {urlError && <p className='text-sm text-red-500 pt-1'>{urlError}</p>}
-        </div>
-      </div>
+      <LinkForm
+        linkName={linkName}
+        linkUrl={linkUrl}
+        urlError={urlError}
+        onNameChange={setLinkName}
+        onUrlChange={setLinkUrl}
+        onUrlError={setUrlError}
+        nameFieldId='editLinkName'
+        urlFieldId='editLinkUrl'
+      />
+
       <div className='flex justify-end gap-2'>
         <Button variant='outline' onClick={closeEditLinkModal}>
           Cancel

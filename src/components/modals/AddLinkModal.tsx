@@ -1,21 +1,33 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import ModalWrapper from '@/components/shared/ModalWrapper';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { isValidUrl, cn } from '@/lib/utils';
+import { isValidUrl } from '@/lib/utils';
+import LinkForm from './LinkForm';
 
 export default function AddLinkModal() {
-  const {
-    isAddLinkModalOpen,
-    closeAddLinkModal,
-    addLink,
-    activeProjectId,
-    editingCollectionIdForLink,
-  } = useAppStore();
+  const isAddLinkModalOpen = useAppStoreWithDefaults(
+    (state) => state.isAddLinkModalOpen,
+    false
+  );
+  const closeAddLinkModal = useAppStoreWithDefaults(
+    (state) => state.closeAddLinkModal,
+    () => {}
+  );
+  const addLink = useAppStoreWithDefaults(
+    (state) => state.addLink,
+    () => {}
+  );
+  const activeProjectId = useAppStoreWithDefaults(
+    (state) => state.activeProjectId,
+    null
+  );
+  const editingCollectionIdForLink = useAppStoreWithDefaults(
+    (state) => state.editingCollectionIdForLink,
+    null
+  );
 
   const [linkName, setLinkName] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
@@ -29,13 +41,6 @@ export default function AddLinkModal() {
       setUrlError('');
     }
   }, [isAddLinkModalOpen, editingCollectionIdForLink]);
-
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLinkUrl(e.target.value);
-    if (urlError) {
-      setUrlError('');
-    }
-  };
 
   const handleSubmit = () => {
     if (!linkUrl.trim() || !isValidUrl(linkUrl)) {
@@ -52,11 +57,21 @@ export default function AddLinkModal() {
     }
   };
 
-  const currentCollection = useAppStore((state) =>
-    state.projects
-      .find((p) => p.id === state.activeProjectId)
-      ?.collections.find((c) => c.id === state.editingCollectionIdForLink)
-  );
+  const currentCollection = useAppStoreWithDefaults((state) => {
+    if (
+      !state.projects ||
+      !state.activeProjectId ||
+      !state.editingCollectionIdForLink
+    ) {
+      return null;
+    }
+    return (
+      state.projects
+        .find((p) => p.id === state.activeProjectId)
+        ?.collections.find((c) => c.id === state.editingCollectionIdForLink) ||
+      null
+    );
+  }, null);
 
   return (
     <ModalWrapper
@@ -65,38 +80,17 @@ export default function AddLinkModal() {
       title={`Add Link to "${currentCollection?.name || 'Collection'}"`}
       description='Save a new link to this collection.'
     >
-      <div className='space-y-4 py-4'>
-        <div className='space-y-2'>
-          <Label htmlFor='linkName'>Link Name (Optional)</Label>
-          <Input
-            id='linkName'
-            value={linkName}
-            onChange={(e) => setLinkName(e.target.value)}
-            placeholder='e.g., Company Website'
-          />
-        </div>
-        <div className='space-y-2'>
-          <Label htmlFor='linkUrl'>Link URL</Label>
-          <Input
-            id='linkUrl'
-            type='url'
-            value={linkUrl}
-            onChange={handleUrlChange}
-            onBlur={() => {
-              if (linkUrl.trim() && !isValidUrl(linkUrl)) {
-                setUrlError(
-                  'Please enter a valid URL (e.g., https://example.com)'
-                );
-              }
-            }}
-            placeholder='https://example.com'
-            className={cn(
-              urlError && 'border-red-500 focus-visible:ring-red-500'
-            )}
-          />
-          {urlError && <p className='text-sm text-red-500 pt-1'>{urlError}</p>}
-        </div>
-      </div>
+      <LinkForm
+        linkName={linkName}
+        linkUrl={linkUrl}
+        urlError={urlError}
+        onNameChange={setLinkName}
+        onUrlChange={setLinkUrl}
+        onUrlError={setUrlError}
+        nameFieldId='linkName'
+        urlFieldId='linkUrl'
+      />
+
       <div className='flex justify-end gap-2'>
         <Button variant='outline' onClick={closeAddLinkModal}>
           Cancel

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,7 +9,19 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function TodosPanelContent() {
-  const { todos, addTodo, toggleTodo, removeTodo } = useAppStore();
+  const todos = useAppStoreWithDefaults((state) => state.todos, []);
+  const addTodo = useAppStoreWithDefaults(
+    (state) => state.addTodo,
+    () => {}
+  );
+  const toggleTodo = useAppStoreWithDefaults(
+    (state) => state.toggleTodo,
+    () => {}
+  );
+  const removeTodo = useAppStoreWithDefaults(
+    (state) => state.removeTodo,
+    () => {}
+  );
   const [newTodoText, setNewTodoText] = useState('');
 
   const handleAddTodo = () => {

@@ -1,22 +1,23 @@
-import React, { useState } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import React, { useState, useCallback } from 'react';
+import {
+  useProjects,
+  useActiveProjectId,
+} from '@/hooks/useAppStoreWithDefaults';
 import ProjectHeader from './ProjectHeader';
-import CollectionsList from './CollectionsList';
+import DragEnabledCollectionsList from './DragEnabledCollectionsList';
 import { Collection } from '@/types';
 // import AddCollectionButton from './AddCollectionButton'; // For later use
 
 const MainContentArea: React.FC = () => {
-  const { activeProjectId, projects } = useAppStore((state) => ({
-    activeProjectId: state.activeProjectId,
-    projects: state.projects,
-  }));
+  const activeProjectId = useActiveProjectId();
+  const projects = useProjects();
   const [searchQuery, setSearchQuery] = useState('');
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query.toLowerCase());
-  };
+  }, []);
 
   const filteredCollections = activeProject?.collections.filter(
     (collection: Collection) => {
@@ -60,7 +61,7 @@ const MainContentArea: React.FC = () => {
             Collections
           </h2>
         </div>
-        <CollectionsList project={filteredProject} />
+        <DragEnabledCollectionsList project={filteredProject} />
       </div>
     </div>
   );

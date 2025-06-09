@@ -1,11 +1,11 @@
 'use client';
 
-import { useAppStore } from '@/stores/appStore';
+import { useProjects } from '@/hooks/useAppStoreWithDefaults';
 import ProjectItem from './ProjectItem';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 
 export default function ProjectList() {
-  const projects = useAppStore((state) => state.projects);
+  const projects = useProjects();
 
   if (projects.length === 0) {
     return (

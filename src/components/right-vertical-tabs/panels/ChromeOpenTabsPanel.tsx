@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import type { ChromeWindowInfo } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,12 +12,22 @@ import { getFaviconUrl } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function ChromeOpenTabsPanel() {
-  const {
-    chromeWindows,
-    renameChromeWindow,
-    addChromeWindowToCollections,
-    activeProjectId,
-  } = useAppStore();
+  const chromeWindows = useAppStoreWithDefaults(
+    (state) => state.chromeWindows,
+    []
+  );
+  const renameChromeWindow = useAppStoreWithDefaults(
+    (state) => state.renameChromeWindow,
+    () => {}
+  );
+  const addChromeWindowToCollections = useAppStoreWithDefaults(
+    (state) => state.addChromeWindowToCollections,
+    () => {}
+  );
+  const activeProjectId = useAppStoreWithDefaults(
+    (state) => state.activeProjectId,
+    null
+  );
   const [editingWindowId, setEditingWindowId] = useState<number | null>(null);
   const [newWindowName, setNewWindowName] = useState('');
 

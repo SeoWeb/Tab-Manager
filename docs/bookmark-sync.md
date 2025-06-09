@@ -11,12 +11,14 @@ The bookmark synchronization system ensures that changes made to bookmarks in Ch
 ### Components
 
 1. **BookmarkSyncService** (`src/lib/bookmarkSyncService.ts`)
+
    - Core synchronization logic
    - Event listeners for Chrome bookmark changes
    - Bidirectional sync operations
    - Conflict resolution
 
 2. **BookmarkService** (`src/lib/bookmarkService.ts`)
+
    - Chrome bookmarks API wrapper
    - CRUD operations for bookmarks and folders
    - Error handling
@@ -39,11 +41,13 @@ Chrome Bookmarks ←→ BookmarkSyncService ←→ App Store ←→ UI Component
 The system automatically syncs changes in both directions:
 
 **From Extension to Bookmarks:**
+
 - Creating/updating/deleting projects → bookmark folders
-- Creating/updating/deleting collections → bookmark subfolders  
+- Creating/updating/deleting collections → bookmark subfolders
 - Creating/updating/deleting links → bookmarks
 
 **From Bookmarks to Extension:**
+
 - Creating bookmark folders → new projects/collections
 - Updating bookmark titles/URLs → update extension data
 - Deleting bookmarks → remove from extension
@@ -52,6 +56,7 @@ The system automatically syncs changes in both directions:
 ### Manual Sync
 
 Users can trigger manual synchronization through:
+
 - Sync button in the project header
 - Automatic sync on extension startup
 - Periodic background sync (planned)
@@ -96,11 +101,13 @@ The service listens to Chrome bookmark events:
 ### Sync Process
 
 1. **Initialization**
+
    - Find or create root "Tab Manager Projects" folder
    - Set up event listeners
    - Perform initial full sync
 
 2. **Full Sync**
+
    - Compare bookmark structure with extension data
    - Create missing items in both directions
    - Update changed items
@@ -167,6 +174,7 @@ npm test -- bookmarkSyncService.test.ts
 ```
 
 Test coverage includes:
+
 - Event listener setup
 - Full sync operations
 - Incremental sync
@@ -178,11 +186,13 @@ Test coverage includes:
 ### Common Issues
 
 1. **Sync Not Working**
+
    - Check Chrome bookmark permissions
    - Verify root folder exists
    - Check console for errors
 
 2. **Duplicate Items**
+
    - Trigger manual full sync
    - Check for bookmark ID conflicts
 
@@ -222,13 +232,13 @@ localStorage.setItem('bookmark-sync-debug', 'true');
 ```typescript
 class BookmarkSyncService {
   // Initialize the service
-  async initialize(): Promise<void>
-  
+  async initialize(): Promise<void>;
+
   // Perform full synchronization
-  async performFullSync(): Promise<void>
-  
+  async performFullSync(): Promise<void>;
+
   // Clean up resources
-  destroy(): void
+  destroy(): void;
 }
 ```
 
@@ -239,7 +249,7 @@ interface BookmarkSyncStatusProps {
   className?: string;
 }
 
-function BookmarkSyncStatus(props: BookmarkSyncStatusProps): JSX.Element
+function BookmarkSyncStatus(props: BookmarkSyncStatusProps): JSX.Element;
 ```
 
 ## Security Considerations

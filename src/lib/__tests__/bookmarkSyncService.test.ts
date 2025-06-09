@@ -8,7 +8,9 @@ import { useAppStore } from '@/stores/appStore';
 jest.mock('../bookmarkService');
 jest.mock('@/stores/appStore');
 
-const mockBookmarkService = bookmarkService as jest.Mocked<typeof bookmarkService>;
+const mockBookmarkService = bookmarkService as jest.Mocked<
+  typeof bookmarkService
+>;
 const mockUseAppStore = useAppStore as jest.MockedFunction<typeof useAppStore>;
 
 // Mock Chrome APIs
@@ -33,15 +35,16 @@ const mockChrome = {
   },
 };
 
-// @ts-ignore
+// @ts-expect-error - Mocking global chrome for testing
 global.chrome = mockChrome;
 
 describe('BookmarkSyncService', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockStore: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockStore = {
       tabManagerRootFolderId: 'root-folder-id',
       projects: [
@@ -96,7 +99,9 @@ describe('BookmarkSyncService', () => {
       await bookmarkSyncService.initialize();
 
       // Should only be called once
-      expect(mockChrome.bookmarks.onCreated.addListener).toHaveBeenCalledTimes(1);
+      expect(mockChrome.bookmarks.onCreated.addListener).toHaveBeenCalledTimes(
+        1
+      );
     });
   });
 
@@ -120,7 +125,9 @@ describe('BookmarkSyncService', () => {
     it('should sync projects from bookmark folders', async () => {
       await bookmarkSyncService.performFullSync();
 
-      expect(mockBookmarkService.getChildren).toHaveBeenCalledWith('root-folder-id');
+      expect(mockBookmarkService.getChildren).toHaveBeenCalledWith(
+        'root-folder-id'
+      );
     });
 
     it('should handle missing root folder ID', async () => {
@@ -157,7 +164,7 @@ describe('BookmarkSyncService', () => {
       } as chrome.bookmarks.BookmarkTreeNode;
 
       mockBookmarkService.getChildren.mockResolvedValue([bookmarkFolder]);
-      
+
       // Mock the newly created project
       mockStore.projects = [
         ...mockStore.projects,
@@ -294,13 +301,17 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
-      expect(mockStore.addLink).toHaveBeenCalledWith('project-1', 'collection-1', {
-        title: 'New Link',
-        url: 'https://newlink.com',
-        favIconUrl: 'https://www.google.com/s2/favicons?domain=newlink.com',
-        tags: [],
-        notes: 'Imported from bookmarks',
-      });
+      expect(mockStore.addLink).toHaveBeenCalledWith(
+        'project-1',
+        'collection-1',
+        {
+          title: 'New Link',
+          url: 'https://newlink.com',
+          favIconUrl: 'https://www.google.com/s2/favicons?domain=newlink.com',
+          tags: [],
+          notes: 'Imported from bookmarks',
+        }
+      );
     });
   });
 
@@ -327,8 +338,9 @@ describe('BookmarkSyncService', () => {
       };
 
       // Simulate bookmark created event
-      const createdHandler = mockChrome.bookmarks.onCreated.addListener.mock.calls[0][0];
-      
+      const createdHandler =
+        mockChrome.bookmarks.onCreated.addListener.mock.calls[0][0];
+
       await bookmarkSyncService.initialize();
       await createdHandler('new-bookmark-id', bookmark);
 
