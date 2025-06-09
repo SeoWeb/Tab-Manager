@@ -1,73 +1,41 @@
-'use client';
-
+import React from 'react';
 import { useAppStore } from '@/stores/appStore';
 import ProjectHeader from './ProjectHeader';
 import CollectionsList from './CollectionsList';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import SettingsView from '@/components/views/SettingsView'; // Added import
+// import AddCollectionButton from './AddCollectionButton'; // For later use
 
-interface MainContentAreaProps {
-  className?: string;
-}
+const MainContentArea: React.FC = () => {
+  const { activeProjectId, projects } = useAppStore((state) => ({
+    activeProjectId: state.activeProjectId,
+    projects: state.projects,
+  }));
 
-export default function MainContentArea({ className }: MainContentAreaProps) {
-  const activeProjectId = useAppStore((state) => state.activeProjectId);
-  const activeProject = useAppStore((state) =>
-    state.projects.find((p) => p.id === state.activeProjectId)
-  );
-  const activeView = useAppStore((state) => state.activeView);
+  const activeProject = projects.find((p) => p.id === activeProjectId);
 
-  if (activeView === 'settings') {
+  if (!activeProject) {
     return (
-      <div
-        className={cn(
-          'flex-1 flex flex-col bg-background overflow-hidden',
-          className
+      <div className="flex-1 p-6 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+        <h2 className="text-2xl font-semibold">No Project Selected</h2>
+        <p>Please select a project from the sidebar to view its content.</p>
+        {projects.length === 0 && (
+          <p className="mt-4">You don't have any projects yet. Click "Add Project" to get started!</p>
         )}
-      >
-        <SettingsView />
-      </div>
-    );
-  }
-
-  // Default to 'projectDetail' view logic
-  if (!activeProjectId || !activeProject) {
-    return (
-      <div
-        className={cn(
-          'flex-1 flex flex-col items-center justify-center p-8 bg-background text-foreground',
-          className
-        )}
-      >
-        <img
-          src='https://placehold.co/300x200.png?text=TabSpace'
-          alt='TabSpace Welcome'
-          className='mb-8 rounded-lg shadow-md'
-          data-ai-hint='welcome illustration'
-        />
-        <h2 className='text-3xl font-headline mb-4'>Welcome to TabSpace</h2>
-        <p className='text-muted-foreground text-lg mb-2'>
-          Select a project to get started, or create a new one.
-        </p>
-        <p className='text-muted-foreground text-sm'>
-          Organize your digital life, one tab at a time.
-        </p>
       </div>
     );
   }
 
   return (
-    <div
-      className={cn(
-        'flex-1 flex flex-col bg-background overflow-hidden',
-        className
-      )}
-    >
+    <div className="flex-1 p-6 flex flex-col bg-white dark:bg-gray-900">
       <ProjectHeader project={activeProject} />
-      <ScrollArea className='flex-1 p-4 md:p-6 lg:p-8'>
+      <div className="mt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Collections</h2>
+          {/* <AddCollectionButton projectId={activeProject.id} /> */} {/* For later use */}
+        </div>
         <CollectionsList project={activeProject} />
-      </ScrollArea>
+      </div>
     </div>
   );
-}
+};
+
+export default MainContentArea;

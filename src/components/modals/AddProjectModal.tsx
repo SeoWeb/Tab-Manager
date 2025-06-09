@@ -1,77 +1,117 @@
-'use client';
-
-import { useState } from 'react';
-import { useAppStore } from '@/stores/appStore';
-import ModalWrapper from '@/components/shared/ModalWrapper';
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAppStore } from '@/stores/appStore';
+// Project type is not strictly needed here for a new project,
+// as appStore's addProject defines the creation signature.
+// However, if we were to use the full Project type for `newProject`
+// we would import it: import { Project } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
-const projectColors = [
-  '#4285F4',
-  '#34A853',
-  '#FBBC05',
-  '#EA4335',
-  '#A64FCF',
-  '#FF6D01',
-];
+interface AddProjectModalProps {
+  children: React.ReactNode;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
 
-export default function AddProjectModal() {
-  const { isAddProjectModalOpen, closeAddProjectModal, addProject } =
-    useAppStore();
+const AddProjectModal: React.FC<AddProjectModalProps> = ({ children, isOpen, onOpenChange }) => {
   const [projectName, setProjectName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(projectColors[0]);
+  const [projectColor, setProjectColor] = useState('#FFFFFF'); // Default color
+  const addProject = useAppStore((state) => state.addProject);
+  const { toast } = useToast(); // For displaying notifications
 
   const handleSubmit = () => {
-    if (projectName.trim()) {
-      addProject({ name: projectName.trim(), color: selectedColor });
-      setProjectName('');
-      setSelectedColor(projectColors[0]);
-      closeAddProjectModal();
+    if (projectName.trim() === '') {
+      toast({
+        title: 'Error',
+        description: 'Project name cannot be empty.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // The appStore's addProject action expects an object with only the properties
+    // that are not auto-generated (id, collections, createdAt, updatedAt).
+    // Default values for description and icon are also handled by the store.
+    const projectInput = {
+      name: projectName.trim(),
+      color: projectColor,
+      // No need to specify id, collections, createdAt, updatedAt here
+      // Optional: description: '', icon: ''
+    };
+
+    // The store will create the full Project object.
+    // We pass only the necessary fields.
+    addProject(projectInput);
+
+    toast({
+      title: 'Project Added',
+      description: `'${projectInput.name}' has been successfully added.`,
+    });
+
+    setProjectName('');
+    setProjectColor('#FFFFFF');
+    if (onOpenChange) {
+      onOpenChange(false); // Close modal on submit
     }
   };
 
   return (
-    <ModalWrapper
-      isOpen={isAddProjectModalOpen}
-      onClose={closeAddProjectModal}
-      title='Create New Project'
-      description='Give your new project a name and choose a color.'
-    >
-      <div className='space-y-4 py-4'>
-        <div className='space-y-2'>
-          <Label htmlFor='projectName'>Project Name</Label>
-          <Input
-            id='projectName'
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            placeholder='e.g., Marketing Campaign'
-          />
-        </div>
-        <div className='space-y-2'>
-          <Label>Project Color</Label>
-          <div className='flex gap-2'>
-            {projectColors.map((color) => (
-              <button
-                key={color}
-                type='button'
-                className={`w-8 h-8 rounded-full border-2 ${selectedColor === color ? 'border-ring ring-2 ring-ring' : 'border-transparent'}`}
-                style={{ backgroundColor: color }}
-                onClick={() => setSelectedColor(color)}
-                aria-label={`Select color ${color}`}
-              />
-            ))}
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New Project</DialogTitle>
+          <DialogDescription>
+            Enter the details for your new project. Click save when you're done.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="projectName" className="text-right">
+              Name
+            </Label>
+            <Input
+              id="projectName"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="col-span-3"
+              placeholder="Project name"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="projectColor" className="text-right">
+              Color
+            </Label>
+            <Input
+              id="projectColor"
+              type="color"
+              value={projectColor}
+              onChange={(e) => setProjectColor(e.target.value)}
+              className="col-span-3 h-8"
+            />
           </div>
         </div>
-      </div>
-      <div className='flex justify-end gap-2'>
-        <Button variant='outline' onClick={closeAddProjectModal}>
-          Cancel
-        </Button>
-        <Button onClick={handleSubmit} disabled={!projectName.trim()}>
-          Create Project
-        </Button>
-      </div>
-    </ModalWrapper>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button type="submit" onClick={handleSubmit}>Save Project</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
-}
+};
+
+export default AddProjectModal;

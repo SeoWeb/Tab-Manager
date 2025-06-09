@@ -13,9 +13,41 @@ import AddLinkModal from './modals/AddLinkModal';
 import { cn } from '@/lib/utils';
 
 export default function AppClient() {
-  const { isDarkMode, activeProjectId, isRightContentPanelOpen } =
-    useAppStore();
+  const {
+    isDarkMode,
+    activeProjectId,
+    isRightContentPanelOpen,
+    initializeTabManagerRootFolder, // Get the action
+    _hasHydrated, // Get hydration status
+  } = useAppStore((state) => ({
+    isDarkMode: state.isDarkMode,
+    activeProjectId: state.activeProjectId,
+    isRightContentPanelOpen: state.isRightContentPanelOpen,
+    initializeTabManagerRootFolder: state.initializeTabManagerRootFolder,
+    _hasHydrated: state._hasHydrated,
+  }));
   const { open: sidebarOpen, isMobile } = useSidebar(); // Get sidebar state and mobile status
+
+  useEffect(() => {
+    // Call initializeTabManagerRootFolder after hydration
+    if (_hasHydrated) {
+      initializeTabManagerRootFolder();
+    }
+
+    const unsubscribe = useAppStore.subscribe(
+      (state) => state._hasHydrated,
+      (hydrated) => {
+        if (hydrated) {
+          initializeTabManagerRootFolder();
+          unsubscribe();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [_hasHydrated, initializeTabManagerRootFolder]); // Add dependencies
 
   useEffect(() => {
     if (isDarkMode) {
