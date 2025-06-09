@@ -1,14 +1,12 @@
-import AppClient from '@/components/AppClient';
-import MainLayout from '@/components/MainLayout/MainLayout';
+import AppClient from "@/components/AppClient";
+import { SidebarProvider } from "@/components/ui/sidebar"; // Added
 
 export default function Home() {
   return (
-    <MainLayout>
-      {/* Content for the main panel of MainLayout */}
-      <h1 className='text-2xl font-bold mb-4'>
-        Tab Manager Extension - Main View
-      </h1>
+    <SidebarProvider> {/* Added wrapper */}
+      {/* Original h1 can be removed if AppClient or its children provide the main view title/content */}
+      {/* For now, let's keep the AppClient as the sole child of SidebarProvider */}
       <AppClient />
-    </MainLayout>
+    </SidebarProvider>
   );
 }

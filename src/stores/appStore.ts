@@ -123,9 +123,13 @@ const mockChromeWindows: ChromeWindowInfo[] = [
   },
 ];
 
+// Define ActiveViewType
+export type ActiveViewType = 'projectDetail' | 'settings';
+
 interface AppState {
   // UI State
   activeProjectId: string | null;
+  activeView: ActiveViewType; // Added activeView
   isDarkMode: boolean;
 
   // New Right Panel State
@@ -208,6 +212,12 @@ interface AppState {
   closeAddCollectionModal: () => void;
   openAddLinkModal: (collectionId: string) => void;
   closeAddLinkModal: () => void;
+
+  // View actions
+  setActiveView: (view: ActiveViewType) => void; // Added setActiveView
+
+  // AI Suggestion
+  setCollectionName: (projectId: string, collectionId: string, name: string) => void;
 
   // Chrome Windows/Tabs actions (for mock data)
   renameChromeWindow: (windowId: number, newName: string) => void;
@@ -302,8 +312,8 @@ const initialProjects: Project[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      activeProjectId:
-        initialProjects.length > 0 ? initialProjects[0].id : null,
+      activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
+      activeView: 'projectDetail', // Initialized activeView
       isDarkMode: false,
 
       activeVerticalTabId: null,
@@ -320,7 +330,8 @@ export const useAppStore = create<AppState>()(
       isAddLinkModalOpen: false,
       editingCollectionIdForLink: null,
 
-      setActiveProject: (id) => set({ activeProjectId: id }),
+      setActiveProject: (id) => set({ activeProjectId: id, activeView: id ? 'projectDetail' : get().activeView }), // Modified setActiveProject
+      setActiveView: (view: ActiveViewType) => set({ activeView: view }), // Added setActiveView action
       toggleDarkMode: () => {
         set((state) => {
           const newIsDarkMode = !state.isDarkMode;
@@ -502,8 +513,11 @@ export const useAppStore = create<AppState>()(
                     return {
                       ...c,
                       links: c.links.map((l) =>
-                        l.id === linkId ? { ...l, ...updates } : l
+                        l.id === linkId
+                          ? { ...l, ...updates, updatedAt: new Date() }
+                          : l
                       ),
+                      updatedAt: new Date(),
                     };
                   }
                   return c;
@@ -525,10 +539,12 @@ export const useAppStore = create<AppState>()(
                     return {
                       ...c,
                       links: c.links.filter((l) => l.id !== linkId),
+                      updatedAt: new Date(),
                     };
                   }
                   return c;
                 }),
+                updatedAt: new Date(),
               };
             }
             return p;
@@ -536,12 +552,10 @@ export const useAppStore = create<AppState>()(
         })),
 
       addQuickLink: (link) =>
-        set((state) => ({
-          quickLinks: [...state.quickLinks, { ...link, id: generateId() }],
-        })),
+        set((state) => ({ quickLinks: [...state.quickLinks, { ...link, id: generateId() }] })),
       removeQuickLink: (id) =>
         set((state) => ({
-          quickLinks: state.quickLinks.filter((ql) => ql.id !== id),
+          quickLinks: state.quickLinks.filter((l) => l.id !== id),
         })),
 
       updateNotes: (notes) => set({ notes }),
@@ -566,12 +580,25 @@ export const useAppStore = create<AppState>()(
       openAddCollectionModal: () => set({ isAddCollectionModalOpen: true }),
       closeAddCollectionModal: () => set({ isAddCollectionModalOpen: false }),
       openAddLinkModal: (collectionId) =>
-        set({
-          isAddLinkModalOpen: true,
-          editingCollectionIdForLink: collectionId,
-        }),
+        set({ isAddLinkModalOpen: true, editingCollectionIdForLink: collectionId }),
       closeAddLinkModal: () =>
         set({ isAddLinkModalOpen: false, editingCollectionIdForLink: null }),
+
+      setCollectionName: (projectId, collectionId, name) =>
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id === projectId) {
+              return {
+                ...p,
+                collections: p.collections.map((c) =>
+                  c.id === collectionId ? { ...c, name, updatedAt: new Date() } : c
+                ),
+                updatedAt: new Date(),
+              };
+            }
+            return p;
+          }),
+        })),
 
       renameChromeWindow: (windowId, newName) =>
         set((state) => ({
@@ -582,25 +609,23 @@ export const useAppStore = create<AppState>()(
       addChromeWindowToCollections: (windowInfo) => {
         const activeProjectId = get().activeProjectId;
         if (!activeProjectId) {
-          console.warn('No active project to add collection to.');
-          // Potentially open AddProjectModal or notify user
+          console.error("No active project to add the window to.");
           return;
         }
-        const newCollectionName =
-          windowInfo.name || `Window ${windowInfo.id} Tabs`;
+
         const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
           id: generateId(),
-          title: tab.title, // Changed from name to title
-          url: tab.url,
-          favIconUrl: tab.favIconUrl, // Changed from favicon to favIconUrl
+          url: tab.url || '',
+          title: tab.title || 'Untitled Tab',
+          favIconUrl: tab.favIconUrl || '',
           createdAt: new Date(),
-          tags: ['chrome-import'],
-          notes: `Imported from window: ${windowInfo.name}`,
           order: index,
+          tags: [],
+          notes: '',
         }));
+
         get().addCollection(activeProjectId, {
-          name: newCollectionName, // This will be used as 'title' for the collection
-          description: `Contains tabs from Chrome window "${windowInfo.name}"`,
+          name: windowInfo.name || 'New Window Collection',
           links: newLinks,
         });
       },
@@ -612,41 +637,40 @@ export const useAppStore = create<AppState>()(
         projects: state.projects,
         activeProjectId: state.activeProjectId,
         isDarkMode: state.isDarkMode,
+        quickLinks: state.quickLinks,
         notes: state.notes,
         todos: state.todos,
-        // Explicitly exclude transient UI state:
-        // chromeWindows, quickLinks, modal states, editingCollectionIdForLink,
-        // activeVerticalTabId, isRightContentPanelOpen are not persisted.
+        activeView: state.activeView,
       }),
       onRehydrateStorage: () => (state, error) => {
-        if (state) {
-          console.log('rehydrated from chrome.storage.local', state);
-          // You can also update the state here if needed, for example:
-          // state.someRehydratedValue = true;
-        }
         if (error) {
-          console.error(
-            'Zustand persist: An error occurred during rehydration:',
-            error
-          );
+          console.error('Failed to rehydrate state from storage:', error);
+        }
+        if (state) {
+          // Apply dark mode on load
+          if (state.isDarkMode) {
+            document.documentElement.classList.add('dark');
+          }
         }
       },
     }
   )
 );
 
-// Selector to get the active project
+// Selector hooks for convenience
 export const useActiveProject = () => {
   const activeProjectId = useAppStore((state) => state.activeProjectId);
   const projects = useAppStore((state) => state.projects);
-  return projects.find((p) => p.id === activeProjectId);
+  return projects.find((p) => p.id === activeProjectId) || null;
 };
 
-// Selector to get the active collection (if any link modal is open)
 export const useEditingCollection = () => {
   const activeProject = useActiveProject();
   const editingCollectionId = useAppStore(
     (state) => state.editingCollectionIdForLink
   );
-  return activeProject?.collections.find((c) => c.id === editingCollectionId);
+  if (!activeProject || !editingCollectionId) return null;
+  return (
+    activeProject.collections.find((c) => c.id === editingCollectionId) || null
+  );
 };
