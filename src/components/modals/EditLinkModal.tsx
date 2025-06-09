@@ -7,28 +7,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { isValidUrl, cn } from '@/lib/utils';
+import { Link } from '@/types';
 
-export default function AddLinkModal() {
+export default function EditLinkModal() {
   const {
-    isAddLinkModalOpen,
-    closeAddLinkModal,
-    addLink,
+    isEditLinkModalOpen,
+    closeEditLinkModal,
+    updateLink,
     activeProjectId,
-    editingCollectionIdForLink,
+    editingCollectionId,
+    editingLinkId,
+    projects,
   } = useAppStore();
 
   const [linkName, setLinkName] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [originalLink, setOriginalLink] = useState<Link | null>(null);
 
   useEffect(() => {
-    // Reset form when modal opens/closes or collection context changes
-    if (isAddLinkModalOpen) {
+    if (
+      isEditLinkModalOpen &&
+      activeProjectId &&
+      editingCollectionId &&
+      editingLinkId
+    ) {
+      const project = projects.find((p) => p.id === activeProjectId);
+      const collection = project?.collections.find(
+        (c) => c.id === editingCollectionId
+      );
+      const link = collection?.links.find((l) => l.id === editingLinkId);
+
+      if (link) {
+        setLinkName(link.title || '');
+        setLinkUrl(link.url);
+        setOriginalLink(link);
+      }
+      setUrlError('');
+    } else {
       setLinkName('');
       setLinkUrl('');
       setUrlError('');
+      setOriginalLink(null);
     }
-  }, [isAddLinkModalOpen, editingCollectionIdForLink]);
+  }, [
+    isEditLinkModalOpen,
+    activeProjectId,
+    editingCollectionId,
+    editingLinkId,
+    projects,
+  ]);
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLinkUrl(e.target.value);
@@ -43,42 +71,42 @@ export default function AddLinkModal() {
       return;
     }
 
-    if (activeProjectId && editingCollectionIdForLink) {
-      addLink(activeProjectId, editingCollectionIdForLink, {
+    if (
+      activeProjectId &&
+      editingCollectionId &&
+      editingLinkId &&
+      originalLink
+    ) {
+      updateLink(activeProjectId, editingCollectionId, editingLinkId, {
+        ...originalLink,
         title: linkName.trim() || linkUrl.trim(),
         url: linkUrl.trim(),
       });
-      closeAddLinkModal();
+      closeEditLinkModal();
     }
   };
 
-  const currentCollection = useAppStore((state) =>
-    state.projects
-      .find((p) => p.id === state.activeProjectId)
-      ?.collections.find((c) => c.id === state.editingCollectionIdForLink)
-  );
-
   return (
     <ModalWrapper
-      isOpen={isAddLinkModalOpen}
-      onClose={closeAddLinkModal}
-      title={`Add Link to "${currentCollection?.name || 'Collection'}"`}
-      description='Save a new link to this collection.'
+      isOpen={isEditLinkModalOpen}
+      onClose={closeEditLinkModal}
+      title='Edit Link'
+      description='Update the details of your saved link.'
     >
       <div className='space-y-4 py-4'>
         <div className='space-y-2'>
-          <Label htmlFor='linkName'>Link Name (Optional)</Label>
+          <Label htmlFor='editLinkName'>Link Name (Optional)</Label>
           <Input
-            id='linkName'
+            id='editLinkName'
             value={linkName}
             onChange={(e) => setLinkName(e.target.value)}
             placeholder='e.g., Company Website'
           />
         </div>
         <div className='space-y-2'>
-          <Label htmlFor='linkUrl'>Link URL</Label>
+          <Label htmlFor='editLinkUrl'>Link URL</Label>
           <Input
-            id='linkUrl'
+            id='editLinkUrl'
             type='url'
             value={linkUrl}
             onChange={handleUrlChange}
@@ -98,19 +126,18 @@ export default function AddLinkModal() {
         </div>
       </div>
       <div className='flex justify-end gap-2'>
-        <Button variant='outline' onClick={closeAddLinkModal}>
+        <Button variant='outline' onClick={closeEditLinkModal}>
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={
             !linkUrl.trim() ||
-            !activeProjectId ||
-            !editingCollectionIdForLink ||
-            !isValidUrl(linkUrl)
+            !isValidUrl(linkUrl) ||
+            (linkName === originalLink?.title && linkUrl === originalLink?.url)
           }
         >
-          Add Link
+          Save Changes
         </Button>
       </div>
     </ModalWrapper>

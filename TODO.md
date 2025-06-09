@@ -94,8 +94,8 @@
 ### Link Management
 
 - [x] Create LinkItem component with favicon, name, URL
-- [ ] Implement AddLinkModal with URL validation
-- [ ] Add EditLinkModal for link modifications
+- [x] Implement AddLinkModal with URL validation
+- [x] Add EditLinkModal for link modifications
 - [x] Create link deletion with confirmation
 - [x] Add "Open in new tab" functionality
 - [x] Implement favicon loading and fallback handling

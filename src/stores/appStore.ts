@@ -151,7 +151,10 @@ export interface AppState {
   isAddProjectModalOpen: boolean;
   isAddCollectionModalOpen: boolean;
   isAddLinkModalOpen: boolean;
+  isEditLinkModalOpen: boolean;
   editingCollectionIdForLink: string | null;
+  editingCollectionId: string | null;
+  editingLinkId: string | null;
 
   // Hydration state
   _hasHydrated: boolean; // Added hydration flag
@@ -233,6 +236,8 @@ export interface AppState {
   closeAddCollectionModal: () => void;
   openAddLinkModal: (collectionId: string) => void;
   closeAddLinkModal: () => void;
+  openEditLinkModal: (collectionId: string, linkId: string) => void;
+  closeEditLinkModal: () => void;
 
   // View actions
   setActiveView: (view: ActiveViewType) => void; // Added setActiveView
@@ -354,7 +359,10 @@ export const useAppStore = create<AppState>()(
       isAddProjectModalOpen: false,
       isAddCollectionModalOpen: false,
       isAddLinkModalOpen: false,
+      isEditLinkModalOpen: false,
       editingCollectionIdForLink: null,
+      editingCollectionId: null,
+      editingLinkId: null,
       tabManagerRootFolderId: null, // Initial state for root folder ID
       _hasHydrated: false, // Initial hydration state
 
@@ -1025,6 +1033,19 @@ export const useAppStore = create<AppState>()(
         }),
       closeAddLinkModal: () =>
         set({ isAddLinkModalOpen: false, editingCollectionIdForLink: null }),
+
+      openEditLinkModal: (collectionId, linkId) =>
+        set({
+          isEditLinkModalOpen: true,
+          editingCollectionId: collectionId,
+          editingLinkId: linkId,
+        }),
+      closeEditLinkModal: () =>
+        set({
+          isEditLinkModalOpen: false,
+          editingCollectionId: null,
+          editingLinkId: null,
+        }),
 
       setCollectionName: (projectId, collectionId, name) =>
         set((state) => ({

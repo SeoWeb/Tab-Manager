@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/appStore';
 import AddProjectModal from './modals/AddProjectModal';
 import AddCollectionModal from './modals/AddCollectionModal';
 import AddLinkModal from './modals/AddLinkModal';
+import EditLinkModal from './modals/EditLinkModal';
 import { cn } from '@/lib/utils';
 
 export default function AppClient() {
@@ -93,6 +94,7 @@ export default function AppClient() {
       </AddProjectModal>
       <AddCollectionModal />
       <AddLinkModal />
+      <EditLinkModal />
     </>
   );
 }

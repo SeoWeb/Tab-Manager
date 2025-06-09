@@ -3,7 +3,7 @@
 import type { Link } from '@/types';
 import { useAppStore } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
-import { Trash2, ExternalLink } from 'lucide-react';
+import { Trash2, ExternalLink, Edit3 } from 'lucide-react';
 import Image from 'next/image';
 import { getFaviconUrl } from '@/lib/utils';
 
@@ -18,7 +18,10 @@ export default function LinkItem({
   projectId,
   collectionId,
 }: LinkItemProps) {
-  const deleteLink = useAppStore((state) => state.deleteLink);
+  const { deleteLink, openEditLinkModal } = useAppStore((state) => ({
+    deleteLink: state.deleteLink,
+    openEditLinkModal: state.openEditLinkModal,
+  }));
   const faviconUrl = getFaviconUrl(link.url);
 
   return (
@@ -63,9 +66,15 @@ export default function LinkItem({
             <ExternalLink className='h-4 w-4 text-muted-foreground hover:text-primary' />
           </a>
         </Button>
-        {/* <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Edit link">
-          <Edit3 className="h-4 w-4 text-muted-foreground" />
-        </Button> */}
+        <Button
+          variant='ghost'
+          size='icon'
+          className='h-7 w-7'
+          aria-label='Edit link'
+          onClick={() => openEditLinkModal(collectionId, link.id)}
+        >
+          <Edit3 className='h-4 w-4 text-muted-foreground' />
+        </Button>
         <Button
           variant='ghost'
           size='icon'
