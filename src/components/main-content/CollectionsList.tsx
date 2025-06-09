@@ -21,9 +21,13 @@ const CollectionsList: React.FC<CollectionsListProps> = ({ project }) => {
 
   return (
     <div className='space-y-4'>
-      {project.collections.map((collection: Collection) => ( // Added type for collection
-        <CollectionComponent key={collection.id} collection={collection} />
-      ))}
+      {project.collections.map(
+        (
+          collection: Collection // Added type for collection
+        ) => (
+          <CollectionComponent key={collection.id} collection={collection} />
+        )
+      )}
     </div>
   );
 };
