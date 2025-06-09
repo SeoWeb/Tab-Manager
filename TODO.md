@@ -102,11 +102,11 @@
 
 ### Collection-Bookmark Sync
 
-- [ ] Sync collections to bookmark subfolders
-- [ ] Implement link-to-bookmark synchronization
-- [ ] Handle bookmark creation/update/deletion
-- [ ] Add bidirectional sync (bookmark changes → extension)
-- [ ] Test sync reliability and conflict resolution
+- [x] Sync collections to bookmark subfolders
+- [x] Implement link-to-bookmark synchronization
+- [x] Handle bookmark creation/update/deletion
+- [x] Add bidirectional sync (bookmark changes → extension)
+- [x] Test sync reliability and conflict resolution
 
 ---
 

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SettingsIcon, SunIcon, MoonIcon, SearchIcon } from 'lucide-react';
 import EditProjectModal from '@/components/modals/EditProjectModal'; // Import EditProjectModal
+import { BookmarkSyncStatus } from '@/components/sync/BookmarkSyncStatus'; // Import BookmarkSyncStatus
 
 interface ProjectHeaderProps {
   project: Project;
@@ -94,6 +95,8 @@ const ProjectHeader: React.FC<ProjectHeaderProps> = ({ project, onSearch }) => {
         </div>
 
         <div className='flex items-center space-x-3'>
+          <BookmarkSyncStatus />
+          
           <Button
             variant='ghost'
             size='icon'

@@ -10,6 +10,7 @@ import type {
 } from '@/types';
 import { nanoid } from 'nanoid';
 import { bookmarkService } from '@/lib/bookmarkService'; // Added import
+import { bookmarkSyncService } from '@/lib/bookmarkSyncService'; // Added import
 
 // Custom storage adapter for chrome.storage.local
 const chromeStorageApi: StateStorage = {
@@ -170,6 +171,7 @@ export interface AppState {
 
   // Project actions
   initializeTabManagerRootFolder: () => Promise<void>; // Added action
+  syncBookmarks: () => Promise<void>; // Added manual sync action
   addProject: (
     // Adjusted based on previous findings for AddProjectModal
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>
@@ -403,6 +405,10 @@ export const useAppStore = create<AppState>()(
               'Tab Manager root folder already exists and ID is valid:',
               currentRootId
             );
+            // Initialize bookmark sync service
+            await bookmarkSyncService.initialize();
+            // Perform initial sync
+            await bookmarkSyncService.performFullSync();
             return;
           }
           console.log(
@@ -424,6 +430,12 @@ export const useAppStore = create<AppState>()(
               'Found existing Tab Manager root folder:',
               foundFolder.id
             );
+            // Update the store with the found folder ID
+            set({ tabManagerRootFolderId: foundFolder.id });
+            // Initialize bookmark sync service
+            await bookmarkSyncService.initialize();
+            // Perform initial sync
+            await bookmarkSyncService.performFullSync();
             get().setHasHydrated(true);
           } else {
             console.log(
@@ -434,6 +446,10 @@ export const useAppStore = create<AppState>()(
               parentIdForRoot
             );
             console.log('Created Tab Manager root folder:', newFolder.id);
+            // Update the store with the new folder ID
+            set({ tabManagerRootFolderId: newFolder.id });
+            // Initialize bookmark sync service
+            await bookmarkSyncService.initialize();
             get().setHasHydrated(true);
           }
         } catch (error) {
@@ -1078,23 +1094,20 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        // const newLinks: Link[] = windowInfo.tabs.map((tab, index) => ({
-        //   id: generateId(),
-        //   url: tab.url || '',
-        //   title: tab.title || 'Untitled Tab',
-        //   favIconUrl: tab.favIconUrl || '',
-        //   createdAt: new Date(),
-        //   order: index,
-        //   tags: [],
-        //   notes: '',
-        // }));
-
         get().addCollection(activeProjectId, {
           name: windowInfo.name || 'New Window Collection',
-          // links: newLinks, // This needs to be handled separately, as addCollection doesn't accept links directly.
         });
         // TODO: After the collection is created, add the links to it.
         // This might require a new action or modifying addCollection to return the new collection's ID.
+      },
+
+      syncBookmarks: async () => {
+        try {
+          console.log('Manual bookmark sync triggered');
+          await bookmarkSyncService.performFullSync();
+        } catch (error) {
+          console.error('Manual bookmark sync failed:', error);
+        }
       },
     }),
     {
