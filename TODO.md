@@ -20,11 +20,11 @@
 - [x] Create extension icons (16x16, 48x48, 128x128)
 
 ### Basic Layout Structure
-- [⚠] Create MainLayout component with three-panel structure - Basic responsive three-column structure implemented and integrated.
-- [⚠] Implement responsive grid layout with Tailwind - Applied to MainLayout for small and medium screens.
-- [ ] Set up basic routing/navigation structure
-- [ ] Test layout responsiveness and proportions
-- [⚠] Add basic CSS variables for theming - Defined in globals.css and applied to MainLayout.
+- [x] Create MainLayout component with three-panel structure - Basic responsive three-column structure implemented and integrated. (Superseded by AppClient layout)
+- [x] Implement responsive grid layout with Tailwind - Applied to MainLayout for small and medium screens. (Superseded by AppClient layout)
+- [x] Set up basic routing/navigation structure
+- [x] Test layout responsiveness and proportions
+- [x] Add basic CSS variables for theming - Defined in globals.css and applied to MainLayout. (Theming via globals.css and AppClient; MainLayout specific part obsolete)
 
 ### Initial State Management
 - [x] Create basic Zustand store structure - Aligned with core types, includes mock data and CRUD actions.
@@ -38,12 +38,12 @@
 ## 📋 Phase 2: Left Sidebar & Projects (Week 3)
 
 ### Project Display System
-- [ ] Create ProjectsList component
-- [ ] Implement ProjectItem component with circular icon
-- [ ] Add project name initials extraction logic
-- [ ] Implement color picker for project backgrounds
-- [ ] Style project circles with hover effects
-- [ ] Add active project highlighting
+- [x] Create ProjectsList component
+- [x] Implement ProjectItem component with circular icon
+- [x] Add project name initials extraction logic
+- [x] Implement color picker for project backgrounds (Basic implementation in AddProjectModal)
+- [x] Style project circles with hover effects
+- [x] Add active project highlighting
 
 ### Project Management
 - [ ] Create AddProjectModal component
@@ -296,3 +296,4 @@ Use this space to track:
 - Performance benchmarks and targets
 - User feedback and feature requests
 - Bug reports and fixes needed
+- Regarding "Basic Layout Structure" in Phase 1: `src/components/MainLayout/MainLayout.tsx` was found to be creating a nested and redundant layout. `src/app/page.tsx` has been updated to use `AppClient.tsx` directly, which now manages the primary application layout including a responsive sidebar and content areas. The original `MainLayout.tsx` specific tasks are marked as superseded or obsolete in this context. The file `src/components/MainLayout/MainLayout.tsx` still exists but is not actively used by the main page.

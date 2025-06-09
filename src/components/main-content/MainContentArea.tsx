@@ -6,6 +6,7 @@ import ProjectHeader from "./ProjectHeader";
 import CollectionsList from "./CollectionsList";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import SettingsView from '@/components/views/SettingsView'; // Added import
 
 interface MainContentAreaProps {
   className?: string;
@@ -16,7 +17,17 @@ export default function MainContentArea({ className }: MainContentAreaProps) {
   const activeProject = useAppStore((state) =>
     state.projects.find((p) => p.id === state.activeProjectId)
   );
+  const activeView = useAppStore((state) => state.activeView); // Added activeView
 
+  if (activeView === 'settings') {
+    return (
+      <div className={cn("flex-1 flex flex-col bg-background overflow-hidden", className)}>
+        <SettingsView />
+      </div>
+    );
+  }
+
+  // Default to 'projectDetail' view logic
   if (!activeProjectId || !activeProject) {
     return (
       <div className={cn("flex-1 flex flex-col items-center justify-center p-8 bg-background text-foreground", className)}>

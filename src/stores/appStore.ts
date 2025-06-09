@@ -69,10 +69,13 @@ const mockChromeWindows: ChromeWindowInfo[] = [
   }
 ];
 
+// Define ActiveViewType
+export type ActiveViewType = 'projectDetail' | 'settings';
 
 interface AppState {
   // UI State
   activeProjectId: string | null;
+  activeView: ActiveViewType; // Added activeView
   isDarkMode: boolean; 
   
   // New Right Panel State
@@ -134,6 +137,9 @@ interface AppState {
   closeAddCollectionModal: () => void;
   openAddLinkModal: (collectionId: string) => void;
   closeAddLinkModal: () => void;
+
+  // View actions
+  setActiveView: (view: ActiveViewType) => void; // Added setActiveView
 
   // AI Suggestion
   setCollectionName: (projectId: string, collectionId: string, name: string) => void;
@@ -202,6 +208,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       activeProjectId: initialProjects.length > 0 ? initialProjects[0].id : null,
+      activeView: 'projectDetail', // Initialized activeView
       isDarkMode: false,
 
       activeVerticalTabId: null,
@@ -218,7 +225,8 @@ export const useAppStore = create<AppState>()(
   isAddLinkModalOpen: false,
   editingCollectionIdForLink: null,
 
-  setActiveProject: (id) => set({ activeProjectId: id }),
+  setActiveProject: (id) => set({ activeProjectId: id, activeView: id ? 'projectDetail' : get().activeView }), // Modified setActiveProject
+  setActiveView: (view: ActiveViewType) => set({ activeView: view }), // Added setActiveView action
   toggleDarkMode: () => {
     set((state) => {
       const newIsDarkMode = !state.isDarkMode;
@@ -445,7 +453,9 @@ export const useAppStore = create<AppState>()(
         todos: state.todos,
         // Explicitly exclude transient UI state:
         // chromeWindows, quickLinks, modal states, editingCollectionIdForLink,
-        // activeVerticalTabId, isRightContentPanelOpen are not persisted.
+        // activeVerticalTabId, isRightContentPanelOpen, activeView are not persisted.
+        // Note: activeView is intentionally not persisted to always default to 'projectDetail' or specific logic on load.
+        // If settings view should persist, add 'activeView' to the persisted keys.
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) {
