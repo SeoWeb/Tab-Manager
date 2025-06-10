@@ -19,6 +19,16 @@ export type SearchFilter = {
 
 export type SortOption = 'name' | 'date';
 
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  createdAt: Date;
+  updatedAt: Date;
+  isPinned: boolean;
+}
+
 export interface AppState {
   // UI State
   activeProjectId: string | null;
@@ -42,7 +52,7 @@ export interface AppState {
   tabManagerRootFolderId: string | null;
   chromeWindows: ChromeWindowInfo[];
   quickLinks: QuickLink[];
-  notes: string;
+  notes: Note[];
   todos: { id: string; text: string; completed: boolean; category?: string }[];
 
   // Modal States
@@ -131,7 +141,14 @@ export interface AppState {
   removeQuickLink: (id: string) => void;
 
   // Notes actions
-  updateNotes: (notes: string) => void;
+  addNote: (title: string, content: string, color?: string) => void;
+  updateNote: (
+    id: string,
+    updates: Partial<Omit<Note, 'id' | 'createdAt'>>
+  ) => void;
+  deleteNote: (id: string) => void;
+  togglePinNote: (id: string) => void;
+  duplicateNote: (id: string) => void;
 
   // Todos actions
   addTodo: (text: string, category?: string) => void;

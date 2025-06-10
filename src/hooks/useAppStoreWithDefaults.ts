@@ -10,7 +10,7 @@ const defaultState: Partial<AppState> = {
   isRightContentPanelOpen: false,
   activeVerticalTabId: null,
   quickLinks: [],
-  notes: '',
+  notes: [],
   todos: [],
   chromeWindows: [],
   _hasHydrated: false,

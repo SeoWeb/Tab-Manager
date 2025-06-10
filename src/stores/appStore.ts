@@ -9,6 +9,7 @@ import { createLinkActions } from './actions/linkActions';
 import { createDragDropActions } from './actions/dragDropActions';
 import { createUIActions } from './actions/uiActions';
 import { createSidebarActions } from './actions/sidebarActions';
+import { createNoteActions } from './actions/noteActions';
 
 // Create initial state as a constant to ensure consistency
 const initialState = {
@@ -30,7 +31,7 @@ const initialState = {
   projects: initialProjects,
   chromeWindows: mockChromeWindows,
   quickLinks: [],
-  notes: '',
+  notes: [],
   todos: [],
   isAddProjectModalOpen: false,
   isAddCollectionModalOpen: false,
@@ -64,6 +65,7 @@ export const useAppStore = create<AppState>()(
       ...createLinkActions(set, get),
       ...createDragDropActions(set),
       ...createSidebarActions(set, get),
+      ...createNoteActions(set),
     }),
     {
       name: 'tab-manager-storage',
@@ -85,7 +87,9 @@ export const useAppStore = create<AppState>()(
             isDarkMode: state.isDarkMode ?? initialState.isDarkMode,
             themeColor: state.themeColor || initialState.themeColor,
             quickLinks: state.quickLinks || initialState.quickLinks,
-            notes: state.notes || initialState.notes,
+            notes: Array.isArray(state.notes)
+              ? state.notes
+              : initialState.notes,
             todos: state.todos || initialState.todos,
             activeView: state.activeView || initialState.activeView,
             tabManagerRootFolderId:
@@ -178,6 +182,10 @@ export const useAppStore = create<AppState>()(
             isSidebarLoaded:
               persistedStateTyped.isSidebarLoaded ??
               currentState.isSidebarLoaded,
+            // Migrate notes from string to array format
+            notes: Array.isArray(persistedStateTyped.notes)
+              ? persistedStateTyped.notes
+              : currentState.notes,
           };
 
           return mergedState;
