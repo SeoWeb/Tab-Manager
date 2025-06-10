@@ -9,17 +9,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
   Edit2,
-  PlusSquare,
   Check,
   X,
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  FolderPlus,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { switchToTab, closeTab } from '@/lib/tabService';
 import { DraggableTab } from '@/components/drag-drop/DraggableTab';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ChromeOpenTabsPanel() {
   const chromeWindows = useAppStoreWithDefaults(
@@ -47,6 +47,7 @@ export default function ChromeOpenTabsPanel() {
 
   // Set up Chrome tabs monitoring
   const { refreshTabs } = useChromeTabsMonitoring();
+  const { toast } = useToast();
 
   const handleRenameWindow = (windowId: number) => {
     if (newWindowName.trim()) {
@@ -98,11 +99,19 @@ export default function ChromeOpenTabsPanel() {
   const handleAddWindowAsCollection = (windowInfo: ChromeWindowInfo) => {
     if (activeProjectId) {
       addChromeWindowToCollections(windowInfo);
+      // Show success feedback
+      toast({
+        title: 'Collection Created',
+        description: `Created "${windowInfo.name}" with ${windowInfo.tabs.length} tabs`,
+      });
     } else {
-      // Handle case where no project is active, e.g., show a toast
-      alert(
-        'Please select or create a project first to add this window as a collection.'
-      );
+      // Handle case where no project is active
+      toast({
+        title: 'No Project Selected',
+        description:
+          'Please select or create a project first to add this window as a collection.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -140,8 +149,9 @@ export default function ChromeOpenTabsPanel() {
   }
 
   return (
-    <div className='space-y-4 h-full flex flex-col'>
-      <div className='flex items-center justify-between px-1 pt-1 pb-2 border-b border-border'>
+    <div className='h-full flex flex-col'>
+      {/* Header */}
+      <div className='flex items-center justify-between px-1 pt-1 pb-2 border-b border-border shrink-0'>
         <h2 className='text-xl font-semibold text-foreground'>
           Open Chrome Tabs
         </h2>
@@ -158,8 +168,10 @@ export default function ChromeOpenTabsPanel() {
           />
         </Button>
       </div>
-      <ScrollArea className='flex-grow pr-1'>
-        <div className='space-y-4'>
+
+      {/* Scrollable Content */}
+      <div className='flex-1 overflow-y-auto px-1'>
+        <div className='space-y-4 py-4'>
           {chromeWindows.map((window) => (
             <Card key={window.id} className='shadow-md'>
               <CardHeader className='flex flex-row items-center justify-between p-3 bg-card-foreground/5 dark:bg-card-foreground/10'>
@@ -208,15 +220,15 @@ export default function ChromeOpenTabsPanel() {
                     </Button>
                   )}
                   <Button
-                    variant='ghost'
+                    variant='outline'
                     size='icon'
                     onClick={() => handleAddWindowAsCollection(window)}
-                    className='h-7 w-7'
-                    aria-label='Add window as new collection'
-                    title='Add window as new collection'
+                    className='h-7 w-7 bg-primary/10 hover:bg-primary/20 border-primary/30 text-primary hover:text-primary'
+                    aria-label='Create collection from window tabs'
+                    title='Create collection from all tabs in this window'
                     disabled={!activeProjectId}
                   >
-                    <PlusSquare className='h-4 w-4' />
+                    <FolderPlus className='h-4 w-4' />
                   </Button>
                   <Button
                     variant='ghost'
@@ -253,11 +265,15 @@ export default function ChromeOpenTabsPanel() {
             </Card>
           ))}
         </div>
-      </ScrollArea>
-      <p className='text-xs text-muted-foreground px-1 pt-2 text-center'>
-        Live Chrome tabs. Click to switch, hover for actions. Drag-and-drop to
-        collections coming soon.
-      </p>
+      </div>
+
+      {/* Footer */}
+      <div className='px-1 pt-2 shrink-0'>
+        <p className='text-xs text-muted-foreground text-center'>
+          Live Chrome tabs. Click to switch, hover for actions. Drag-and-drop to
+          collections coming soon.
+        </p>
+      </div>
     </div>
   );
 }

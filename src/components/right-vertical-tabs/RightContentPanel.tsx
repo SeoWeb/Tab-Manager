@@ -28,11 +28,10 @@ export default function RightContentPanel() {
   };
 
   return (
-    <aside className='w-full md:w-80 lg:w-96 bg-card border-l border-border flex flex-col shrink-0 shadow-lg'>
+    <aside className='w-full h-full md:w-80 lg:w-96 bg-card border-l border-border flex flex-col shrink-0 shadow-lg'>
       {/* No PanelTabs here anymore, content is directly rendered */}
-      <div className='flex-1 p-3 overflow-y-auto'>
-        {' '}
-        {/* Changed from ScrollArea to div for ChromeOpenTabsPanel's own ScrollArea */}
+      <div className='flex-1 p-3 overflow-y-auto scrollbar-modern'>
+        {/* Enhanced with modern scrollbar styling */}
         {renderPanelContent()}
       </div>
     </aside>

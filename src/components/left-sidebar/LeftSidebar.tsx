@@ -48,7 +48,7 @@ export default function LeftSidebar() {
 
         {/* Content */}
         <div className='flex-grow p-0'>
-          <ScrollArea className='h-full'>
+          <ScrollArea className='h-full scrollbar-modern'>
             <div className={cn(isCollapsed ? 'p-1' : 'p-4')}>
               <ProjectList />
             </div>

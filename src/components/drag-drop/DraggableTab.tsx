@@ -87,7 +87,7 @@ export function DraggableTab({
 
       {/* Tab title */}
       <div className='flex-1 truncate text-foreground' title={tab.url}>
-        {tab.title}
+        {tab.title.length > 30 ? `${tab.title.substring(0, 30)}...` : tab.title}
       </div>
 
       {/* Action buttons */}
@@ -137,7 +137,7 @@ export function TabDragOverlay({ tab }: { tab: ChromeTabInfo }) {
         unoptimized
       />
       <div className='truncate text-foreground' title={tab.title}>
-        {tab.title}
+        {tab.title.length > 30 ? `${tab.title.substring(0, 30)}...` : tab.title}
       </div>
     </div>
   );

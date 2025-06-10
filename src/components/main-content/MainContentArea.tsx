@@ -132,7 +132,7 @@ const MainContentArea: React.FC = () => {
         onSearch={handleSearch}
         ref={searchInputRef}
       />
-      <div className='flex-1 p-6 overflow-y-auto'>
+      <div className='flex-1 p-6 overflow-y-auto scrollbar-modern'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-xl font-semibold text-gray-700 dark:text-gray-200'>
             Collections
