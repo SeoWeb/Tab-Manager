@@ -18,12 +18,16 @@ import {
   TrendingUp,
   Clock,
   AlertTriangle,
+  Calendar,
+  Archive,
 } from 'lucide-react';
 import type { TaskStatus } from '@/types/tasks';
 
 // Import the enhanced components
 import TaskKanbanView from '../right-panel/panels/TaskKanbanView';
 import TaskAnalyticsDashboard from '../right-panel/panels/TaskAnalyticsDashboard';
+import TaskCalendarView from './TaskCalendarView';
+import ArchivedTasksView from './ArchivedTasksView';
 
 export default function TasksView() {
   const [activeTab, setActiveTab] = useState('kanban');
@@ -235,14 +239,22 @@ export default function TasksView() {
           onValueChange={setActiveTab}
           className='h-full flex flex-col'
         >
-          <TabsList className='grid w-full max-w-md grid-cols-2'>
+          <TabsList className='grid w-full max-w-lg grid-cols-4'>
             <TabsTrigger value='kanban' className='flex items-center gap-2'>
               <Grid3X3 className='h-4 w-4' />
               Board
             </TabsTrigger>
+            <TabsTrigger value='calendar' className='flex items-center gap-2'>
+              <Calendar className='h-4 w-4' />
+              Calendar
+            </TabsTrigger>
             <TabsTrigger value='analytics' className='flex items-center gap-2'>
               <BarChart3 className='h-4 w-4' />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value='archived' className='flex items-center gap-2'>
+              <Archive className='h-4 w-4' />
+              Archived
             </TabsTrigger>
           </TabsList>
 
@@ -263,10 +275,18 @@ export default function TasksView() {
               </div>
             </TabsContent>
 
+            <TabsContent value='calendar' className='h-full m-0'>
+              <TaskCalendarView tasks={tasks} onViewTask={handleViewTask} />
+            </TabsContent>
+
             <TabsContent value='analytics' className='h-full m-0'>
               <div className='h-full max-w-4xl'>
                 <TaskAnalyticsDashboard tasks={tasks} stats={taskStats} />
               </div>
+            </TabsContent>
+
+            <TabsContent value='archived' className='h-full m-0'>
+              <ArchivedTasksView tasks={tasks} />
             </TabsContent>
           </div>
         </Tabs>

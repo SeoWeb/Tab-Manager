@@ -417,6 +417,7 @@ export default function TaskKanbanView({
       blocked: [],
       completed: [],
       cancelled: [],
+      archived: [],
     };
 
     filteredTasks.forEach((task) => {

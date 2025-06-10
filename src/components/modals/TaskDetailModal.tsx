@@ -110,6 +110,12 @@ const statusConfig: Record<
     icon: Circle,
     label: 'Cancelled',
   },
+  archived: {
+    color: 'text-gray-500',
+    bgColor: 'bg-gray-100',
+    icon: Archive,
+    label: 'Archived',
+  },
 };
 
 const MetadataItem = ({

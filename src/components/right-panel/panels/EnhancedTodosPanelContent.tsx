@@ -94,6 +94,11 @@ const statusConfig = {
     icon: Circle,
     label: 'Cancelled',
   },
+  archived: {
+    color: 'bg-gray-100 text-gray-600 border-gray-200',
+    icon: Archive,
+    label: 'Archived',
+  },
 };
 
 interface TaskCardProps {
@@ -529,6 +534,7 @@ export default function EnhancedTodosPanelContent() {
           blocked: 3,
           completed: 4,
           cancelled: 5,
+          archived: 6,
         };
         aValue = statusOrder[a.status];
         bValue = statusOrder[b.status];

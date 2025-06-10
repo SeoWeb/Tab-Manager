@@ -207,12 +207,29 @@ export const createTaskActions = (
 
   deleteTask: (id: string) =>
     set((state: AppState) => {
-      const updatedTasks = state.tasks.filter((task) => task.id !== id);
+      const tasksToDelete = new Set<string>();
+      const findSubtasksRecursively = (taskId: string) => {
+        if (tasksToDelete.has(taskId)) return;
+        tasksToDelete.add(taskId);
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.subtasks.forEach(findSubtasksRecursively);
+        }
+      };
+
+      findSubtasksRecursively(id);
+
+      const updatedTasks = state.tasks.filter(
+        (task) => !tasksToDelete.has(task.id)
+      );
+
       return {
         ...state,
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
-        activeTaskId: state.activeTaskId === id ? null : state.activeTaskId,
+        activeTaskId: tasksToDelete.has(state.activeTaskId || '')
+          ? null
+          : state.activeTaskId,
       };
     }),
 

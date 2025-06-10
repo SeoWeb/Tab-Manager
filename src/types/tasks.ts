@@ -6,7 +6,8 @@ export type TaskStatus =
   | 'in-progress'
   | 'blocked'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'archived';
 export type TaskViewMode =
   | 'list'
   | 'kanban'
