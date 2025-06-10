@@ -6,6 +6,7 @@ import NotesPanelContent from '@/components/right-panel/panels/NotesPanelContent
 import TodosPanelContent from '@/components/right-panel/panels/TodosPanelContent';
 import ChromeOpenTabsPanel from './panels/ChromeOpenTabsPanel'; // New panel
 import { TabSessionsPanel } from './panels/TabSessionsPanel';
+import SimpleTodoPanelContent from './panels/SimpleTodoPanelContent';
 
 export default function RightContentPanel() {
   const activeVerticalTabId = useActiveVerticalTabId();
@@ -20,6 +21,8 @@ export default function RightContentPanel() {
         return <NotesPanelContent />;
       case 'todos':
         return <TodosPanelContent />;
+      case 'simple-todo':
+        return <SimpleTodoPanelContent />;
       case 'sessions':
         return <TabSessionsPanel />;
       default:

@@ -16,6 +16,7 @@ const TABS: { id: VerticalTabId; label: string; icon: React.ElementType }[] = [
   { id: 'notes', label: 'Notes', icon: FileText },
   { id: 'todos', label: 'Tasks', icon: ListChecks },
   { id: 'sessions', label: 'Sessions', icon: Save },
+  { id: 'simple-todo', label: 'Todo', icon: ListChecks },
 ];
 
 export default function VerticalRightTabsBar() {
