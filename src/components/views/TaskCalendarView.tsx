@@ -1,7 +1,6 @@
 import React from 'react';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './react-big-calendar.css';
 
 const localizer = momentLocalizer(moment);
@@ -18,14 +17,21 @@ const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
   onViewTask,
 }) => {
   const events = tasks
-    .filter((task) => !task.isArchived && task.status !== 'archived')
+    .filter(
+      (task) => !task.isArchived && task.status !== 'archived' && task.dueDate
+    )
     .map((task) => ({
       title: task.title,
-      start: new Date(task.dueDate || new Date()),
-      end: new Date(task.dueDate || new Date()),
+      start: new Date(task.dueDate!),
+      end: new Date(task.dueDate!),
       allDay: true,
       resource: task,
     }));
+
+  // Debug information
+  console.log('Total tasks:', tasks.length);
+  console.log('Tasks with due dates:', events.length);
+  console.log('Events for calendar:', events);
 
   return (
     <div className='h-full'>

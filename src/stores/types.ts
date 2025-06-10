@@ -18,7 +18,12 @@ import type {
 } from '@/types/tasks';
 
 // Define ActiveViewType
-export type ActiveViewType = 'projectDetail' | 'settings' | 'tasks';
+export type ActiveViewType =
+  | 'projectDetail'
+  | 'settings'
+  | 'tasks'
+  | 'notes'
+  | 'todos';
 
 export type SearchFilter = {
   projects: boolean;
