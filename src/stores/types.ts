@@ -33,6 +33,10 @@ export interface AppState {
   activeVerticalTabId: VerticalTabId | null;
   isRightContentPanelOpen: boolean;
 
+  // Sidebar State
+  isSidebarOpen: boolean;
+  isSidebarLoaded: boolean;
+
   // Data
   projects: Project[];
   tabManagerRootFolderId: string | null;
@@ -66,6 +70,12 @@ export interface AppState {
   // New Right Panel Actions
   setActiveVerticalTabId: (tabId: VerticalTabId | null) => void;
   toggleRightContentPanel: (forceOpen?: boolean, tabId?: VerticalTabId) => void;
+
+  // Sidebar Actions
+  setSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  toggleSidebar: () => void;
+  setSidebarLoaded: (loaded: boolean) => void;
+  initializeSidebarState: (defaultOpen?: boolean) => Promise<void>;
 
   // Project actions
   setTabManagerRootFolderId: (id: string | null) => void;

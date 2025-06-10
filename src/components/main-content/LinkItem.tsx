@@ -80,7 +80,7 @@ export default function LinkItem({
           href={link.url}
           target='_blank'
           rel='noopener noreferrer'
-          className={`text-sm font-medium text-primary truncate block ${
+          className={`text-sm font-medium text-foreground truncate block ${
             isDraggingExternalItem ? 'pointer-events-none' : 'hover:underline'
           }`}
           title={link.url}

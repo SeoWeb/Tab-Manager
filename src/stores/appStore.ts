@@ -8,6 +8,7 @@ import { createCollectionActions } from './actions/collectionActions';
 import { createLinkActions } from './actions/linkActions';
 import { createDragDropActions } from './actions/dragDropActions';
 import { createUIActions } from './actions/uiActions';
+import { createSidebarActions } from './actions/sidebarActions';
 
 // Create initial state as a constant to ensure consistency
 const initialState = {
@@ -24,6 +25,8 @@ const initialState = {
   themeColor: '#3b82f6',
   activeVerticalTabId: null,
   isRightContentPanelOpen: false,
+  isSidebarOpen: false,
+  isSidebarLoaded: false,
   projects: initialProjects,
   chromeWindows: mockChromeWindows,
   quickLinks: [],
@@ -59,6 +62,7 @@ export const useAppStore = create<AppState>()(
       ...createCollectionActions(set, get),
       ...createLinkActions(set, get),
       ...createDragDropActions(set),
+      ...createSidebarActions(set, get),
     }),
     {
       name: 'tab-manager-storage',
@@ -92,6 +96,8 @@ export const useAppStore = create<AppState>()(
               initialState.isRightContentPanelOpen,
             activeVerticalTabId:
               state.activeVerticalTabId ?? initialState.activeVerticalTabId,
+            // Persist sidebar state
+            isSidebarOpen: state.isSidebarOpen ?? initialState.isSidebarOpen,
           };
         } catch (error) {
           console.error('Error during state partialize:', error);
@@ -158,6 +164,13 @@ export const useAppStore = create<AppState>()(
             isEditLinkModalOpen:
               (persistedState as Partial<AppState>).isEditLinkModalOpen ??
               currentState.isEditLinkModalOpen,
+            // Ensure sidebar state is properly initialized
+            isSidebarOpen:
+              (persistedState as Partial<AppState>).isSidebarOpen ??
+              currentState.isSidebarOpen,
+            isSidebarLoaded:
+              (persistedState as Partial<AppState>).isSidebarLoaded ??
+              currentState.isSidebarLoaded,
           };
 
           return mergedState;

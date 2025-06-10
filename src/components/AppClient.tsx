@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
+import SettingsView from '@/components/views/SettingsView';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
 import RightContentPanel from '@/components/right-vertical-tabs/RightContentPanel';
 import { GlobalDragDropProvider } from '@/components/drag-drop/GlobalDragDropProvider';
@@ -39,6 +40,10 @@ export default function AppClient() {
   const isRightContentPanelOpen = useAppStoreWithDefaults(
     (state) => state.isRightContentPanelOpen,
     false
+  );
+  const activeView = useAppStoreWithDefaults(
+    (state) => state.activeView,
+    'projectDetail'
   );
   const detectSystemTheme = useAppStoreWithDefaults(
     (state) => state.detectSystemTheme,
@@ -128,7 +133,11 @@ export default function AppClient() {
             )}
           >
             <main className='flex-1 w-full'>
-              <MainContentArea />
+              {activeView === 'settings' ? (
+                <SettingsView />
+              ) : (
+                <MainContentArea />
+              )}
             </main>
           </div>
           {isRightContentPanelOpen && (
