@@ -51,11 +51,6 @@ export default function AppClient() {
   );
 
   useEffect(() => {
-    const cleanup = detectSystemTheme();
-    return cleanup;
-  }, [detectSystemTheme]);
-
-  useEffect(() => {
     const init = async () => {
       if (_hasHydrated) {
         const hasInitialized = sessionStorage.getItem('tabManagerInitialized');
@@ -71,7 +66,28 @@ export default function AppClient() {
   }, [_hasHydrated]);
 
   useEffect(() => {
-    // Only apply theme changes after hydration to prevent errors
+    // Initialize theme only once after hydration
+    if (_hasHydrated) {
+      const state = useAppStore.getState();
+
+      // Check if theme preference was loaded from storage
+      if (!state._themeFromStorage) {
+        // No stored preference, use system theme
+        const cleanup = detectSystemTheme();
+        return cleanup;
+      } else {
+        // Apply stored theme preference
+        if (state.isDarkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    }
+  }, [_hasHydrated, detectSystemTheme]);
+
+  useEffect(() => {
+    // Apply theme changes when isDarkMode state changes (from user toggle)
     if (_hasHydrated) {
       if (isDarkMode) {
         document.documentElement.classList.add('dark');

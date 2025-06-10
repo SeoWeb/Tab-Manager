@@ -56,6 +56,7 @@ export interface AppState {
 
   // Hydration state
   _hasHydrated: boolean;
+  _themeFromStorage: boolean;
 
   // Actions
   setHasHydrated: (hydrated: boolean) => void;

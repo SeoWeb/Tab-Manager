@@ -41,6 +41,7 @@ const initialState = {
   editingLinkId: null,
   tabManagerRootFolderId: null,
   _hasHydrated: false,
+  _themeFromStorage: false,
 };
 
 export const useAppStore = create<AppState>()(
@@ -121,9 +122,11 @@ export const useAppStore = create<AppState>()(
               );
             }
 
-            // Apply dark mode on load if the state was rehydrated and contains isDarkMode
-            if (state?.isDarkMode) {
+            // Apply theme on load based on the rehydrated state
+            if (state?.isDarkMode === true) {
               document.documentElement.classList.add('dark');
+            } else if (state?.isDarkMode === false) {
+              document.documentElement.classList.remove('dark');
             }
           } catch (error) {
             console.warn('Error during hydration callback:', error);
@@ -134,49 +137,56 @@ export const useAppStore = create<AppState>()(
       merge: (persistedState, currentState) => {
         if (!persistedState || typeof persistedState !== 'object') {
           console.warn('Invalid persisted state, using current state');
-          return currentState;
+          return {
+            ...currentState,
+            _themeFromStorage: false, // Mark that no theme was loaded from storage
+          };
         }
 
         try {
+          const persistedStateTyped = persistedState as Partial<AppState>;
+          const hasStoredTheme = 'isDarkMode' in persistedStateTyped;
+
           const mergedState = {
             ...currentState,
             ...persistedState,
+            // Mark whether theme was loaded from storage
+            _themeFromStorage: hasStoredTheme,
             // Ensure critical properties are never undefined
-            projects:
-              (persistedState as Partial<AppState>).projects ||
-              currentState.projects,
-            isDarkMode:
-              (persistedState as Partial<AppState>).isDarkMode ??
-              currentState.isDarkMode,
+            projects: persistedStateTyped.projects || currentState.projects,
+            isDarkMode: hasStoredTheme
+              ? (persistedStateTyped.isDarkMode ?? currentState.isDarkMode)
+              : currentState.isDarkMode,
             activeView:
-              (persistedState as Partial<AppState>).activeView ||
-              currentState.activeView,
+              persistedStateTyped.activeView || currentState.activeView,
             // Ensure modal states are properly initialized
             isAddProjectModalOpen:
-              (persistedState as Partial<AppState>).isAddProjectModalOpen ??
+              persistedStateTyped.isAddProjectModalOpen ??
               currentState.isAddProjectModalOpen,
             isAddCollectionModalOpen:
-              (persistedState as Partial<AppState>).isAddCollectionModalOpen ??
+              persistedStateTyped.isAddCollectionModalOpen ??
               currentState.isAddCollectionModalOpen,
             isAddLinkModalOpen:
-              (persistedState as Partial<AppState>).isAddLinkModalOpen ??
+              persistedStateTyped.isAddLinkModalOpen ??
               currentState.isAddLinkModalOpen,
             isEditLinkModalOpen:
-              (persistedState as Partial<AppState>).isEditLinkModalOpen ??
+              persistedStateTyped.isEditLinkModalOpen ??
               currentState.isEditLinkModalOpen,
             // Ensure sidebar state is properly initialized
             isSidebarOpen:
-              (persistedState as Partial<AppState>).isSidebarOpen ??
-              currentState.isSidebarOpen,
+              persistedStateTyped.isSidebarOpen ?? currentState.isSidebarOpen,
             isSidebarLoaded:
-              (persistedState as Partial<AppState>).isSidebarLoaded ??
+              persistedStateTyped.isSidebarLoaded ??
               currentState.isSidebarLoaded,
           };
 
           return mergedState;
         } catch (error) {
           console.error('Error merging state:', error);
-          return currentState;
+          return {
+            ...currentState,
+            _themeFromStorage: false,
+          };
         }
       },
     }
