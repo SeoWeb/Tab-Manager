@@ -86,6 +86,12 @@ export const useAppStore = create<AppState>()(
             tabManagerRootFolderId:
               state.tabManagerRootFolderId ??
               initialState.tabManagerRootFolderId,
+            // Persist right panel state
+            isRightContentPanelOpen:
+              state.isRightContentPanelOpen ??
+              initialState.isRightContentPanelOpen,
+            activeVerticalTabId:
+              state.activeVerticalTabId ?? initialState.activeVerticalTabId,
           };
         } catch (error) {
           console.error('Error during state partialize:', error);

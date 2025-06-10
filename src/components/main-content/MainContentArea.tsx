@@ -119,7 +119,7 @@ const MainContentArea: React.FC = () => {
   }
 
   return (
-    <div className='flex-1 flex flex-col bg-white dark:bg-gray-900'>
+    <div className='flex-1 flex flex-col bg-white dark:bg-gray-900 h-full w-full'>
       <ProjectHeader
         project={activeProject}
         onSearch={handleSearch}

@@ -62,4 +62,9 @@ export interface ChromeWindowInfo {
   type?: string;
 }
 
-export type VerticalTabId = 'openTabs' | 'bookmarks' | 'notes' | 'todos';
+export type VerticalTabId =
+  | 'openTabs'
+  | 'bookmarks'
+  | 'notes'
+  | 'todos'
+  | 'sessions';

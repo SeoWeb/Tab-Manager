@@ -20,6 +20,11 @@ import AddCollectionModal from './modals/AddCollectionModal';
 import AddLinkModal from './modals/AddLinkModal';
 import EditLinkModal from './modals/EditLinkModal';
 import { cn } from '@/lib/utils';
+import { useChromeTabsMonitoring } from '@/hooks/useChromeTabsMonitoring';
+import {
+  startAutoSaveMonitoring,
+  checkForSessionRestore,
+} from '@/lib/tabSessionService';
 
 export default function AppClient() {
   const isDarkMode = useIsDarkMode();
@@ -27,6 +32,9 @@ export default function AppClient() {
   const projects = useProjects();
   const _hasHydrated = useHasHydrated();
   const setActiveProject = useSetActiveProject();
+
+  // Initialize Chrome tabs monitoring
+  useChromeTabsMonitoring();
 
   const isRightContentPanelOpen = useAppStoreWithDefaults(
     (state) => state.isRightContentPanelOpen,
@@ -82,6 +90,33 @@ export default function AppClient() {
     }
   }, [projects, activeProjectId, setActiveProject]);
 
+  // Initialize tab session monitoring and restore
+  useEffect(() => {
+    if (!_hasHydrated) return;
+
+    let cleanup: (() => void) | null = null;
+
+    const initTabSessions = async () => {
+      try {
+        // Check for session restore on startup
+        await checkForSessionRestore();
+
+        // Start auto-save monitoring
+        cleanup = startAutoSaveMonitoring();
+      } catch (error) {
+        console.error('Error initializing tab sessions:', error);
+      }
+    };
+
+    initTabSessions();
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, [_hasHydrated]);
+
   return (
     <>
       <GlobalDragDropProvider>
@@ -89,23 +124,20 @@ export default function AppClient() {
           <LeftSidebar />
           <div
             className={cn(
-              'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out w-full'
+              'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out mr-0'
             )}
           >
             <main className='flex-1 w-full'>
               <MainContentArea />
             </main>
           </div>
+          {isRightContentPanelOpen && (
+            <div className='h-full z-20'>
+              <RightContentPanel />
+            </div>
+          )}
           <div className='h-full z-30'>
             <VerticalRightTabsBar />
-          </div>
-          <div
-            className={cn(
-              'fixed top-0 right-12 h-full z-20 transition-transform duration-300 ease-in-out',
-              isRightContentPanelOpen ? 'translate-x-0' : 'translate-x-full'
-            )}
-          >
-            <RightContentPanel />
           </div>
         </div>
       </GlobalDragDropProvider>
