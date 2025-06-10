@@ -10,6 +10,7 @@ import { createDragDropActions } from './actions/dragDropActions';
 import { createUIActions } from './actions/uiActions';
 import { createSidebarActions } from './actions/sidebarActions';
 import { createNoteActions } from './actions/noteActions';
+import { createTaskActions, initializeTaskState } from './actions/taskActions';
 
 // Create initial state as a constant to ensure consistency
 const initialState = {
@@ -33,6 +34,8 @@ const initialState = {
   quickLinks: [],
   notes: [],
   todos: [],
+  // Enhanced task management state
+  ...initializeTaskState(),
   isAddProjectModalOpen: false,
   isAddCollectionModalOpen: false,
   isAddLinkModalOpen: false,
@@ -66,10 +69,29 @@ export const useAppStore = create<AppState>()(
       ...createDragDropActions(set),
       ...createSidebarActions(set, get),
       ...createNoteActions(set),
+      ...createTaskActions(set, get),
     }),
     {
       name: 'tab-manager-storage',
-      storage: createJSONStorage(() => chromeStorageApi),
+      storage: createJSONStorage(() => chromeStorageApi, {
+        reviver: (key, value) => {
+          if (
+            (key === 'startTime' ||
+              key === 'endTime' ||
+              key === 'dueDate' ||
+              key === 'createdAt' ||
+              key === 'updatedAt' ||
+              key === 'completedAt') &&
+            typeof value === 'string'
+          ) {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              return date;
+            }
+          }
+          return value;
+        },
+      }),
       partialize: (state) => {
         // Add safety check to prevent errors during hydration
         if (!state || typeof state !== 'object') {
@@ -91,6 +113,19 @@ export const useAppStore = create<AppState>()(
               ? state.notes
               : initialState.notes,
             todos: state.todos || initialState.todos,
+            // Enhanced task management persistence
+            tasks: Array.isArray(state.tasks) ? state.tasks : [],
+            taskTemplates: Array.isArray(state.taskTemplates)
+              ? state.taskTemplates
+              : [],
+            taskViewSettings:
+              state.taskViewSettings || initializeTaskState().taskViewSettings,
+            taskStats: state.taskStats || initializeTaskState().taskStats,
+            pomodoroSessions: Array.isArray(state.pomodoroSessions)
+              ? state.pomodoroSessions
+              : [],
+            activeTaskId: state.activeTaskId ?? null,
+            activePomodoroSession: state.activePomodoroSession ?? null,
             activeView: state.activeView || initialState.activeView,
             tabManagerRootFolderId:
               state.tabManagerRootFolderId ??
@@ -186,6 +221,27 @@ export const useAppStore = create<AppState>()(
             notes: Array.isArray(persistedStateTyped.notes)
               ? persistedStateTyped.notes
               : currentState.notes,
+            // Enhanced task management state merging
+            tasks: Array.isArray(persistedStateTyped.tasks)
+              ? persistedStateTyped.tasks
+              : currentState.tasks,
+            taskTemplates: Array.isArray(persistedStateTyped.taskTemplates)
+              ? persistedStateTyped.taskTemplates
+              : currentState.taskTemplates,
+            taskViewSettings:
+              persistedStateTyped.taskViewSettings ||
+              currentState.taskViewSettings,
+            taskStats: persistedStateTyped.taskStats || currentState.taskStats,
+            pomodoroSessions: Array.isArray(
+              persistedStateTyped.pomodoroSessions
+            )
+              ? persistedStateTyped.pomodoroSessions
+              : currentState.pomodoroSessions,
+            activeTaskId:
+              persistedStateTyped.activeTaskId ?? currentState.activeTaskId,
+            activePomodoroSession:
+              persistedStateTyped.activePomodoroSession ??
+              currentState.activePomodoroSession,
           };
 
           return mergedState;

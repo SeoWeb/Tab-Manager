@@ -7,9 +7,18 @@ import type {
   ChromeTabInfo,
   VerticalTabId,
 } from '@/types';
+import type {
+  AdvancedTask,
+  TaskTemplate,
+  TaskViewSettings,
+  TaskStats,
+  PomodoroSession,
+  TaskBulkOperation,
+  LegacyTask,
+} from '@/types/tasks';
 
 // Define ActiveViewType
-export type ActiveViewType = 'projectDetail' | 'settings';
+export type ActiveViewType = 'projectDetail' | 'settings' | 'tasks';
 
 export type SearchFilter = {
   projects: boolean;
@@ -53,7 +62,16 @@ export interface AppState {
   chromeWindows: ChromeWindowInfo[];
   quickLinks: QuickLink[];
   notes: Note[];
-  todos: { id: string; text: string; completed: boolean; category?: string }[];
+  // Legacy todos for backward compatibility
+  todos: LegacyTask[];
+  // Enhanced task management
+  tasks: AdvancedTask[];
+  taskTemplates: TaskTemplate[];
+  taskViewSettings: TaskViewSettings;
+  taskStats: TaskStats;
+  pomodoroSessions: PomodoroSession[];
+  activeTaskId: string | null;
+  activePomodoroSession: PomodoroSession | null;
 
   // Modal States
   isAddProjectModalOpen: boolean;
@@ -150,10 +168,109 @@ export interface AppState {
   togglePinNote: (id: string) => void;
   duplicateNote: (id: string) => void;
 
-  // Todos actions
+  // Legacy Todos actions (for backward compatibility)
   addTodo: (text: string, category?: string) => void;
   toggleTodo: (id: string) => void;
   removeTodo: (id: string) => void;
+
+  // Enhanced Task Management Actions
+  // Task CRUD
+  addTask: (
+    task: Omit<AdvancedTask, 'id' | 'createdAt' | 'updatedAt' | 'activities'>
+  ) => void;
+  updateTask: (id: string, updates: Partial<AdvancedTask>) => void;
+  deleteTask: (id: string) => void;
+  duplicateTask: (id: string) => void;
+  archiveTask: (id: string) => void;
+  unarchiveTask: (id: string) => void;
+
+  // Task Status & Progress
+  setTaskStatus: (id: string, status: AdvancedTask['status']) => void;
+  setTaskPriority: (id: string, priority: AdvancedTask['priority']) => void;
+  setTaskProgress: (id: string, progress: number) => void;
+  completeTask: (id: string) => void;
+
+  // Subtask Management
+  addSubtask: (
+    parentId: string,
+    subtask: Omit<
+      AdvancedTask,
+      'id' | 'createdAt' | 'updatedAt' | 'activities' | 'parentTaskId'
+    >
+  ) => void;
+  removeSubtask: (parentId: string, subtaskId: string) => void;
+  moveSubtask: (subtaskId: string, newParentId: string) => void;
+
+  // Task Organization
+  addTaskTag: (id: string, tag: string) => void;
+  removeTaskTag: (id: string, tag: string) => void;
+  setTaskCategory: (id: string, category: string) => void;
+  assignTaskToProject: (
+    id: string,
+    projectId: string,
+    collectionId?: string
+  ) => void;
+
+  // Task Templates
+  addTaskTemplate: (template: Omit<TaskTemplate, 'id' | 'createdAt'>) => void;
+  updateTaskTemplate: (id: string, updates: Partial<TaskTemplate>) => void;
+  deleteTaskTemplate: (id: string) => void;
+  createTaskFromTemplate: (
+    templateId: string,
+    overrides?: Partial<AdvancedTask>
+  ) => void;
+
+  // Task Views & Filtering
+  setTaskViewMode: (mode: TaskViewSettings['mode']) => void;
+  setTaskFilters: (filters: Partial<TaskViewSettings['filters']>) => void;
+  setTaskSort: (sort: TaskViewSettings['sortBy']) => void;
+  setTaskGroupBy: (groupBy: TaskViewSettings['groupBy']) => void;
+  toggleShowCompleted: () => void;
+  toggleShowArchived: () => void;
+  toggleCompactMode: () => void;
+
+  // Bulk Operations
+  performBulkOperation: (operation: TaskBulkOperation) => void;
+  selectTask: (id: string, selected: boolean) => void;
+  selectAllTasks: (selected: boolean) => void;
+  getSelectedTasks: () => string[];
+
+  // Time Management
+  startPomodoroSession: (taskId: string, duration?: number) => void;
+  pausePomodoroSession: () => void;
+  resumePomodoroSession: () => void;
+  completePomodoroSession: () => void;
+  cancelPomodoroSession: () => void;
+
+  // Task Analytics
+  refreshTaskStats: () => void;
+  getTasksByStatus: (status: AdvancedTask['status']) => AdvancedTask[];
+  getTasksByPriority: (priority: AdvancedTask['priority']) => AdvancedTask[];
+  getOverdueTasks: () => AdvancedTask[];
+  getTasksForProject: (projectId: string) => AdvancedTask[];
+
+  // Task Comments & Activities
+  addTaskComment: (taskId: string, content: string, author: string) => void;
+  updateTaskComment: (
+    taskId: string,
+    commentId: string,
+    content: string
+  ) => void;
+  deleteTaskComment: (taskId: string, commentId: string) => void;
+  addTaskActivity: (
+    taskId: string,
+    activity: Omit<AdvancedTask['activities'][0], 'id' | 'timestamp'>
+  ) => void;
+
+  // Task Search & Discovery
+  searchTasks: (query: string) => AdvancedTask[];
+  getRecentTasks: (limit?: number) => AdvancedTask[];
+  getFavoriteTasks: () => AdvancedTask[];
+  toggleTaskFavorite: (id: string) => void;
+
+  // Active Task Management
+  setActiveTask: (id: string | null) => void;
+  getActiveTask: () => AdvancedTask | null;
 
   // Modal actions
   openAddProjectModal: () => void;

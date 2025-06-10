@@ -5,7 +5,7 @@ import AddProjectButton from './AddProjectButton';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Settings as SettingsIcon, PanelLeft } from 'lucide-react';
+import { Settings as SettingsIcon, PanelLeft, CheckSquare } from 'lucide-react';
 import { useSetActiveView } from '@/hooks/useAppStoreWithDefaults';
 import { useSidebarState } from '@/hooks/useSidebarState';
 import { cn } from '@/lib/utils';
@@ -60,6 +60,19 @@ export default function LeftSidebar() {
         {/* Footer */}
         <div className={cn('flex flex-col gap-2', isCollapsed ? 'p-1' : 'p-4')}>
           <AddProjectButton />
+          <Button
+            variant='ghost'
+            className={`w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+              isCollapsed ? 'justify-center' : 'justify-start'
+            }`}
+            onClick={() => setActiveView('tasks')}
+            aria-label='Open tasks'
+          >
+            <CheckSquare
+              className={`h-5 w-5 ${isCollapsed ? 'mr-0' : 'mr-2'}`}
+            />
+            {!isCollapsed && <span>Tasks</span>}
+          </Button>
           <Button
             variant='ghost'
             className={`w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
