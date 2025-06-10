@@ -28,11 +28,6 @@ const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
       resource: task,
     }));
 
-  // Debug information
-  console.log('Total tasks:', tasks.length);
-  console.log('Tasks with due dates:', events.length);
-  console.log('Events for calendar:', events);
-
   return (
     <div className='h-full'>
       <Calendar

@@ -29,8 +29,12 @@ import TaskAnalyticsDashboard from '../right-panel/panels/TaskAnalyticsDashboard
 import TaskCalendarView from './TaskCalendarView';
 import ArchivedTasksView from './ArchivedTasksView';
 
-export default function TasksView() {
-  const [activeTab, setActiveTab] = useState('kanban');
+interface TasksViewProps {
+  initialTab?: string;
+}
+
+export default function TasksView({ initialTab = 'kanban' }: TasksViewProps) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<AdvancedTask | undefined>(
@@ -300,7 +304,10 @@ export default function TasksView() {
       <TaskDetailModal
         key={viewingTask?.id}
         isOpen={isDetailModalOpen}
-        onClose={() => setViewingTaskId(null)}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setViewingTaskId(null);
+        }}
         task={viewingTask}
         onEdit={handleEditTask}
         onView={handleViewTask}

@@ -10,9 +10,15 @@ import DragEnabledCollectionsList from './DragEnabledCollectionsList';
 import { Collection, Project } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TasksView from '../views/TasksView';
-import TaskCalendarView from '../views/TaskCalendarView';
 import NotesView from '../views/NotesView';
 import TodosView from '../views/TodosView';
+import {
+  FolderOpen,
+  CheckSquare,
+  Calendar,
+  FileText,
+  ListTodo,
+} from 'lucide-react';
 
 const MainContentArea: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -24,8 +30,6 @@ const MainContentArea: React.FC = () => {
     sortOption,
     setSearchQuery,
     toggleAllCollections,
-    tasks,
-    setActiveTask,
   } = useAppStore((state) => ({
     searchQuery: state.searchQuery,
     searchFilters: state.searchFilters,
@@ -143,12 +147,27 @@ const MainContentArea: React.FC = () => {
       />
       <div className='flex-1 p-6 overflow-y-auto scrollbar-modern'>
         <Tabs defaultValue='collections'>
-          <TabsList>
-            <TabsTrigger value='collections'>Collections</TabsTrigger>
-            <TabsTrigger value='tasks'>Tasks</TabsTrigger>
-            <TabsTrigger value='calendar'>Calendar</TabsTrigger>
-            <TabsTrigger value='notes'>Notes</TabsTrigger>
-            <TabsTrigger value='todos'>Todos</TabsTrigger>
+          <TabsList className='mb-6'>
+            <TabsTrigger value='collections' className='gap-2'>
+              <FolderOpen className='h-4 w-4' />
+              Collections
+            </TabsTrigger>
+            <TabsTrigger value='tasks' className='gap-2'>
+              <CheckSquare className='h-4 w-4' />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value='calendar' className='gap-2'>
+              <Calendar className='h-4 w-4' />
+              Calendar
+            </TabsTrigger>
+            <TabsTrigger value='notes' className='gap-2'>
+              <FileText className='h-4 w-4' />
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value='todos' className='gap-2'>
+              <ListTodo className='h-4 w-4' />
+              Todos
+            </TabsTrigger>
           </TabsList>
           <TabsContent value='collections'>
             {activeProject ? (
@@ -174,10 +193,7 @@ const MainContentArea: React.FC = () => {
             <TasksView />
           </TabsContent>
           <TabsContent value='calendar'>
-            <TaskCalendarView
-              tasks={tasks}
-              onViewTask={(task) => setActiveTask(task.id)}
-            />
+            <TasksView initialTab='calendar' />
           </TabsContent>
           <TabsContent value='notes'>
             <NotesView />
