@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { isValidUrl } from '@/lib/utils';
 import { Link } from '@/types';
 import LinkForm from './LinkForm';
+import { Trash2 } from 'lucide-react';
 
 export default function EditLinkModal() {
   const isEditLinkModalOpen = useAppStoreWithDefaults(
@@ -19,6 +20,10 @@ export default function EditLinkModal() {
   );
   const updateLink = useAppStoreWithDefaults(
     (state) => state.updateLink,
+    () => {}
+  );
+  const deleteLink = useAppStoreWithDefaults(
+    (state) => state.deleteLink,
     () => {}
   );
   const activeProjectId = useAppStoreWithDefaults(
@@ -94,6 +99,18 @@ export default function EditLinkModal() {
     }
   };
 
+  const handleDelete = () => {
+    if (
+      activeProjectId &&
+      editingCollectionId &&
+      editingLinkId &&
+      confirm('Are you sure you want to delete this link?')
+    ) {
+      deleteLink(activeProjectId, editingCollectionId, editingLinkId);
+      closeEditLinkModal();
+    }
+  };
+
   return (
     <ModalWrapper
       isOpen={isEditLinkModalOpen}
@@ -112,20 +129,31 @@ export default function EditLinkModal() {
         urlFieldId='editLinkUrl'
       />
 
-      <div className='flex justify-end gap-2'>
-        <Button variant='outline' onClick={closeEditLinkModal}>
-          Cancel
-        </Button>
+      <div className='flex justify-between'>
         <Button
-          onClick={handleSubmit}
-          disabled={
-            !linkUrl.trim() ||
-            !isValidUrl(linkUrl) ||
-            (linkName === originalLink?.title && linkUrl === originalLink?.url)
-          }
+          variant='destructive'
+          onClick={handleDelete}
+          className='flex items-center gap-2'
         >
-          Save Changes
+          <Trash2 className='h-4 w-4' />
+          Delete Link
         </Button>
+        <div className='flex gap-2'>
+          <Button variant='outline' onClick={closeEditLinkModal}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              !linkUrl.trim() ||
+              !isValidUrl(linkUrl) ||
+              (linkName === originalLink?.title &&
+                linkUrl === originalLink?.url)
+            }
+          >
+            Save Changes
+          </Button>
+        </div>
       </div>
     </ModalWrapper>
   );
