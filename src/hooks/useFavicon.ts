@@ -3,9 +3,7 @@ import { extractFavicon } from '@/lib/faviconService';
 import { getCachedFavicon, setCachedFavicon } from '@/lib/cacheService';
 
 export function useFavicon(url: string) {
-  const [favicon, setFavicon] = useState<string>(
-    'https://placehold.co/20x20.png'
-  );
+  const [favicon, setFavicon] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 

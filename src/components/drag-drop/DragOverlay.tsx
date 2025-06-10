@@ -23,6 +23,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
               <GripVertical className='h-4 w-4 text-muted-foreground' />
               <div className='flex items-center gap-2 flex-1 min-w-0'>
                 {link.favIconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={link.favIconUrl}
                     alt=''
@@ -52,14 +53,16 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
       if (!collection) return null;
 
       return (
-        <Card className='w-96 shadow-lg border-2 border-primary/50 bg-background/95 backdrop-blur'>
+        <Card className='w-96 shadow-lg border-2 border-blue-500 bg-blue-50/95 backdrop-blur animate-pulse'>
           <CardContent className='p-4'>
             <div className='flex items-center gap-3'>
-              <GripVertical className='h-5 w-5 text-muted-foreground' />
+              <GripVertical className='h-5 w-5 text-blue-600' />
               <div>
-                <h3 className='font-semibold'>{collection.name}</h3>
-                <p className='text-sm text-muted-foreground'>
-                  {collection.links.length} link
+                <h3 className='font-semibold text-blue-800'>
+                  📁 {collection.name}
+                </h3>
+                <p className='text-sm text-blue-600 font-medium'>
+                  DRAGGING COLLECTION • {collection.links.length} link
                   {collection.links.length !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -80,6 +83,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
               <GripVertical className='h-4 w-4 text-muted-foreground' />
               <div className='flex items-center gap-2 flex-1 min-w-0'>
                 {tab.favIconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={tab.favIconUrl}
                     alt=''
@@ -95,6 +99,44 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
                   <p className='text-sm font-medium truncate'>{tab.title}</p>
                   <p className='text-xs text-muted-foreground truncate'>
                     {tab.url}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeItem.type === 'bookmark') {
+      const bookmark = activeItem.data?.bookmark;
+      if (!bookmark) return null;
+
+      return (
+        <Card className='w-80 shadow-lg border-2 border-primary/50 bg-background/95 backdrop-blur'>
+          <CardContent className='p-3'>
+            <div className='flex items-center gap-3'>
+              <GripVertical className='h-4 w-4 text-muted-foreground' />
+              <div className='flex items-center gap-2 flex-1 min-w-0'>
+                {bookmark.favIconUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={bookmark.favIconUrl}
+                    alt=''
+                    className='w-4 h-4 flex-shrink-0 rounded'
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <ExternalLink className='h-4 w-4 text-muted-foreground flex-shrink-0' />
+                )}
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium truncate'>
+                    {bookmark.title}
+                  </p>
+                  <p className='text-xs text-muted-foreground truncate'>
+                    {bookmark.url}
                   </p>
                 </div>
               </div>

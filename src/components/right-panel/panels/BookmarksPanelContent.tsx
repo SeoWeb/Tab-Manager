@@ -2,24 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import { bookmarkService } from '@/lib/bookmarkService';
-import { Bookmark, Folder, ChevronRight, ChevronDown } from 'lucide-react';
-import { extractFavicon } from '@/lib/faviconService';
+import {
+  Bookmark,
+  Folder,
+  ChevronRight,
+  ChevronDown,
+  GripVertical,
+} from 'lucide-react';
 import Image from 'next/image';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { useAppStore } from '@/stores/appStore';
 
 interface FaviconProps {
   url: string;
 }
 
 const Favicon: React.FC<FaviconProps> = ({ url }) => {
-  const [faviconUrl, setFaviconUrl] = useState('/default-favicon.png');
+  const [faviconUrl, setFaviconUrl] = useState('');
 
   useEffect(() => {
-    const fetchFavicon = async () => {
-      const iconUrl = await extractFavicon(url);
-      setFaviconUrl(iconUrl);
+    const getFaviconUrl = () => {
+      try {
+        const domain = new URL(url).hostname;
+        // Use Google's favicon service as a reliable fallback
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+      } catch {
+        // If URL parsing fails, return a default icon
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik04IDRhNCA0IDAgMCAxIDQgNCA0IDQgMCAwIDEtNCA0IDQgNCAwIDAgMS00LTQgNCA0IDAgMCAxIDQtNHoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+';
+      }
     };
 
-    fetchFavicon();
+    setFaviconUrl(getFaviconUrl());
   }, [url]);
 
   return (
@@ -29,6 +43,12 @@ const Favicon: React.FC<FaviconProps> = ({ url }) => {
       width={16}
       height={16}
       className='rounded shrink-0'
+      onError={() => {
+        // Fallback to a simple default icon if Google's service fails
+        setFaviconUrl(
+          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik04IDRhNCA0IDAgMCAxIDQgNCA0IDQgMCAwIDEtNCA0IDQgNCAwIDAgMS00LTQgNCA0IDAgMCAxIDQtNHoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+'
+        );
+      }}
     />
   );
 };
@@ -39,22 +59,91 @@ interface BookmarkNodeProps {
 }
 
 const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
-  const [isOpen, setIsOpen] = useState(level === 0);
+  const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(node.title);
+  const [children, setChildren] = useState<chrome.bookmarks.BookmarkTreeNode[]>(
+    node.children || []
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const activeProjectId = useAppStore((state) => state.activeProjectId);
+
+  // Set up draggable for bookmark items (not folders)
+  const getFaviconUrl = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `bookmark-${node.id}`,
+      data: {
+        type: 'bookmark',
+        bookmark: {
+          id: node.id,
+          title: node.title,
+          url: node.url || '',
+          favIconUrl: node.url ? getFaviconUrl(node.url) : undefined,
+        },
+        projectId: activeProjectId,
+      },
+      disabled: !node.url || !activeProjectId, // Only enable for bookmarks (not folders) and when a project is active
+    });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+  };
 
   const handleSave = async () => {
     await bookmarkService.updateBookmark(node.id, { title });
     setIsEditing(false);
   };
 
+  const handleToggleOpen = async () => {
+    if (!isOpen && !node.url && children.length === 0) {
+      // If opening a folder and we haven't loaded children yet, fetch them
+      setIsLoading(true);
+      try {
+        const folderChildren = await bookmarkService.getChildren(node.id);
+        setChildren(folderChildren);
+      } catch (error) {
+        console.error('Error loading folder children:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    setIsOpen(!isOpen);
+  };
+
   if (node.url) {
     // It's a bookmark
     return (
       <div
-        className='flex items-center gap-2 p-1.5 hover:bg-secondary/50 rounded-md text-xs'
-        style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
+        ref={setNodeRef}
+        className={`flex items-center gap-2 p-1.5 hover:bg-secondary/50 rounded-md text-xs group cursor-pointer ${
+          isDragging ? 'opacity-50' : ''
+        }`}
+        style={{
+          paddingLeft: `${level * 1.5 + 0.5}rem`,
+          ...style,
+        }}
       >
+        {/* Drag handle - only show when project is active */}
+        {activeProjectId && (
+          <div
+            {...listeners}
+            {...attributes}
+            className='cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity'
+            title='Drag to collection'
+          >
+            <GripVertical className='h-3 w-3 text-muted-foreground' />
+          </div>
+        )}
+
         <Favicon url={node.url} />
         {isEditing ? (
           <input
@@ -68,15 +157,31 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
             href={node.url}
             target='_blank'
             rel='noopener noreferrer'
-            className='truncate'
+            className='truncate flex-grow'
+            onClick={(e) => {
+              // Don't navigate if dragging
+              if (isDragging) {
+                e.preventDefault();
+              }
+            }}
           >
             {node.title}
           </a>
         )}
         {isEditing ? (
-          <button onClick={handleSave}>Save</button>
+          <button
+            onClick={handleSave}
+            className='text-xs px-2 py-1 bg-primary text-primary-foreground rounded'
+          >
+            Save
+          </button>
         ) : (
-          <button onClick={() => setIsEditing(true)}>Edit</button>
+          <button
+            onClick={() => setIsEditing(true)}
+            className='text-xs px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-secondary rounded'
+          >
+            Edit
+          </button>
         )}
       </div>
     );
@@ -88,12 +193,12 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
       <div
         className='flex items-center gap-2 p-1.5 hover:bg-secondary/50 rounded-md text-xs cursor-pointer'
         style={{ paddingLeft: `${level * 1.5 + 0.5}rem` }}
+        onClick={handleToggleOpen}
       >
-        <div
-          onClick={() => setIsOpen(!isOpen)}
-          className='flex items-center gap-2'
-        >
-          {isOpen ? (
+        <div className='flex items-center gap-2'>
+          {isLoading ? (
+            <div className='h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent' />
+          ) : isOpen ? (
             <ChevronDown className='h-4 w-4' />
           ) : (
             <ChevronRight className='h-4 w-4' />
@@ -105,22 +210,35 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
             type='text'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
             className='flex-grow bg-transparent'
           />
         ) : (
-          <span className='font-semibold' onClick={() => setIsOpen(!isOpen)}>
-            {node.title}
-          </span>
+          <span className='font-semibold'>{node.title}</span>
         )}
         {isEditing ? (
-          <button onClick={handleSave}>Save</button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSave();
+            }}
+          >
+            Save
+          </button>
         ) : (
-          <button onClick={() => setIsEditing(true)}>Edit</button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+          >
+            Edit
+          </button>
         )}
       </div>
-      {isOpen && node.children && (
+      {isOpen && children.length > 0 && (
         <div>
-          {node.children.map((child) => (
+          {children.map((child) => (
             <BookmarkNode key={child.id} node={child} level={level + 1} />
           ))}
         </div>

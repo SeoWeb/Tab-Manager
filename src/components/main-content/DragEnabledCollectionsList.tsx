@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import Image from 'next/image';
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -38,9 +39,11 @@ export function DragEnabledCollectionsList({
   if (project.collections.length === 0) {
     return (
       <div className='text-center py-10'>
-        <img
+        <Image
           src='https://placehold.co/200x150.png?text=No+Collections'
           alt='No collections'
+          width={200}
+          height={150}
           className='mx-auto mb-4 rounded-md'
           data-ai-hint='empty state illustration'
         />

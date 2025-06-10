@@ -27,17 +27,17 @@ export default function VerticalRightTabsBar() {
   };
 
   return (
-    <div className='flex flex-col h-full w-12 bg-background/50 border-l border-border shrink-0 py-4 items-center space-y-2 shadow-lg'>
+    <div className='flex flex-col h-full bg-card border-l border-border shrink-0 p-2 items-center gap-0 shadow-lg'>
       {TABS.map((tab) => (
         <Button
           key={tab.id}
           variant='ghost'
-          size='icon'
+          size='custom'
           className={cn(
-            'w-10 h-16 flex flex-col items-center justify-center p-1 rounded-lg transition-colors duration-200',
+            'flex flex-col items-center justify-center p-3 rounded-md transition-colors duration-200',
             activeVerticalTabId === tab.id && isRightContentPanelOpen
-              ? 'bg-primary/20 text-primary-foreground hover:bg-primary/30'
-              : 'text-muted-foreground hover:bg-accent/70'
+              ? 'bg-primary/10 text-primary'
+              : 'text-muted-foreground hover:bg-accent'
           )}
           onClick={() => handleTabClick(tab.id)}
           title={tab.label}
@@ -48,7 +48,7 @@ export default function VerticalRightTabsBar() {
         >
           <tab.icon className='h-5 w-5 mb-1' />
           <span
-            className='text-[11px] font-medium leading-tight tracking-wider'
+            className='text-[12px] font-medium leading-tight'
             style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}
           >
             {tab.label}

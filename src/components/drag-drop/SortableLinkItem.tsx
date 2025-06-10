@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useDndContext } from '@dnd-kit/core';
 import LinkItem from '@/components/main-content/LinkItem';
 import type { Link } from '@/types';
 
@@ -15,6 +16,13 @@ export function SortableLinkItem({
   projectId,
   collectionId,
 }: SortableLinkItemProps) {
+  const { active } = useDndContext();
+
+  // Check if we're dragging an external item (tab/bookmark)
+  const isDraggingExternalItem =
+    active?.data?.current?.type === 'tab' ||
+    active?.data?.current?.type === 'bookmark';
+
   const {
     attributes,
     listeners,
@@ -30,6 +38,7 @@ export function SortableLinkItem({
       collectionId,
       link,
     },
+    disabled: isDraggingExternalItem, // Disable sortable when dragging external items
   });
 
   const style = {
@@ -38,15 +47,26 @@ export function SortableLinkItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // When dragging external items, render without sortable functionality
+  if (isDraggingExternalItem) {
+    return (
+      <div style={{ opacity: 0.75 }}>
+        <LinkItem
+          link={link}
+          projectId={projectId}
+          collectionId={collectionId}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`cursor-grab active:cursor-grabbing ${
-        isDragging ? 'z-50' : ''
-      }`}
+      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'z-50' : ''}`}
     >
       <LinkItem link={link} projectId={projectId} collectionId={collectionId} />
     </div>

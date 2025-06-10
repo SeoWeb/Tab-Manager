@@ -16,10 +16,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
+import { extractFavicon } from '../lib/faviconService';
 
 export interface DragItem {
   id: string;
-  type: 'link' | 'collection' | 'tab';
+  type: 'link' | 'collection' | 'tab' | 'bookmark';
   data: {
     projectId: string;
     collectionId?: string;
@@ -45,6 +46,12 @@ export interface DragItem {
       url: string;
       favIconUrl?: string;
       windowId: number;
+    };
+    bookmark?: {
+      id: string;
+      title: string;
+      url: string;
+      favIconUrl?: string;
     };
     [key: string]: unknown;
   };
@@ -101,7 +108,7 @@ export function useDragAndDrop() {
   }, []);
 
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       const { active, over } = event;
 
       if (!over || !activeItem) {
@@ -147,7 +154,7 @@ export function useDragAndDrop() {
           // Adding Chrome tab to collection
           const tab = activeItem.data.tab;
           const projectId = overData.projectId;
-          const collectionId = overData.collection?.id;
+          const collectionId = overData.collectionId || overData.collection?.id;
 
           if (tab && projectId && collectionId) {
             // Check if URL already exists in the collection
@@ -158,10 +165,42 @@ export function useDragAndDrop() {
               ) || false;
 
             if (!urlExists) {
+              const favIconUrl = tab.favIconUrl
+                ? tab.favIconUrl
+                : await extractFavicon(tab.url);
+
               addLink(projectId, collectionId, {
                 title: tab.title,
                 url: tab.url,
-                favIconUrl: tab.favIconUrl,
+                favIconUrl: favIconUrl,
+              });
+            }
+          }
+        }
+      } else if (activeItem.type === 'bookmark') {
+        if (overData?.type === 'collection') {
+          // Adding bookmark to collection
+          const bookmark = activeItem.data.bookmark;
+          const projectId = overData.projectId;
+          const collectionId = overData.collectionId || overData.collection?.id;
+
+          if (bookmark && projectId && collectionId) {
+            // Check if URL already exists in the collection
+            const collection = overData.collection;
+            const urlExists =
+              collection?.links?.some(
+                (link: { url: string }) => link.url === bookmark.url
+              ) || false;
+
+            if (!urlExists) {
+              const favIconUrl = bookmark.favIconUrl
+                ? bookmark.favIconUrl
+                : await extractFavicon(bookmark.url);
+
+              addLink(projectId, collectionId, {
+                title: bookmark.title,
+                url: bookmark.url,
+                favIconUrl: favIconUrl,
               });
             }
           }

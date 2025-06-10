@@ -53,7 +53,7 @@ export function DroppableCollectionForTabs({
         isTabBeingDragged &&
           isOver &&
           urlExists &&
-          'ring-2 ring-red-500 ring-offset-2 bg-red-50',
+          'ring-2 ring-red-500 ring-offset-2 bg-red-500/20',
         isTabBeingDragged && !isOver && 'opacity-75'
       )}
     >

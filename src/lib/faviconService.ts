@@ -1,4 +1,5 @@
-import { showErrorToast } from './toast';
+const PLACEHOLDER_FAVICON =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEklEQVR42mNkIAAYIeACwB4AACQ6A/0I6a9hAAAAAElFTkSuQmCC';
 
 /**
  * Extracts the best possible favicon URL from a given webpage URL.
@@ -11,12 +12,10 @@ import { showErrorToast } from './toast';
  * @returns A promise that resolves to the URL of the best favicon, or a default placeholder if none is found.
  */
 export async function extractFavicon(pageUrl: string): Promise<string> {
-  const defaultFavicon = `https://www.google.com/s2/favicons?domain=${new URL(pageUrl).hostname}&sz=32`;
-
   try {
-    const response = await fetch(pageUrl);
+    const response = await fetch(pageUrl, { mode: 'no-cors' });
     if (!response.ok) {
-      return defaultFavicon;
+      return PLACEHOLDER_FAVICON;
     }
     const html = await response.text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -35,7 +34,7 @@ export async function extractFavicon(pageUrl: string): Promise<string> {
       } catch {
         // Ignore error and return default
       }
-      return defaultFavicon;
+      return PLACEHOLDER_FAVICON;
     }
 
     // Prioritize certain 'rel' values
@@ -66,7 +65,6 @@ export async function extractFavicon(pageUrl: string): Promise<string> {
     return new URL(bestIcon.href, pageUrl).href;
   } catch (error) {
     console.error(`Failed to extract favicon for ${pageUrl}:`, error);
-    showErrorToast(`Failed to extract favicon for ${pageUrl}`);
-    return defaultFavicon;
+    return PLACEHOLDER_FAVICON;
   }
 }
