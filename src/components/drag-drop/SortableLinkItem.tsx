@@ -61,14 +61,14 @@ export function SortableLinkItem({
   }
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`cursor-grab active:cursor-grabbing ${isDragging ? 'z-50' : ''}`}
-    >
-      <LinkItem link={link} projectId={projectId} collectionId={collectionId} />
+    <div ref={setNodeRef} style={style} className={isDragging ? 'z-50' : ''}>
+      <LinkItem
+        link={link}
+        projectId={projectId}
+        collectionId={collectionId}
+        showDragHandle={true}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </div>
   );
 }

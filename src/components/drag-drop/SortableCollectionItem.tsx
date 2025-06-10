@@ -43,16 +43,12 @@ export function SortableCollectionItem({
       className={`${isDragging ? 'z-50' : ''}`}
     >
       <DroppableCollectionForTabs collection={collection} projectId={projectId}>
-        <div
-          {...attributes}
-          {...listeners}
-          className='cursor-grab active:cursor-grabbing'
-        >
-          <DragEnabledCollection
-            collection={collection}
-            projectId={projectId}
-          />
-        </div>
+        <DragEnabledCollection
+          collection={collection}
+          projectId={projectId}
+          showDragHandle={true}
+          dragHandleProps={{ ...attributes, ...listeners }}
+        />
       </DroppableCollectionForTabs>
     </div>
   );

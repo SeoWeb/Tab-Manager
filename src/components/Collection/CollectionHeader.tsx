@@ -16,9 +16,12 @@ import {
   ArrowUp,
   ArrowDown,
   ExternalLink,
+  GripVertical,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { highlightText } from '@/lib/highlight';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 
 interface CollectionHeaderProps {
   collection: CollectionType;
@@ -26,6 +29,10 @@ interface CollectionHeaderProps {
   isExpanded: boolean;
   onToggleExpanded: () => void;
   onEditModalOpen: () => void;
+  showDragHandle?: boolean;
+  dragHandleProps?: DraggableAttributes & {
+    listeners?: SyntheticListenerMap;
+  };
 }
 
 const CollectionHeader: React.FC<CollectionHeaderProps> = ({
@@ -34,6 +41,8 @@ const CollectionHeader: React.FC<CollectionHeaderProps> = ({
   isExpanded,
   onToggleExpanded,
   onEditModalOpen,
+  showDragHandle = false,
+  dragHandleProps,
 }) => {
   const { id: collectionId, name } = collection;
   const moveCollection = useAppStore((state) => state.moveCollection);
@@ -44,6 +53,16 @@ const CollectionHeader: React.FC<CollectionHeaderProps> = ({
 
   return (
     <div className='flex items-center p-3'>
+      {/* Drag handle */}
+      {showDragHandle && (
+        <div
+          {...dragHandleProps}
+          className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded mr-1'
+          title='Drag to reorder collection'
+        >
+          <GripVertical className='h-4 w-4 text-muted-foreground' />
+        </div>
+      )}
       <Button
         variant='ghost'
         size='icon'

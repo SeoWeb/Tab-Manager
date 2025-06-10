@@ -3,23 +3,31 @@
 import type { Link } from '@/types';
 import { useAppStore } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
-import { Trash2, ExternalLink, Edit3 } from 'lucide-react';
+import { Trash2, ExternalLink, Edit3, GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import { useFavicon } from '@/hooks/useFavicon';
 import { Skeleton } from '@/components/ui/skeleton';
 import { highlightText } from '@/lib/highlight';
 import { useDndContext } from '@dnd-kit/core';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 
 interface LinkItemProps {
   link: Link;
   projectId: string;
   collectionId: string;
+  showDragHandle?: boolean;
+  dragHandleProps?: DraggableAttributes & {
+    listeners?: SyntheticListenerMap;
+  };
 }
 
 export default function LinkItem({
   link,
   projectId,
   collectionId,
+  showDragHandle = false,
+  dragHandleProps,
 }: LinkItemProps) {
   const { active } = useDndContext();
   const { deleteLink, openEditLinkModal, searchQuery } = useAppStore(
@@ -42,6 +50,16 @@ export default function LinkItem({
         isDraggingExternalItem ? 'opacity-75' : 'hover:bg-secondary/50'
       }`}
     >
+      {/* Drag handle */}
+      {showDragHandle && (
+        <div
+          {...dragHandleProps}
+          className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded'
+          title='Drag to reorder'
+        >
+          <GripVertical className='h-4 w-4 text-muted-foreground' />
+        </div>
+      )}
       {loading ? (
         <Skeleton className='h-8 w-8 rounded' />
       ) : (

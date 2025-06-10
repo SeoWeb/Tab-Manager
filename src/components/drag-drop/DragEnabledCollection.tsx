@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown,
   ExternalLink,
+  GripVertical,
 } from 'lucide-react';
 import {
   SortableContext,
@@ -25,15 +26,23 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableLinkItem } from './SortableLinkItem';
 import EditCollectionModal from '../modals/EditCollectionModal';
 import { useAppStore } from '@/stores/appStore';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 
 interface DragEnabledCollectionProps {
   collection: CollectionType;
   projectId: string;
+  showDragHandle?: boolean;
+  dragHandleProps?: DraggableAttributes & {
+    listeners?: SyntheticListenerMap;
+  };
 }
 
 const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   collection,
   projectId,
+  showDragHandle = false,
+  dragHandleProps,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -78,6 +87,16 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
       }`}
     >
       <div className='flex items-center p-3'>
+        {/* Drag handle */}
+        {showDragHandle && (
+          <div
+            {...dragHandleProps}
+            className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded mr-1'
+            title='Drag to reorder collection'
+          >
+            <GripVertical className='h-4 w-4 text-muted-foreground' />
+          </div>
+        )}
         <Button
           variant='ghost'
           size='icon'

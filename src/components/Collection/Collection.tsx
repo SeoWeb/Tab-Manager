@@ -4,13 +4,24 @@ import { useHotkeys } from '@/hooks/useHotkeys';
 import CollectionHeader from './CollectionHeader';
 import CollectionContent from './CollectionContent';
 import EditCollectionModal from '../modals/EditCollectionModal';
+import type { DraggableAttributes } from '@dnd-kit/core';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 
 interface CollectionProps {
   collection: CollectionType;
   projectId: string;
+  showDragHandle?: boolean;
+  dragHandleProps?: DraggableAttributes & {
+    listeners?: SyntheticListenerMap;
+  };
 }
 
-const Collection: React.FC<CollectionProps> = ({ collection, projectId }) => {
+const Collection: React.FC<CollectionProps> = ({
+  collection,
+  projectId,
+  showDragHandle = false,
+  dragHandleProps,
+}) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -36,6 +47,8 @@ const Collection: React.FC<CollectionProps> = ({ collection, projectId }) => {
         isExpanded={isExpanded}
         onToggleExpanded={() => setIsExpanded(!isExpanded)}
         onEditModalOpen={() => setIsEditModalOpen(true)}
+        showDragHandle={showDragHandle}
+        dragHandleProps={dragHandleProps}
       />
 
       {isExpanded && (

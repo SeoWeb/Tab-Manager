@@ -66,10 +66,10 @@ export function DraggableTab({
       <div
         {...listeners}
         {...attributes}
-        className='cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity'
+        className='cursor-grab active:cursor-grabbing opacity-60 group-hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded'
         title='Drag to collection'
       >
-        <GripVertical className='h-3 w-3 text-muted-foreground' />
+        <GripVertical className='h-4 w-4 text-muted-foreground' />
       </div>
 
       {/* Favicon */}
@@ -124,7 +124,7 @@ export function DraggableTab({
 export function TabDragOverlay({ tab }: { tab: ChromeTabInfo }) {
   return (
     <div className='flex items-center gap-2 p-1.5 bg-background rounded-md border border-primary shadow-lg text-xs max-w-xs'>
-      <GripVertical className='h-3 w-3 text-muted-foreground' />
+      <GripVertical className='h-4 w-4 text-muted-foreground' />
       <Image
         src={tab.favIconUrl || getFaviconUrl(tab.url)}
         alt='favicon'
