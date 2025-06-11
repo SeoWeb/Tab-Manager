@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { Note } from '@/stores/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Note } from '@/stores/types';
 
 const NOTE_COLORS = [
   { name: 'Default', value: '#ffffff', class: 'bg-white' },

@@ -392,6 +392,8 @@ export function useDragAndDrop() {
                 title: tab.title,
                 url: tab.url,
                 favIconUrl: favIconUrl,
+                tags: [],
+                notes: '',
               });
             }
           }
@@ -420,6 +422,8 @@ export function useDragAndDrop() {
                 title: bookmark.title,
                 url: bookmark.url,
                 favIconUrl: favIconUrl,
+                tags: [],
+                notes: '',
               });
             }
           }

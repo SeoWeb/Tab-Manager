@@ -152,35 +152,41 @@ export const useAppStore = create<AppState>()(
         }
 
         // For Chrome extensions, execute immediately for faster loading
-        try {
-          const store = useAppStore.getState();
-          if (store && typeof store === 'object' && store.setHasHydrated) {
-            store.setHasHydrated(true);
-          } else {
-            console.warn(
-              'Store or setHasHydrated method not available during hydration'
-            );
-          }
-
-          // Apply theme immediately for faster visual feedback
-          if (state?.isDarkMode === true) {
-            document.documentElement.classList.add('dark');
-          } else if (state?.isDarkMode === false) {
-            document.documentElement.classList.remove('dark');
-          }
-        } catch (error) {
-          console.warn('Error during hydration callback:', error);
-          // Fallback: use requestAnimationFrame if immediate execution fails
-          requestAnimationFrame(() => {
-            try {
-              const store = useAppStore.getState();
-              if (store && typeof store === 'object' && store.setHasHydrated) {
-                store.setHasHydrated(true);
-              }
-            } catch (fallbackError) {
-              console.warn('Fallback hydration also failed:', fallbackError);
+        if (typeof window !== 'undefined') {
+          try {
+            const store = useAppStore.getState();
+            if (store && typeof store === 'object' && store.setHasHydrated) {
+              store.setHasHydrated(true);
+            } else {
+              console.warn(
+                'Store or setHasHydrated method not available during hydration'
+              );
             }
-          });
+
+            // Apply theme immediately for faster visual feedback
+            if (state?.isDarkMode === true) {
+              document.documentElement.classList.add('dark');
+            } else if (state?.isDarkMode === false) {
+              document.documentElement.classList.remove('dark');
+            }
+          } catch (error) {
+            console.warn('Error during hydration callback:', error);
+            // Fallback: use requestAnimationFrame if immediate execution fails
+            requestAnimationFrame(() => {
+              try {
+                const store = useAppStore.getState();
+                if (
+                  store &&
+                  typeof store === 'object' &&
+                  store.setHasHydrated
+                ) {
+                  store.setHasHydrated(true);
+                }
+              } catch (fallbackError) {
+                console.warn('Fallback hydration also failed:', fallbackError);
+              }
+            });
+          }
         }
       },
       // Add merge function to handle state merging safely
