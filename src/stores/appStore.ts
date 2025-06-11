@@ -66,7 +66,7 @@ export const useAppStore = create<AppState>()(
       ...createProjectActions(set, get),
       ...createCollectionActions(set, get),
       ...createLinkActions(set, get),
-      ...createDragDropActions(set),
+      ...createDragDropActions(set, get),
       ...createSidebarActions(set, get),
       ...createNoteActions(set),
       ...createTaskActions(set, get),
@@ -285,7 +285,7 @@ export const useActiveProject = () => {
 export const useEditingCollection = () => {
   const activeProject = useActiveProject();
   const editingCollectionId = useSafeAppStore(
-    (state) => state.editingCollectionIdForLink,
+    (state) => state.editingCollectionId,
     null
   );
   if (!activeProject || !editingCollectionId) return null;
