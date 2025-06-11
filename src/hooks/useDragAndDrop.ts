@@ -182,44 +182,73 @@ export function useDragAndDrop() {
       } else if (activeItem.type === 'link') {
         if (collectionDropPlaceholder) setCollectionDropPlaceholder(null);
         // Link drag over logic...
-        if (overData?.type !== 'link') {
-          if (linkDropPlaceholder) setLinkDropPlaceholder(null);
-          return;
+        const { projectId, collectionId: sourceCollectionId } = activeItem.data;
+        let targetCollectionId: string | undefined;
+        let targetLinkId: string | undefined;
+        let position: number | undefined;
+
+        if (overData?.type === 'collection') {
+          targetCollectionId = overData.collectionId;
+        } else if (overData?.type === 'link') {
+          targetCollectionId = overData.collectionId;
+          targetLinkId = overId;
         }
 
-        const { projectId, collectionId } = activeItem.data;
-        const targetLinkId = overId;
-
-        if (!collectionId || activeId === targetLinkId) {
+        if (!targetCollectionId) {
           if (linkDropPlaceholder) setLinkDropPlaceholder(null);
           return;
         }
 
         const { projects } = useAppStore.getState();
         const project = projects.find((p) => p.id === projectId);
-        const collection = project?.collections.find(
-          (c) => c.id === collectionId
+        if (!project) return;
+
+        const sourceCollection = project.collections.find(
+          (c) => c.id === sourceCollectionId
         );
-        if (!collection) return;
-
-        const sortedLinks = [...collection.links].sort(
-          (a, b) => (a.order || 0) - (b.order || 0)
+        const targetCollection = project.collections.find(
+          (c) => c.id === targetCollectionId
         );
 
-        const activeIndex = sortedLinks.findIndex((l) => l.id === activeId);
-        const targetIndex = sortedLinks.findIndex((l) => l.id === targetLinkId);
+        if (!sourceCollection || !targetCollection) return;
 
-        if (activeIndex === -1 || targetIndex === -1) return;
+        // Prevent dropping if the URL already exists in the target collection
+        const activeLink = sourceCollection.links.find(
+          (l) => l.id === activeId
+        );
+        if (
+          activeLink &&
+          targetCollection.links.some((l) => l.url === activeLink.url)
+        ) {
+          if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+          return;
+        }
 
-        // For now, simple vertical logic. Horizontal logic can be added later.
-        const dropPosition =
-          activeIndex < targetIndex ? targetIndex + 1 : targetIndex;
+        if (targetLinkId) {
+          const sortedLinks = [...targetCollection.links].sort(
+            (a, b) => (a.order || 0) - (b.order || 0)
+          );
+          const targetIndex = sortedLinks.findIndex(
+            (l) => l.id === targetLinkId
+          );
+          if (targetIndex !== -1) {
+            position = targetIndex;
+          }
+        } else {
+          // If dropping on the collection but not on a specific link, drop at the end
+          position = targetCollection.links.length;
+        }
+
+        if (position === undefined) {
+          if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+          return;
+        }
 
         setLinkDropPlaceholder({
           projectId,
-          collectionId,
-          position: dropPosition,
-          targetLinkId,
+          collectionId: targetCollectionId,
+          position: position,
+          targetLinkId: targetLinkId || '',
         });
       }
     },
@@ -243,26 +272,53 @@ export function useDragAndDrop() {
 
       // Handle different drag scenarios
       if (activeItem.type === 'link') {
-        if (overData?.type === 'collection') {
-          // Moving link to different collection
-          const { projectId, collectionId: sourceCollectionId } =
-            activeItem.data;
-          const targetCollectionId = overData.collectionId;
+        const { projectId, collectionId: sourceCollectionId } = activeItem.data;
+        let targetCollectionId: string | undefined;
 
-          if (sourceCollectionId && sourceCollectionId !== targetCollectionId) {
+        if (overData?.type === 'collection') {
+          targetCollectionId = overData.collectionId;
+        } else if (overData?.type === 'link') {
+          targetCollectionId = overData.collectionId;
+        }
+
+        if (
+          sourceCollectionId &&
+          targetCollectionId &&
+          sourceCollectionId !== targetCollectionId
+        ) {
+          // Moving link to a different collection
+          const { projects } = useAppStore.getState();
+          const project = projects.find((p) => p.id === projectId);
+          const sourceCollection = project?.collections.find(
+            (c) => c.id === sourceCollectionId
+          );
+          const targetCollection = project?.collections.find(
+            (c) => c.id === targetCollectionId
+          );
+          const linkToMove = sourceCollection?.links.find(
+            (l) => l.id === activeId
+          );
+
+          if (
+            linkToMove &&
+            !targetCollection?.links.some((l) => l.url === linkToMove.url)
+          ) {
             moveLink(
               projectId,
               sourceCollectionId,
               activeId,
-              targetCollectionId
+              targetCollectionId,
+              linkDropPlaceholder?.position
             );
           }
-        } else if (overData?.type === 'link') {
-          // Reordering links within collection
-          const { projectId, collectionId } = activeItem.data;
-          if (collectionId) {
-            reorderLinks(projectId, collectionId, activeId, overId);
-          }
+        } else if (
+          sourceCollectionId &&
+          targetCollectionId &&
+          sourceCollectionId === targetCollectionId &&
+          activeId !== overId
+        ) {
+          // Reordering links within the same collection
+          reorderLinks(projectId, sourceCollectionId, activeId, overId);
         }
       } else if (activeItem.type === 'collection') {
         // Reordering collections
@@ -359,7 +415,14 @@ export function useDragAndDrop() {
       setCollectionDropPlaceholder(null);
       setLinkDropPlaceholder(null);
     },
-    [activeItem, moveLink, reorderCollections, reorderLinks, addLink]
+    [
+      activeItem,
+      moveLink,
+      reorderCollections,
+      reorderLinks,
+      addLink,
+      linkDropPlaceholder,
+    ]
   );
 
   return {

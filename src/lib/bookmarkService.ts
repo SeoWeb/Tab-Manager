@@ -228,6 +228,32 @@ export const bookmarkService = {
       return [];
     }
   },
+
+  /**
+   * Moves a bookmark to a new location in the bookmark tree.
+   * @param id The ID of the bookmark/folder to move.
+   * @param destination An object with { parentId?: string, index?: number }.
+   */
+  async moveBookmark(
+    id: string,
+    destination: { parentId?: string; index?: number }
+  ): Promise<chrome.bookmarks.BookmarkTreeNode> {
+    try {
+      if (!id) {
+        throw new Error('Bookmark ID is required for move.');
+      }
+      const movedNode = await chrome.bookmarks.move(id, destination);
+      return movedNode;
+    } catch (error) {
+      console.error(`Error moving bookmark ID "${id}":`, error);
+      if (error instanceof Error) {
+        showErrorToast(`Error moving bookmark: ${error.message}`);
+      } else {
+        showErrorToast('An unknown error occurred while moving the bookmark.');
+      }
+      throw error;
+    }
+  },
 };
 
 // Ensure chrome types are available. If not, this might indicate an issue with @types/chrome installation or tsconfig.

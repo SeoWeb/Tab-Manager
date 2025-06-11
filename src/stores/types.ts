@@ -312,7 +312,8 @@ export interface AppState {
     projectId: string,
     sourceCollectionId: string,
     linkId: string,
-    targetCollectionId: string
+    targetCollectionId: string,
+    position?: number
   ) => void;
   reorderLinks: (
     projectId: string,

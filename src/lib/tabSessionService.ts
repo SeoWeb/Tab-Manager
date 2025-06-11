@@ -264,7 +264,7 @@ export const restoreLastSession = async (): Promise<boolean> => {
  * Start auto-save monitoring
  */
 export const startAutoSaveMonitoring = (): (() => void) => {
-  if (!isExtensionContext()) {
+  if (!isExtensionContext() || typeof window === 'undefined') {
     return () => {};
   }
 

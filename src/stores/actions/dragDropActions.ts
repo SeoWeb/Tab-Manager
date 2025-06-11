@@ -1,13 +1,15 @@
 import type { Project, Collection, Link } from '@/types';
 import type { AppState } from '../types';
+import { bookmarkStorage } from '@/lib/bookmarkStorage';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createDragDropActions = (set: any) => ({
+export const createDragDropActions = (set: any, get: () => AppState) => ({
   moveLink: (
     projectId: string,
     sourceCollectionId: string,
     linkId: string,
-    targetCollectionId: string
+    targetCollectionId: string,
+    position?: number
   ) => {
     set((state: AppState) => {
       const project = state.projects.find((p: Project) => p.id === projectId);
@@ -36,6 +38,35 @@ export const createDragDropActions = (set: any) => ({
         return state;
       }
 
+      // --- Bookmark Logic ---
+      if (linkToMove.bookmarkId && targetCollection.bookmarkFolderId) {
+        (async () => {
+          try {
+            // Create a new bookmark in the target folder
+            const newBookmark = await bookmarkStorage.createLink(
+              linkToMove.title!,
+              linkToMove.url,
+              targetCollection.bookmarkFolderId!
+            );
+
+            // Delete the old bookmark
+            await bookmarkStorage.deleteLink(linkToMove.bookmarkId!);
+
+            // Update the link's bookmarkId in the state
+            get().updateLink(
+              projectId,
+              targetCollectionId,
+              linkId,
+              { bookmarkId: newBookmark.id },
+              true // isInternalCall
+            );
+          } catch (error) {
+            console.error('Failed to move bookmark:', error);
+          }
+        })();
+      }
+      // --- End Bookmark Logic ---
+
       const updatedProjects = state.projects.map((p: Project) => {
         if (p.id === projectId) {
           return {
@@ -49,14 +80,22 @@ export const createDragDropActions = (set: any) => ({
                   updatedAt: new Date(),
                 };
               } else if (c.id === targetCollectionId) {
-                // Add link to target collection
-                const newLink = {
-                  ...linkToMove,
-                  order: c.links.length, // Add to end
-                };
+                // Add link to target collection at the specified position
+                const newLinks = [...c.links];
+                const newLink = { ...linkToMove };
+                if (position !== undefined) {
+                  newLinks.splice(position, 0, newLink);
+                } else {
+                  newLinks.push(newLink);
+                }
+                // Update order for all links in the target collection
+                const reorderedLinks = newLinks.map((link, index) => ({
+                  ...link,
+                  order: index,
+                }));
                 return {
                   ...c,
-                  links: [...c.links, newLink],
+                  links: reorderedLinks,
                   updatedAt: new Date(),
                 };
               }
@@ -96,6 +135,22 @@ export const createDragDropActions = (set: any) => ({
 
       if (activeIndex === -1 || overIndex === -1) return state;
 
+      const movedLink = collection.links[activeIndex];
+
+      // --- Bookmark Logic ---
+      if (movedLink.bookmarkId && collection.bookmarkFolderId) {
+        (async () => {
+          try {
+            await bookmarkStorage.moveBookmark(movedLink.bookmarkId!, {
+              index: overIndex,
+            });
+          } catch (error) {
+            console.error('Failed to move bookmark:', error);
+          }
+        })();
+      }
+      // --- End Bookmark Logic ---
+
       const updatedProjects = state.projects.map((p: Project) => {
         if (p.id === projectId) {
           return {
@@ -103,8 +158,8 @@ export const createDragDropActions = (set: any) => ({
             collections: p.collections.map((c: Collection) => {
               if (c.id === collectionId) {
                 const newLinks = [...c.links];
-                const [movedLink] = newLinks.splice(activeIndex, 1);
-                newLinks.splice(overIndex, 0, movedLink);
+                const [splicedLink] = newLinks.splice(activeIndex, 1);
+                newLinks.splice(overIndex, 0, splicedLink);
 
                 // Update order values
                 const reorderedLinks = newLinks.map(

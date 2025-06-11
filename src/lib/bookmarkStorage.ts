@@ -191,4 +191,16 @@ export const bookmarkStorage = {
     const children = await bookmarkService.getChildren(collectionFolderId);
     return children.filter((node) => node.url); // Only bookmarks with URLs
   },
+
+  /**
+   * Moves a bookmark to a new location.
+   * @param linkId The ID of the link bookmark to move.
+   * @param destination The destination details { parentId, index }.
+   */
+  async moveBookmark(
+    linkId: string,
+    destination: { parentId?: string; index?: number }
+  ): Promise<chrome.bookmarks.BookmarkTreeNode> {
+    return await bookmarkService.moveBookmark(linkId, destination);
+  },
 };

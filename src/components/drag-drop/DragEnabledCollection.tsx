@@ -81,7 +81,9 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
           ? 'bg-primary/10 border-primary border-2 border-dashed ring-2 ring-primary/50'
           : isDraggingExternalItem && isOver && urlExists
             ? 'bg-red-500/20 border-red-500 border-2 border-dashed ring-2 ring-red-500/50'
-            : isOver
+            : isOver &&
+                (active?.data?.current?.type === 'link' ||
+                  active?.data?.current?.type === 'collection')
               ? 'bg-accent/20 border-accent border-2 border-dashed'
               : ''
       }`}
@@ -159,7 +161,9 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
 
       {isExpanded && (
         <div className='px-2 pb-2'>
-          {links.length === 0 ? (
+          {links.length === 0 &&
+          (!linkDropPlaceholder ||
+            linkDropPlaceholder.collectionId !== collectionId) ? (
             <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
               <p>No links in this collection yet.</p>
               <Button
@@ -174,7 +178,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
             </div>
           ) : (
             <SortableContext items={linkIds} strategy={rectSortingStrategy}>
-              <div className='flex flex-wrap gap-2'>
+              <div className='flex flex-wrap gap-2 min-h-[4rem] p-2'>
                 {links.map((link, index) => (
                   <React.Fragment key={link.id}>
                     <LinkDropPlaceholder
