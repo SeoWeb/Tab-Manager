@@ -9,7 +9,8 @@ const generateId = () => nanoid();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createProjectActions = (set: any, get: () => AppState) => ({
   addProject: (
-    projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>
+    projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>,
+    skipBookmarkCreation = false
   ) => {
     set((state: AppState) => {
       const newProject: Project = {
@@ -25,32 +26,34 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       };
 
       // Asynchronous part for bookmark creation
-      (async () => {
-        const rootFolderId = get().tabManagerRootFolderId;
-        if (rootFolderId) {
-          try {
-            const newBookmarkFolder = await bookmarkStorage.createProject(
-              newProject.name,
-              rootFolderId
-            );
-            // Update the project in the store with the bookmarkFolderId
-            get().updateProject(
-              newProject.id,
-              { bookmarkFolderId: newBookmarkFolder.id },
-              true
-            );
-          } catch (error) {
-            console.error(
-              `Failed to create bookmark folder for project ${newProject.name}:`,
-              error
+      if (!skipBookmarkCreation) {
+        (async () => {
+          const rootFolderId = get().tabManagerRootFolderId;
+          if (rootFolderId) {
+            try {
+              const newBookmarkFolder = await bookmarkStorage.createProject(
+                newProject.name,
+                rootFolderId
+              );
+              // Update the project in the store with the bookmarkFolderId
+              get().updateProject(
+                newProject.id,
+                { bookmarkFolderId: newBookmarkFolder.id },
+                true
+              );
+            } catch (error) {
+              console.error(
+                `Failed to create bookmark folder for project ${newProject.name}:`,
+                error
+              );
+            }
+          } else {
+            console.warn(
+              'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
             );
           }
-        } else {
-          console.warn(
-            'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
-          );
-        }
-      })();
+        })();
+      }
 
       return { projects: [...state.projects, newProject] };
     });

@@ -115,7 +115,8 @@ export interface AppState {
   setTabManagerRootFolderId: (id: string | null) => void;
   syncBookmarks: () => Promise<void>;
   addProject: (
-    projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>
+    projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>,
+    skipBookmarkCreation?: boolean
   ) => void;
   updateProject: (
     id: string,
@@ -127,7 +128,8 @@ export interface AppState {
   // Collection actions
   addCollection: (
     projectId: string,
-    collectionData: Pick<Collection, 'name' | 'description' | 'color'>
+    collectionData: Pick<Collection, 'name' | 'description' | 'color'>,
+    skipBookmarkCreation?: boolean
   ) => void;
   updateCollection: (
     projectId: string,
@@ -149,7 +151,8 @@ export interface AppState {
   addLink: (
     projectId: string,
     collectionId: string,
-    linkData: Pick<Link, 'title' | 'url' | 'favIconUrl' | 'tags' | 'notes'>
+    linkData: Pick<Link, 'title' | 'url' | 'favIconUrl' | 'tags' | 'notes'>,
+    skipBookmarkCreation?: boolean
   ) => void;
   updateLink: (
     projectId: string,

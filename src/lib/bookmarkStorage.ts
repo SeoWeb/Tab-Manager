@@ -63,10 +63,22 @@ export const bookmarkStorage = {
     projectName: string,
     rootFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    return await bookmarkService.createBookmarkFolder(
-      projectName,
-      rootFolderId
-    );
+    // Temporarily disable sync to prevent feedback loop
+    const wasInProgress = bookmarkSyncService.syncInProgress;
+    bookmarkSyncService.syncInProgress = true;
+
+    try {
+      const result = await bookmarkService.createBookmarkFolder(
+        projectName,
+        rootFolderId
+      );
+      return result;
+    } finally {
+      // Restore sync state after a short delay to allow the operation to complete
+      setTimeout(() => {
+        bookmarkSyncService.syncInProgress = wasInProgress;
+      }, 100);
+    }
   },
 
   /**
@@ -96,10 +108,22 @@ export const bookmarkStorage = {
     collectionName: string,
     projectFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    return await bookmarkService.createBookmarkFolder(
-      collectionName,
-      projectFolderId
-    );
+    // Temporarily disable sync to prevent feedback loop
+    const wasInProgress = bookmarkSyncService.syncInProgress;
+    bookmarkSyncService.syncInProgress = true;
+
+    try {
+      const result = await bookmarkService.createBookmarkFolder(
+        collectionName,
+        projectFolderId
+      );
+      return result;
+    } finally {
+      // Restore sync state after a short delay to allow the operation to complete
+      setTimeout(() => {
+        bookmarkSyncService.syncInProgress = wasInProgress;
+      }, 100);
+    }
   },
 
   /**
@@ -136,11 +160,23 @@ export const bookmarkStorage = {
     linkUrl: string,
     collectionFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    return await bookmarkService.createBookmark(
-      collectionFolderId,
-      linkTitle,
-      linkUrl
-    );
+    // Temporarily disable sync to prevent feedback loop
+    const wasInProgress = bookmarkSyncService.syncInProgress;
+    bookmarkSyncService.syncInProgress = true;
+
+    try {
+      const result = await bookmarkService.createBookmark(
+        collectionFolderId,
+        linkTitle,
+        linkUrl
+      );
+      return result;
+    } finally {
+      // Restore sync state after a short delay to allow the operation to complete
+      setTimeout(() => {
+        bookmarkSyncService.syncInProgress = wasInProgress;
+      }, 100);
+    }
   },
 
   /**

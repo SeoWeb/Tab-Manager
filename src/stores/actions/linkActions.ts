@@ -10,7 +10,8 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
   addLink: (
     projectId: string,
     collectionId: string,
-    linkData: Pick<Link, 'title' | 'url' | 'favIconUrl' | 'tags' | 'notes'>
+    linkData: Pick<Link, 'title' | 'url' | 'favIconUrl' | 'tags' | 'notes'>,
+    skipBookmarkCreation = false
   ) => {
     set((state: AppState) => {
       const project = state.projects.find((p: Project) => p.id === projectId);
@@ -32,7 +33,7 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
         bookmarkId: null,
       };
 
-      if (collection.bookmarkFolderId) {
+      if (!skipBookmarkCreation && collection.bookmarkFolderId) {
         (async () => {
           try {
             const newBookmark = await bookmarkStorage.createLink(
@@ -54,7 +55,7 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
             );
           }
         })();
-      } else {
+      } else if (!skipBookmarkCreation) {
         console.warn(
           `Collection ${collectionId} does not have a bookmarkFolderId. Cannot create link bookmark.`
         );

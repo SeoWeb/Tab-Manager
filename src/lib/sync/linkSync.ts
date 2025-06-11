@@ -67,7 +67,7 @@ export class LinkSync {
       notes: 'Imported from bookmarks',
     };
 
-    store.addLink(projectId, collectionId, linkData);
+    store.addLink(projectId, collectionId, linkData, true); // Skip bookmark creation since we're syncing FROM bookmarks
 
     // Find the newly created link and update its bookmark ID
     const updatedProject = useAppStore

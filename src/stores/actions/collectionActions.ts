@@ -9,7 +9,8 @@ const generateId = () => nanoid();
 export const createCollectionActions = (set: any, get: () => AppState) => ({
   addCollection: (
     projectId: string,
-    collectionData: Pick<Collection, 'name' | 'description' | 'color'>
+    collectionData: Pick<Collection, 'name' | 'description' | 'color'>,
+    skipBookmarkCreation = false
   ) => {
     set((state: AppState) => {
       const project = state.projects.find((p: Project) => p.id === projectId);
@@ -33,7 +34,7 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
         bookmarkFolderId: null,
       };
 
-      if (project.bookmarkFolderId) {
+      if (!skipBookmarkCreation && project.bookmarkFolderId) {
         (async () => {
           try {
             const newBookmarkFolder = await bookmarkStorage.createCollection(
@@ -53,7 +54,7 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
             );
           }
         })();
-      } else {
+      } else if (!skipBookmarkCreation) {
         console.warn(
           `Project ${projectId} does not have a bookmarkFolderId. Cannot create collection bookmark folder.`
         );

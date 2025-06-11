@@ -69,7 +69,7 @@ export class ProjectSync {
         : '📁',
     };
 
-    store.addProject(projectData);
+    store.addProject(projectData, true); // Skip bookmark creation since we're syncing FROM bookmarks
 
     // Find the newly created project and update its bookmark folder ID
     const projects = useAppStore.getState().projects;

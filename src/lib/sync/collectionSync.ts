@@ -72,7 +72,7 @@ export class CollectionSync {
       color: undefined,
     };
 
-    store.addCollection(projectId, collectionData);
+    store.addCollection(projectId, collectionData, true); // Skip bookmark creation since we're syncing FROM bookmarks
 
     // Find the newly created collection and update its bookmark folder ID
     const updatedProject = useAppStore
