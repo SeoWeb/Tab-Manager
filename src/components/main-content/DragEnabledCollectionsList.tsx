@@ -4,11 +4,15 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { SortableCollectionItem } from '@/components/drag-drop';
+import {
+  SortableCollectionItem,
+  CollectionDropPlaceholder,
+} from '@/components/drag-drop';
 import AddCollectionButton from './AddCollectionButton';
 import type { Project } from '@/types';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useAppStore } from '@/stores/appStore';
+import { useDragAndDropContext } from '@/components/drag-drop/GlobalDragDropProvider';
 
 interface DragEnabledCollectionsListProps {
   project: Project;
@@ -21,6 +25,7 @@ export function DragEnabledCollectionsList({
   const migrateCollectionOrder = useAppStore(
     (state) => state.migrateCollectionOrder
   );
+  const { collectionDropPlaceholder } = useDragAndDropContext();
 
   // Ensure collections have proper order values for drag and drop
   useEffect(() => {
@@ -70,6 +75,7 @@ export function DragEnabledCollectionsList({
   const sortedCollections = [...project.collections].sort(
     (a, b) => (a.order || 0) - (b.order || 0)
   );
+
   const collectionIds = sortedCollections.map((collection) => collection.id);
 
   return (
@@ -79,20 +85,35 @@ export function DragEnabledCollectionsList({
     >
       <div className='space-y-2'>
         {sortedCollections.map((collection, index) => (
-          <div
-            key={collection.id}
-            className={
-              index === focusedCollectionIndex
-                ? 'ring-2 ring-primary rounded-lg'
-                : ''
-            }
-          >
-            <SortableCollectionItem
-              collection={collection}
-              projectId={project.id}
+          <div key={collection.id}>
+            {/* Show placeholder before this collection if needed */}
+            <CollectionDropPlaceholder
+              isVisible={
+                collectionDropPlaceholder?.projectId === project.id &&
+                collectionDropPlaceholder?.position === index
+              }
             />
+            <div
+              className={
+                index === focusedCollectionIndex
+                  ? 'ring-2 ring-primary rounded-lg'
+                  : ''
+              }
+            >
+              <SortableCollectionItem
+                collection={collection}
+                projectId={project.id}
+              />
+            </div>
           </div>
         ))}
+        {/* Show placeholder at the end if needed */}
+        <CollectionDropPlaceholder
+          isVisible={
+            collectionDropPlaceholder?.projectId === project.id &&
+            collectionDropPlaceholder?.position === sortedCollections.length
+          }
+        />
         <div className='mt-6'>
           <AddCollectionButton />
         </div>

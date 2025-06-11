@@ -18,12 +18,11 @@ import {
   ExternalLink,
   GripVertical,
 } from 'lucide-react';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableLinkItem } from './SortableLinkItem';
+import { LinkDropPlaceholder } from './LinkDropPlaceholder';
+import { useDragAndDropContext } from './GlobalDragDropProvider';
 import EditCollectionModal from '../modals/EditCollectionModal';
 import { useAppStore } from '@/stores/appStore';
 import type { DraggableAttributes } from '@dnd-kit/core';
@@ -52,6 +51,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
     (state) => state.openCollectionInNewWindow
   );
   const openAddLinkModal = useAppStore((state) => state.openAddLinkModal);
+  const { linkDropPlaceholder } = useDragAndDropContext();
 
   const { setNodeRef, isOver, active } = useDroppable({
     id: `collection-${collection.id}`,
@@ -173,19 +173,29 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
               </Button>
             </div>
           ) : (
-            <SortableContext
-              items={linkIds}
-              strategy={verticalListSortingStrategy}
-            >
+            <SortableContext items={linkIds} strategy={rectSortingStrategy}>
               <div className='flex flex-wrap gap-2'>
-                {links.map((link) => (
-                  <SortableLinkItem
-                    key={link.id}
-                    link={link}
-                    projectId={projectId}
-                    collectionId={collectionId}
-                  />
+                {links.map((link, index) => (
+                  <React.Fragment key={link.id}>
+                    <LinkDropPlaceholder
+                      isVisible={
+                        linkDropPlaceholder?.collectionId === collectionId &&
+                        linkDropPlaceholder?.position === index
+                      }
+                    />
+                    <SortableLinkItem
+                      link={link}
+                      projectId={projectId}
+                      collectionId={collectionId}
+                    />
+                  </React.Fragment>
                 ))}
+                <LinkDropPlaceholder
+                  isVisible={
+                    linkDropPlaceholder?.collectionId === collectionId &&
+                    linkDropPlaceholder?.position === links.length
+                  }
+                />
               </div>
             </SortableContext>
           )}

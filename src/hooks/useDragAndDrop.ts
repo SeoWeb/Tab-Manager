@@ -3,6 +3,7 @@ import {
   DndContext,
   DragEndEvent,
   DragStartEvent,
+  DragOverEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -59,6 +60,19 @@ export interface DragItem {
 
 export function useDragAndDrop() {
   const [activeItem, setActiveItem] = useState<DragItem | null>(null);
+  const [collectionDropPlaceholder, setCollectionDropPlaceholder] = useState<{
+    projectId: string;
+    position: number; // Index where the placeholder should appear
+    targetCollectionId: string; // Collection being hovered over
+  } | null>(null);
+
+  const [linkDropPlaceholder, setLinkDropPlaceholder] = useState<{
+    projectId: string;
+    collectionId: string;
+    position: number;
+    targetLinkId: string;
+  } | null>(null);
+
   const { moveLink, reorderCollections, reorderLinks, addLink } = useAppStore(
     (state) => ({
       moveLink: state.moveLink,
@@ -100,12 +114,117 @@ export function useDragAndDrop() {
           ...restData,
         },
       });
+
+      // Reset drop placeholder when starting a new drag
+      setCollectionDropPlaceholder(null);
+      setLinkDropPlaceholder(null);
     }
   }, []);
 
-  const handleDragOver = useCallback(() => {
-    // Handle drag over logic for visual feedback
-  }, []);
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event;
+
+      if (!over || !activeItem) {
+        if (collectionDropPlaceholder) setCollectionDropPlaceholder(null);
+        if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+        return;
+      }
+
+      const activeId = active.id as string;
+      const overId = over.id as string;
+      const overData = over.data.current;
+
+      // Clear placeholders if not dragging a relevant type
+      if (activeItem.type !== 'collection' && activeItem.type !== 'link') {
+        if (collectionDropPlaceholder) setCollectionDropPlaceholder(null);
+        if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+        return;
+      }
+
+      if (activeItem.type === 'collection') {
+        if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+        // Collection drag over logic...
+        if (overData?.type !== 'collection' && overData?.type !== 'link') {
+          return;
+        }
+        let targetCollectionId = overId;
+        if (overData?.type === 'link' && overData?.collectionId) {
+          targetCollectionId = overData.collectionId;
+        } else if (overData?.type === 'collection') {
+          targetCollectionId = overData.collectionId || overId;
+        }
+        if (activeId === targetCollectionId) {
+          setCollectionDropPlaceholder(null);
+          return;
+        }
+        const projectId = activeItem.data.projectId;
+        const { projects } = useAppStore.getState();
+        const project = projects.find((p) => p.id === projectId);
+        if (!project) return;
+        const sortedCollections = [...project.collections].sort(
+          (a, b) => (a.order || 0) - (b.order || 0)
+        );
+        const activeIndex = sortedCollections.findIndex(
+          (c) => c.id === activeId
+        );
+        const targetIndex = sortedCollections.findIndex(
+          (c) => c.id === targetCollectionId
+        );
+        if (activeIndex === -1 || targetIndex === -1) return;
+        const dropPosition =
+          activeIndex < targetIndex ? targetIndex + 1 : targetIndex;
+        setCollectionDropPlaceholder({
+          projectId,
+          position: dropPosition,
+          targetCollectionId,
+        });
+      } else if (activeItem.type === 'link') {
+        if (collectionDropPlaceholder) setCollectionDropPlaceholder(null);
+        // Link drag over logic...
+        if (overData?.type !== 'link') {
+          if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+          return;
+        }
+
+        const { projectId, collectionId } = activeItem.data;
+        const targetLinkId = overId;
+
+        if (!collectionId || activeId === targetLinkId) {
+          if (linkDropPlaceholder) setLinkDropPlaceholder(null);
+          return;
+        }
+
+        const { projects } = useAppStore.getState();
+        const project = projects.find((p) => p.id === projectId);
+        const collection = project?.collections.find(
+          (c) => c.id === collectionId
+        );
+        if (!collection) return;
+
+        const sortedLinks = [...collection.links].sort(
+          (a, b) => (a.order || 0) - (b.order || 0)
+        );
+
+        const activeIndex = sortedLinks.findIndex((l) => l.id === activeId);
+        const targetIndex = sortedLinks.findIndex((l) => l.id === targetLinkId);
+
+        if (activeIndex === -1 || targetIndex === -1) return;
+
+        // For now, simple vertical logic. Horizontal logic can be added later.
+        const dropPosition =
+          activeIndex < targetIndex ? targetIndex + 1 : targetIndex;
+
+        setLinkDropPlaceholder({
+          projectId,
+          collectionId,
+          position: dropPosition,
+          targetLinkId,
+        });
+      }
+    },
+    [activeItem, collectionDropPlaceholder, linkDropPlaceholder]
+  );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -113,6 +232,8 @@ export function useDragAndDrop() {
 
       if (!over || !activeItem) {
         setActiveItem(null);
+        setCollectionDropPlaceholder(null);
+        setLinkDropPlaceholder(null);
         return;
       }
 
@@ -235,6 +356,8 @@ export function useDragAndDrop() {
       }
 
       setActiveItem(null);
+      setCollectionDropPlaceholder(null);
+      setLinkDropPlaceholder(null);
     },
     [activeItem, moveLink, reorderCollections, reorderLinks, addLink]
   );
@@ -242,6 +365,8 @@ export function useDragAndDrop() {
   return {
     sensors,
     activeItem,
+    collectionDropPlaceholder,
+    linkDropPlaceholder,
     handleDragStart,
     handleDragOver,
     handleDragEnd,

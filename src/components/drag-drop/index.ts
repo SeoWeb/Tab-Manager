@@ -5,4 +5,9 @@ export { DragOverlay } from './DragOverlay';
 export { default as DragEnabledCollection } from './DragEnabledCollection';
 export { DraggableTab, TabDragOverlay } from './DraggableTab';
 export { DroppableCollectionForTabs } from './DroppableCollectionForTabs';
-export { GlobalDragDropProvider } from './GlobalDragDropProvider';
+export {
+  GlobalDragDropProvider,
+  useDragAndDropContext,
+} from './GlobalDragDropProvider';
+export { CollectionDropPlaceholder } from './CollectionDropPlaceholder';
+export { LinkDropPlaceholder } from './LinkDropPlaceholder';
