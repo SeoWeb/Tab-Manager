@@ -80,14 +80,10 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
         <TooltipTrigger asChild>
           <Button
             variant='ghost'
-            size='sm'
+            size='icon'
             onClick={handleManualSync}
             disabled={isSync}
-            className={cn(
-              'h-8 w-8 p-0 hover:bg-secondary/80',
-              syncError && 'hover:bg-destructive/10',
-              className
-            )}
+            className={cn(syncError && 'hover:bg-destructive/10', className)}
           >
             {getSyncStatusIcon()}
           </Button>

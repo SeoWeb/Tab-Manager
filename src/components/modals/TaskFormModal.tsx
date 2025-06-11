@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import type { AdvancedTask, TaskPriority, TaskStatus } from '@/types/tasks';
 
@@ -106,6 +107,9 @@ export default function TaskFormModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create or edit a task.
+          </DialogDescription>
         </DialogHeader>
         <div className='space-y-4 py-4'>
           <Input

@@ -86,7 +86,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
               : ''
       }`}
     >
-      <div className='flex items-center p-3'>
+      <div className='flex items-center p-1'>
         {/* Drag handle */}
         {showDragHandle && (
           <div
@@ -94,36 +94,36 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
             className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded mr-1'
             title='Drag to reorder collection'
           >
-            <GripVertical className='h-4 w-4 text-muted-foreground' />
+            <GripVertical className='h-5 w-5 text-muted-foreground' />
           </div>
         )}
         <Button
           variant='ghost'
           size='icon'
-          className='h-7 w-7'
+          className='h-6 w-6'
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {isExpanded ? (
-            <ChevronDown className='h-5 w-5' />
+            <ChevronDown className='h-4 w-4' />
           ) : (
-            <ChevronRight className='h-5 w-5' />
+            <ChevronRight className='h-4 w-4' />
           )}
         </Button>
-        <h3 className='flex-1 text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2'>
+        <h3 className='flex-1 text-base font-semibold text-gray-800 dark:text-gray-200 ml-1'>
           {name}
         </h3>
-        <div className='flex items-center gap-1'>
+        <div className='flex items-center gap-0.5'>
           <Button
             variant='ghost'
             size='icon'
-            className='h-7 w-7'
+            className='h-6 w-6'
             onClick={() => openAddLinkModal(collectionId)}
           >
             <Plus className='h-4 w-4' />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant='ghost' size='icon' className='h-7 w-7'>
+              <Button variant='ghost' size='icon' className='h-6 w-6'>
                 <MoreHorizontal className='h-4 w-4' />
               </Button>
             </DropdownMenuTrigger>
@@ -158,7 +158,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
       </div>
 
       {isExpanded && (
-        <div className='px-3 pb-3'>
+        <div className='px-2 pb-2'>
           {links.length === 0 ? (
             <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
               <p>No links in this collection yet.</p>

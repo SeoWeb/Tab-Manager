@@ -61,10 +61,9 @@ export default function LeftSidebar() {
         <div className={cn('flex flex-col gap-2', isCollapsed ? 'p-1' : 'p-4')}>
           <AddProjectButton />
           <Button
-            variant='ghost'
-            className={`w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-              isCollapsed ? 'justify-center' : 'justify-start'
-            }`}
+            variant='outline'
+            size='sm'
+            className='w-full justify-start text-sm'
             onClick={() => setActiveView('tasks')}
             aria-label='Open tasks'
           >
@@ -74,10 +73,9 @@ export default function LeftSidebar() {
             {!isCollapsed && <span>Tasks</span>}
           </Button>
           <Button
-            variant='ghost'
-            className={`w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
-              isCollapsed ? 'justify-center' : 'justify-start'
-            }`}
+            variant='outline'
+            size='sm'
+            className='w-full justify-start text-sm'
             onClick={() => setActiveView('settings')}
             aria-label='Open settings'
           >

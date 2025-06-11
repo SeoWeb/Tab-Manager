@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -278,6 +279,9 @@ export default function TaskDetailModal({
               <Pencil className='h-4 w-4' />
             </Button>
           </DialogTitle>
+          <DialogDescription>
+            View and manage the details of your task.
+          </DialogDescription>
           {task.status === 'completed' && (
             <Button variant='outline' size='sm' onClick={handleArchive}>
               <Archive className='h-4 w-4 mr-2' />

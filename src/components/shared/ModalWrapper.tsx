@@ -36,7 +36,9 @@ export default function ModalWrapper({
       <DialogContent className={className}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          <DialogDescription>
+            {description || <span className='sr-only'>Dialog</span>}
+          </DialogDescription>
         </DialogHeader>
 
         {children}

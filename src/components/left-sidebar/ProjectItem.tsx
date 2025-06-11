@@ -45,8 +45,9 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project }) => {
         onClick={() => setActiveProject(project.id)}
         className={cn(
           'flex items-center hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
-          isActive ? 'bg-blue-100 dark:bg-blue-800' : '',
-          sidebarOpen ? 'p-2 rounded-md gap-3 w-full' : 'p-[2px] rounded-full'
+          isActive ? 'bg-primary/25' : '',
+          sidebarOpen ? 'p-2 rounded-md gap-3 w-full' : 'rounded-full',
+          isActive && !sidebarOpen ? 'border-2 border-primary' : ''
         )}
         title={project.name}
       >

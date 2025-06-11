@@ -39,7 +39,7 @@ export default function VerticalRightTabsBar() {
             'flex flex-col items-center justify-center p-3 rounded-md transition-colors duration-200',
             activeVerticalTabId === tab.id && isRightContentPanelOpen
               ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-accent'
+              : 'text-muted-foreground hover:bg-primary'
           )}
           onClick={() => handleTabClick(tab.id)}
           title={tab.label}

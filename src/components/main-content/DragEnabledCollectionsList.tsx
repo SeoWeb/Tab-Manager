@@ -66,7 +66,7 @@ export function DragEnabledCollectionsList({
       items={collectionIds}
       strategy={verticalListSortingStrategy}
     >
-      <div className='space-y-6'>
+      <div className='space-y-2'>
         {sortedCollections.map((collection, index) => (
           <div
             key={collection.id}

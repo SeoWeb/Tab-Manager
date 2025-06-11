@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Roboto } from 'next/font/google';
 import './globals.css';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import ThemeManager from '@/components/ThemeManager';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-const inter = Inter({ subsets: ['latin'] });
+const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+});
 
 export const metadata: Metadata = {
   title: 'TabSpace',
@@ -21,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body
-        className={`${inter.className} antialiased`}
+        className={`${roboto.className} antialiased`}
         suppressHydrationWarning
       >
         <ThemeManager />
