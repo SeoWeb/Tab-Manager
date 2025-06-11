@@ -268,16 +268,21 @@ export const startAutoSaveMonitoring = (): (() => void) => {
     return () => {};
   }
 
-  // Auto-save immediately
-  autoSaveCurrentSession();
+  // Defer initial auto-save to avoid blocking startup
+  setTimeout(autoSaveCurrentSession, 1000);
 
   // Set up interval for auto-saving
   const intervalId = setInterval(autoSaveCurrentSession, AUTO_SAVE_INTERVAL);
 
-  // Set up listeners for tab changes to trigger immediate auto-save
+  // Set up listeners for tab changes with better debouncing
+  let debounceTimeout: NodeJS.Timeout | null = null;
   const handleTabChange = () => {
+    // Clear existing timeout
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
     // Debounce the auto-save to avoid too frequent saves
-    setTimeout(autoSaveCurrentSession, 1000);
+    debounceTimeout = setTimeout(autoSaveCurrentSession, 2000);
   };
 
   if (chrome.tabs) {
@@ -289,6 +294,9 @@ export const startAutoSaveMonitoring = (): (() => void) => {
   // Return cleanup function
   return () => {
     clearInterval(intervalId);
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
     if (chrome.tabs) {
       chrome.tabs.onCreated.removeListener(handleTabChange);
       chrome.tabs.onRemoved.removeListener(handleTabChange);

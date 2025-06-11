@@ -25,10 +25,17 @@ export const bookmarkStorage = {
       );
     }
 
-    // Initialize bookmark sync service
-    await bookmarkSyncService.initialize();
-    // Perform initial sync
-    await bookmarkSyncService.performFullSync();
+    // Defer sync operations to avoid blocking initialization
+    setTimeout(async () => {
+      try {
+        // Initialize bookmark sync service
+        await bookmarkSyncService.initialize();
+        // Perform initial sync
+        await bookmarkSyncService.performFullSync();
+      } catch (error) {
+        console.error('Error during bookmark sync initialization:', error);
+      }
+    }, 500);
 
     return rootFolder.id;
   },

@@ -19,32 +19,58 @@ interface StoreWrapperProps {
 
 export const StoreWrapper: React.FC<StoreWrapperProps> = ({ children }) => {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [timeoutReached, setTimeoutReached] = useState(false);
 
   useEffect(() => {
-    // Set a timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      setTimeoutReached(true);
-      setIsHydrated(true);
-    }, 2000); // 2 seconds timeout
+    // Much shorter fallback timeout for Chrome extensions (100ms max)
+    // const fallbackTimeout = setTimeout(() => {
+    //   setIsHydrated(true);
+    // }, 100);
 
-    // Try to access the store safely
-    try {
-      const store = useAppStore.getState();
-      if (store && typeof store === 'object') {
-        setIsHydrated(true);
-        clearTimeout(timeout);
+    // Try to access the store safely with immediate check
+    const checkStore = () => {
+      try {
+        const store = useAppStore.getState();
+        if (store && typeof store === 'object') {
+          setIsHydrated(true);
+          // clearTimeout(fallbackTimeout);
+          return true;
+        }
+      } catch (error) {
+        console.warn('Store access failed during hydration:', error);
       }
-    } catch (error) {
-      console.warn('Store access failed during hydration:', error);
-      // Still allow rendering after timeout
+      return false;
+    };
+
+    // Check immediately - most Chrome extensions should be ready instantly
+    if (checkStore()) {
+      // return () => clearTimeout(fallbackTimeout);
     }
 
-    return () => clearTimeout(timeout);
+    // If not ready immediately, use requestAnimationFrame for next tick check
+    const rafCheck = requestAnimationFrame(() => {
+      if (checkStore()) {
+        return;
+      }
+
+      // Final check after a minimal delay
+      const finalCheck = setTimeout(() => {
+        if (!checkStore()) {
+          // Force hydration after minimal delay
+          setIsHydrated(true);
+        }
+      }, 16); // Single frame delay
+
+      return () => clearTimeout(finalCheck);
+    });
+
+    return () => {
+      // clearTimeout(fallbackTimeout);
+      cancelAnimationFrame(rafCheck);
+    };
   }, []);
 
   useEffect(() => {
-    // Also listen for the store's hydration state
+    // Listen for the store's hydration state
     const unsubscribe = useAppStore.subscribe((state) => {
       if (state?._hasHydrated) {
         setIsHydrated(true);
@@ -54,13 +80,9 @@ export const StoreWrapper: React.FC<StoreWrapperProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  // Don't render children until store is hydrated or timeout is reached
-  if (!isHydrated && !timeoutReached) {
-    return (
-      <div className='flex items-center justify-center h-screen bg-background'>
-        <div className='text-lg text-muted-foreground'>Loading...</div>
-      </div>
-    );
+  // For Chrome extensions, render immediately with minimal delay
+  if (!isHydrated) {
+    return <></>;
   }
 
   return (

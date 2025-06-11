@@ -18,19 +18,7 @@ export const useChromeTabsMonitoring = () => {
   } = useAppStore();
 
   useEffect(() => {
-    // Initial load of Chrome windows
-    const loadInitialData = async () => {
-      try {
-        const windows = await getAllWindows();
-        setChromeWindows(windows);
-      } catch (error) {
-        console.error('Error loading initial Chrome windows:', error);
-      }
-    };
-
-    loadInitialData();
-
-    // Set up real-time monitoring
+    // Set up real-time monitoring first (lightweight)
     const cleanup = setupTabMonitoring(
       // onTabCreated
       (tab: ChromeTabInfo) => {
@@ -50,6 +38,16 @@ export const useChromeTabsMonitoring = () => {
     );
 
     cleanupRef.current = cleanup;
+
+    // Defer initial data load to avoid blocking UI
+    setTimeout(async () => {
+      try {
+        const windows = await getAllWindows();
+        setChromeWindows(windows);
+      } catch (error) {
+        console.error('Error loading initial Chrome windows:', error);
+      }
+    }, 300);
 
     // Cleanup on unmount
     return () => {

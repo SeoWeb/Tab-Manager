@@ -24,9 +24,10 @@ import EditLinkModal from './modals/EditLinkModal';
 import { cn } from '@/lib/utils';
 import { useChromeTabsMonitoring } from '@/hooks/useChromeTabsMonitoring';
 import {
-  startAutoSaveMonitoring,
-  checkForSessionRestore,
-} from '@/lib/tabSessionService';
+  deferUntilIdle,
+  lazyImport,
+  preloadCriticalResources,
+} from '@/lib/performanceUtils';
 
 export default function AppClient() {
   const isDarkMode = useIsDarkMode();
@@ -37,6 +38,11 @@ export default function AppClient() {
 
   // Initialize Chrome tabs monitoring
   useChromeTabsMonitoring();
+
+  // Preload critical resources for better performance
+  useEffect(() => {
+    preloadCriticalResources();
+  }, []);
 
   const isRightContentPanelOpen = useAppStoreWithDefaults(
     (state) => state.isRightContentPanelOpen,
@@ -57,9 +63,19 @@ export default function AppClient() {
         const hasInitialized = sessionStorage.getItem('tabManagerInitialized');
         if (!hasInitialized) {
           sessionStorage.setItem('tabManagerInitialized', 'true');
-          const { bookmarkStorage } = await import('@/lib/bookmarkStorage');
-          const rootId = await bookmarkStorage.initialize();
-          useAppStore.getState().setTabManagerRootFolderId(rootId);
+          // Use performance utility to defer bookmark initialization
+          deferUntilIdle(async () => {
+            try {
+              const { bookmarkStorage } = await lazyImport(
+                () => import('@/lib/bookmarkStorage'),
+                'bookmarkStorage'
+              );
+              const rootId = await bookmarkStorage.initialize();
+              useAppStore.getState().setTabManagerRootFolderId(rootId);
+            } catch (error) {
+              console.error('Error initializing bookmark storage:', error);
+            }
+          });
         }
       }
     };
@@ -120,11 +136,24 @@ export default function AppClient() {
 
     const initTabSessions = async () => {
       try {
-        // Check for session restore on startup
-        await checkForSessionRestore();
+        // Use performance utility to defer tab session operations
+        deferUntilIdle(async () => {
+          try {
+            const { checkForSessionRestore, startAutoSaveMonitoring } =
+              await lazyImport(
+                () => import('@/lib/tabSessionService'),
+                'tabSessionService'
+              );
 
-        // Start auto-save monitoring
-        cleanup = startAutoSaveMonitoring();
+            // Check for session restore on startup
+            await checkForSessionRestore();
+
+            // Start auto-save monitoring
+            cleanup = startAutoSaveMonitoring();
+          } catch (error) {
+            console.error('Error initializing tab sessions:', error);
+          }
+        });
       } catch (error) {
         console.error('Error initializing tab sessions:', error);
       }
