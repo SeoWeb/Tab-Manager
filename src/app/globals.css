@@ -3,7 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 @layer base {
   :root {
     --background: 0 0% 96.1%; /* Light Gray #F5F5F5 */
@@ -111,20 +110,32 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.6), hsl(var(--accent) / 0.6));
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.6),
+      hsl(var(--accent) / 0.6)
+    );
     border-radius: 6px;
     border: 1px solid hsl(var(--primary) / 0.2);
     transition: all 0.3s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--accent) / 0.8));
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.8),
+      hsl(var(--accent) / 0.8)
+    );
     border-color: hsl(var(--primary) / 0.4);
     box-shadow: 0 2px 4px hsl(var(--primary) / 0.2);
   }
 
   ::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)),
+      hsl(var(--accent))
+    );
   }
 
   ::-webkit-scrollbar-corner {
@@ -155,14 +166,22 @@
   }
 
   .scrollbar-modern::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.7), hsl(var(--accent) / 0.7));
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.7),
+      hsl(var(--accent) / 0.7)
+    );
     border-radius: 8px;
     border: 2px solid hsl(var(--background));
     box-shadow: 0 1px 3px hsl(var(--primary) / 0.1);
   }
 
   .scrollbar-modern::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--accent) / 0.9));
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.9),
+      hsl(var(--accent) / 0.9)
+    );
     box-shadow: 0 2px 6px hsl(var(--primary) / 0.2);
   }
 

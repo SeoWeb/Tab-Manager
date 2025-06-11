@@ -182,35 +182,48 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       const projectIndex = state.projects.findIndex(
         (p: Project) => p.id === projectId
       );
-      if (projectIndex === -1) return {};
+      if (projectIndex === -1) return state;
 
       const project = state.projects[projectIndex];
       const collectionIndex = project.collections.findIndex(
         (c: Collection) => c.id === collectionId
       );
-      if (collectionIndex === -1) return {};
+      if (collectionIndex === -1) return state;
+
+      // Check bounds for movement
+      if (direction === 'up' && collectionIndex === 0) return state;
+      if (
+        direction === 'down' &&
+        collectionIndex === project.collections.length - 1
+      )
+        return state;
 
       const newCollections = [...project.collections];
       const [movedCollection] = newCollections.splice(collectionIndex, 1);
 
+      let newIndex: number;
       if (direction === 'up') {
-        newCollections.splice(
-          Math.max(0, collectionIndex - 1),
-          0,
-          movedCollection
-        );
+        newIndex = Math.max(0, collectionIndex - 1);
       } else {
-        newCollections.splice(
-          Math.min(newCollections.length, collectionIndex + 1),
-          0,
-          movedCollection
-        );
+        newIndex = Math.min(newCollections.length, collectionIndex + 1);
       }
+
+      newCollections.splice(newIndex, 0, movedCollection);
+
+      // Update order values for all collections
+      const reorderedCollections = newCollections.map(
+        (collection: Collection, index: number) => ({
+          ...collection,
+          order: index,
+          updatedAt: new Date(),
+        })
+      );
 
       const updatedProjects = [...state.projects];
       updatedProjects[projectIndex] = {
         ...project,
-        collections: newCollections,
+        collections: reorderedCollections,
+        updatedAt: new Date(),
       };
 
       return { projects: updatedProjects };
@@ -263,4 +276,36 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
         return p;
       }),
     })),
+
+  // Migration function to ensure all collections have order values
+  migrateCollectionOrder: (projectId: string) => {
+    set((state: AppState) => {
+      const project = state.projects.find((p: Project) => p.id === projectId);
+      if (!project) return state;
+
+      // Check if any collections are missing order values
+      const needsMigration = project.collections.some(
+        (c: Collection) => c.order === undefined || c.order === null
+      );
+
+      if (!needsMigration) return state;
+
+      const updatedProjects = state.projects.map((p: Project) => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            collections: p.collections.map((c: Collection, index: number) => ({
+              ...c,
+              order:
+                c.order !== undefined && c.order !== null ? c.order : index,
+            })),
+            updatedAt: new Date(),
+          };
+        }
+        return p;
+      });
+
+      return { projects: updatedProjects };
+    });
+  },
 });

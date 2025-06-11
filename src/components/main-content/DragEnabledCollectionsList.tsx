@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import {
   SortableContext,
@@ -8,6 +8,7 @@ import { SortableCollectionItem } from '@/components/drag-drop';
 import AddCollectionButton from './AddCollectionButton';
 import type { Project } from '@/types';
 import { useHotkeys } from '@/hooks/useHotkeys';
+import { useAppStore } from '@/stores/appStore';
 
 interface DragEnabledCollectionsListProps {
   project: Project;
@@ -17,6 +18,16 @@ export function DragEnabledCollectionsList({
   project,
 }: DragEnabledCollectionsListProps) {
   const [focusedCollectionIndex, setFocusedCollectionIndex] = useState(-1);
+  const migrateCollectionOrder = useAppStore(
+    (state) => state.migrateCollectionOrder
+  );
+
+  // Ensure collections have proper order values for drag and drop
+  useEffect(() => {
+    if (project.collections.length > 0) {
+      migrateCollectionOrder(project.id);
+    }
+  }, [project.id, project.collections.length, migrateCollectionOrder]);
 
   const handleNavigation = useCallback(
     (direction: 'left' | 'right') => {

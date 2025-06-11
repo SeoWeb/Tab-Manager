@@ -144,10 +144,37 @@ export function useDragAndDrop() {
           }
         }
       } else if (activeItem.type === 'collection') {
-        if (overData?.type === 'collection') {
-          // Reordering collections
+        // Reordering collections
+        console.log('Collection drag end - Debug info:', {
+          activeId,
+          overId,
+          overData,
+          activeItem,
+          isDifferent: activeId !== overId,
+        });
+
+        if (activeId !== overId) {
           const { projectId } = activeItem.data;
-          reorderCollections(projectId, activeId, overId);
+
+          // If we're dropping on a link, get the collection ID from the overData
+          let targetCollectionId = overId;
+          if (overData?.type === 'link' && overData?.collectionId) {
+            targetCollectionId = overData.collectionId;
+          } else if (overData?.type === 'collection') {
+            targetCollectionId = overData.collectionId || overId;
+          }
+
+          console.log('Triggering reorderCollections:', {
+            projectId,
+            activeId,
+            targetCollectionId,
+            originalOverId: overId,
+            overDataType: overData?.type,
+          });
+
+          reorderCollections(projectId, activeId, targetCollectionId);
+        } else {
+          console.log('Not reordering - same collection');
         }
       } else if (activeItem.type === 'tab') {
         if (overData?.type === 'collection') {

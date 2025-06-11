@@ -143,6 +143,7 @@ export interface AppState {
   ) => void;
   openCollectionInNewWindow: (projectId: string, collectionId: string) => void;
   toggleAllCollections: (projectId: string, isExpanded: boolean) => void;
+  migrateCollectionOrder: (projectId: string) => void;
 
   // Link actions
   addLink: (
