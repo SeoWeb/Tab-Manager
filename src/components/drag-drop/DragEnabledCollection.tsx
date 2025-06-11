@@ -88,12 +88,12 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
               : ''
       }`}
     >
-      <div className='flex items-center p-1'>
+      <div className='flex items-center p-1 rounded-t-lg bg-black/10 dark:bg-gray-700 mb-2'>
         {/* Drag handle */}
         {showDragHandle && (
           <div
             {...dragHandleProps}
-            className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-1 hover:bg-secondary/50 rounded mr-1'
+            className='cursor-grab active:cursor-grabbing opacity-60 hover:opacity-100 transition-opacity p-0 hover:bg-secondary/50 rounded mr-1'
             title='Drag to reorder collection'
           >
             <GripVertical className='h-5 w-5 text-muted-foreground' />
@@ -178,7 +178,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
             </div>
           ) : (
             <SortableContext items={linkIds} strategy={rectSortingStrategy}>
-              <div className='flex flex-wrap gap-2 min-h-[4rem] p-2'>
+              <div className='flex flex-wrap gap-2 p-0'>
                 {links.map((link, index) => (
                   <React.Fragment key={link.id}>
                     <LinkDropPlaceholder

@@ -86,11 +86,11 @@ export default function LinkItem({
         >
           {highlightText(link.title || link.url, searchQuery)}
         </a>
-        {link.title && (
-          <p className='text-xs text-muted-foreground truncate'>
+        {/* {link.title && (
+          <p className='hidden group-hover:flex text-xs text-muted-foreground truncate'>
             {highlightText(link.url, searchQuery)}
           </p>
-        )}
+        )} */}
       </div>
       <div
         className={`hidden group-hover:flex items-center gap-1 shrink-0 ${

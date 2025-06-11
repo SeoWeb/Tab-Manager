@@ -147,7 +147,7 @@ const MainContentArea: React.FC = () => {
       />
       <div className='flex-1 p-6 overflow-y-auto scrollbar-modern'>
         <Tabs defaultValue='collections'>
-          <TabsList className='mb-6'>
+          <TabsList className='mb-2'>
             <TabsTrigger value='collections' className='gap-2'>
               <FolderOpen className='h-4 w-4' />
               Collections
