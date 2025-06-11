@@ -22,6 +22,7 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
         collections: [],
         createdAt: new Date(),
         updatedAt: new Date(),
+        order: state.projects.length,
         bookmarkFolderId: null, // Initialize with null
       };
 
@@ -146,5 +147,92 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
     } catch (error) {
       console.error('Manual bookmark sync failed:', error);
     }
+  },
+
+  moveProject: (projectId: string, direction: 'up' | 'down') => {
+    set((state: AppState) => {
+      const projectIndex = state.projects.findIndex(
+        (p: Project) => p.id === projectId
+      );
+      if (projectIndex === -1) return state;
+
+      // Check bounds for movement
+      if (direction === 'up' && projectIndex === 0) return state;
+      if (direction === 'down' && projectIndex === state.projects.length - 1)
+        return state;
+
+      const newProjects = [...state.projects];
+      const [movedProject] = newProjects.splice(projectIndex, 1);
+
+      let newIndex: number;
+      if (direction === 'up') {
+        newIndex = Math.max(0, projectIndex - 1);
+      } else {
+        newIndex = Math.min(newProjects.length, projectIndex + 1);
+      }
+
+      newProjects.splice(newIndex, 0, movedProject);
+
+      // Update order values for all projects
+      const reorderedProjects = newProjects.map(
+        (project: Project, index: number) => ({
+          ...project,
+          order: index,
+          updatedAt: new Date(),
+        })
+      );
+
+      return { projects: reorderedProjects };
+    });
+  },
+
+  reorderProjects: (activeId: string, overId: string) => {
+    set((state: AppState) => {
+      const oldIndex = state.projects.findIndex(
+        (p: Project) => p.id === activeId
+      );
+      const newIndex = state.projects.findIndex(
+        (p: Project) => p.id === overId
+      );
+
+      if (oldIndex === -1 || newIndex === -1) return state;
+
+      const newProjects = [...state.projects];
+      const [movedProject] = newProjects.splice(oldIndex, 1);
+      newProjects.splice(newIndex, 0, movedProject);
+
+      // Update order values for all projects
+      const reorderedProjects = newProjects.map(
+        (project: Project, index: number) => ({
+          ...project,
+          order: index,
+          updatedAt: new Date(),
+        })
+      );
+
+      return { projects: reorderedProjects };
+    });
+  },
+
+  // Migration function to ensure all projects have order values
+  migrateProjectOrder: () => {
+    set((state: AppState) => {
+      // Check if any projects are missing order values
+      const needsMigration = state.projects.some(
+        (p: Project) => p.order === undefined || p.order === null
+      );
+
+      if (!needsMigration) return state;
+
+      const updatedProjects = state.projects.map(
+        (p: Project, index: number) => ({
+          ...p,
+          order: p.order !== undefined && p.order !== null ? p.order : index,
+          updatedAt: new Date(),
+        })
+      );
+
+      return { projects: updatedProjects };
+    });
   },
 });

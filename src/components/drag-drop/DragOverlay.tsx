@@ -146,6 +146,37 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
       );
     }
 
+    if (activeItem.type === 'project') {
+      const project = activeItem.data?.project;
+      if (!project) return null;
+
+      const initials = project.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .substring(0, 2)
+        .toUpperCase();
+
+      return (
+        <Card className='w-64 shadow-lg border-2 border-green-500 bg-green-50/95 backdrop-blur animate-pulse'>
+          <CardContent className='p-4'>
+            <div className='flex items-center gap-3'>
+              <GripVertical className='h-5 w-5 text-green-600' />
+              <div
+                className='w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0'
+                style={{ backgroundColor: project.color || '#CCCCCC' }}
+              >
+                {initials}
+              </div>
+              <div>
+                <h3 className='font-semibold text-green-800'>{project.name}</h3>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return null;
   };
 

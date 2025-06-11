@@ -6,35 +6,56 @@ import {
   useSetActiveProject,
 } from '@/hooks/useAppStoreWithDefaults';
 import ProjectItem from './ProjectItem';
+import { SortableProjectItem } from '../drag-drop/SortableProjectItem';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useHotkeys } from '@/hooks/useHotkeys';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useSidebarState } from '@/hooks/useSidebarState';
+import { useAppStore } from '@/stores/appStore';
 
 export default function ProjectList() {
   const projects = useProjects();
   const activeProjectId = useActiveProjectId();
   const setActiveProject = useSetActiveProject();
+  const { open: sidebarOpen } = useSidebarState();
+  const { migrateProjectOrder } = useAppStore();
+
+  // Migrate project order on mount if needed
+  useEffect(() => {
+    migrateProjectOrder();
+  }, [migrateProjectOrder]);
+
+  // Sort projects by order
+  const sortedProjects = [...projects].sort(
+    (a, b) => (a.order || 0) - (b.order || 0)
+  );
 
   const handleNavigation = useCallback(
     (direction: 'up' | 'down') => {
       if (!activeProjectId) return;
-      const currentIndex = projects.findIndex((p) => p.id === activeProjectId);
+      const currentIndex = sortedProjects.findIndex(
+        (p) => p.id === activeProjectId
+      );
       if (currentIndex === -1) return;
 
       const nextIndex =
         direction === 'up' ? currentIndex - 1 : currentIndex + 1;
 
-      if (nextIndex >= 0 && nextIndex < projects.length) {
-        setActiveProject(projects[nextIndex].id);
+      if (nextIndex >= 0 && nextIndex < sortedProjects.length) {
+        setActiveProject(sortedProjects[nextIndex].id);
       }
     },
-    [activeProjectId, projects, setActiveProject]
+    [activeProjectId, sortedProjects, setActiveProject]
   );
 
   useHotkeys('up', () => handleNavigation('up'));
   useHotkeys('down', () => handleNavigation('down'));
 
-  if (projects.length === 0) {
+  if (sortedProjects.length === 0) {
     return (
       <p className='text-sm text-sidebar-foreground/70 text-center group-data-[collapsible=icon]:hidden p-4'>
         No projects yet. Add one!
@@ -44,11 +65,20 @@ export default function ProjectList() {
 
   return (
     <SidebarMenu>
-      {projects.map((project) => (
-        <SidebarMenuItem key={project.id}>
-          <ProjectItem project={project} />
-        </SidebarMenuItem>
-      ))}
+      <SortableContext
+        items={sortedProjects.map((p) => p.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {sortedProjects.map((project) => (
+          <SidebarMenuItem key={project.id}>
+            {sidebarOpen ? (
+              <SortableProjectItem project={project} />
+            ) : (
+              <ProjectItem project={project} />
+            )}
+          </SidebarMenuItem>
+        ))}
+      </SortableContext>
     </SidebarMenu>
   );
 }

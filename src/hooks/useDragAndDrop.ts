@@ -21,7 +21,7 @@ import { extractFavicon } from '../lib/faviconService';
 
 export interface DragItem {
   id: string;
-  type: 'link' | 'collection' | 'tab' | 'bookmark';
+  type: 'link' | 'collection' | 'tab' | 'bookmark' | 'project';
   data: {
     projectId: string;
     collectionId?: string;
@@ -40,6 +40,12 @@ export interface DragItem {
         url: string;
         favIconUrl?: string;
       }>;
+    };
+    project?: {
+      id: string;
+      name: string;
+      color?: string;
+      icon?: string;
     };
     tab?: {
       id: number;
@@ -73,14 +79,19 @@ export function useDragAndDrop() {
     targetLinkId: string;
   } | null>(null);
 
-  const { moveLink, reorderCollections, reorderLinks, addLink } = useAppStore(
-    (state) => ({
-      moveLink: state.moveLink,
-      reorderCollections: state.reorderCollections,
-      reorderLinks: state.reorderLinks,
-      addLink: state.addLink,
-    })
-  );
+  const {
+    moveLink,
+    reorderCollections,
+    reorderLinks,
+    addLink,
+    reorderProjects,
+  } = useAppStore((state) => ({
+    moveLink: state.moveLink,
+    reorderCollections: state.reorderCollections,
+    reorderLinks: state.reorderLinks,
+    addLink: state.addLink,
+    reorderProjects: state.reorderProjects,
+  }));
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -136,7 +147,11 @@ export function useDragAndDrop() {
       const overData = over.data.current;
 
       // Clear placeholders if not dragging a relevant type
-      if (activeItem.type !== 'collection' && activeItem.type !== 'link') {
+      if (
+        activeItem.type !== 'collection' &&
+        activeItem.type !== 'link' &&
+        activeItem.type !== 'project'
+      ) {
         if (collectionDropPlaceholder) setCollectionDropPlaceholder(null);
         if (linkDropPlaceholder) setLinkDropPlaceholder(null);
         return;
@@ -409,6 +424,11 @@ export function useDragAndDrop() {
             }
           }
         }
+      } else if (activeItem.type === 'project') {
+        // Reordering projects
+        if (activeId !== overId && overData?.type === 'project') {
+          reorderProjects(activeId, overId);
+        }
       }
 
       setActiveItem(null);
@@ -421,6 +441,7 @@ export function useDragAndDrop() {
       reorderCollections,
       reorderLinks,
       addLink,
+      reorderProjects,
       linkDropPlaceholder,
     ]
   );

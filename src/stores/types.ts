@@ -124,6 +124,9 @@ export interface AppState {
     isInternalCall?: boolean
   ) => void;
   deleteProject: (id: string) => void;
+  moveProject: (projectId: string, direction: 'up' | 'down') => void;
+  reorderProjects: (activeId: string, overId: string) => void;
+  migrateProjectOrder: () => void;
 
   // Collection actions
   addCollection: (
