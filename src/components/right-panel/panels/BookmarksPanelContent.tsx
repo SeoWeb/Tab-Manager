@@ -13,42 +13,22 @@ import Image from 'next/image';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '@/stores/appStore';
+import { useFavicon } from '@/hooks/useFavicon';
 
 interface FaviconProps {
   url: string;
 }
 
 const Favicon: React.FC<FaviconProps> = ({ url }) => {
-  const [faviconUrl, setFaviconUrl] = useState('');
-
-  useEffect(() => {
-    const getFaviconUrl = () => {
-      try {
-        const domain = new URL(url).hostname;
-        // Use Google's favicon service as a reliable fallback
-        return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-      } catch {
-        // If URL parsing fails, return a default icon
-        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik04IDRhNCA0IDAgMCAxIDQgNCA0IDQgMCAwIDEtNCA0IDQgNCAwIDAgMS00LTQgNCA0IDAgMCAxIDQtNHoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+';
-      }
-    };
-
-    setFaviconUrl(getFaviconUrl());
-  }, [url]);
+  const { favicon } = useFavicon(url);
 
   return (
     <Image
-      src={faviconUrl}
+      src={favicon}
       alt='favicon'
       width={16}
       height={16}
       className='rounded shrink-0'
-      onError={() => {
-        // Fallback to a simple default icon if Google's service fails
-        setFaviconUrl(
-          'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik04IDRhNCA0IDAgMCAxIDQgNCA0IDQgMCAwIDEtNCA0IDQgNCAwIDAgMS00LTQgNCA0IDAgMCAxIDQtNHoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+'
-        );
-      }}
     />
   );
 };
@@ -59,6 +39,7 @@ interface BookmarkNodeProps {
 }
 
 const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
+  const { favicon } = useFavicon(node?.url || '');
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(node.title);
@@ -67,16 +48,6 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
   );
   const [isLoading, setIsLoading] = useState(false);
   const activeProjectId = useAppStore((state) => state.activeProjectId);
-
-  // Set up draggable for bookmark items (not folders)
-  const getFaviconUrl = (url: string) => {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
-    } catch {
-      return undefined;
-    }
-  };
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -87,7 +58,7 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
           id: node.id,
           title: node.title,
           url: node.url || '',
-          favIconUrl: node.url ? getFaviconUrl(node.url) : undefined,
+          favIconUrl: favicon,
         },
         projectId: activeProjectId,
       },

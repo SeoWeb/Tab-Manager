@@ -9,8 +9,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, X, GripVertical } from 'lucide-react';
 import Image from 'next/image';
-import { getFaviconUrl } from '@/lib/utils';
 import type { ChromeTabInfo } from '@/types';
+import { useFavicon } from '@/hooks/useFavicon';
 
 interface DraggableTabProps {
   tab: ChromeTabInfo;
@@ -27,6 +27,7 @@ export function DraggableTab({
   isDragOverlay = false,
   activeProjectId,
 }: DraggableTabProps) {
+  const { favicon } = useFavicon(tab.url);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `tab-${tab.id}`,
@@ -74,7 +75,7 @@ export function DraggableTab({
 
       {/* Favicon */}
       <Image
-        src={tab.favIconUrl || getFaviconUrl(tab.url)}
+        src={tab.favIconUrl || favicon}
         alt='favicon'
         width={16}
         height={16}
@@ -122,11 +123,13 @@ export function DraggableTab({
  * Drag overlay component for tabs
  */
 export function TabDragOverlay({ tab }: { tab: ChromeTabInfo }) {
+  const { favicon } = useFavicon(tab.url);
+
   return (
     <div className='flex items-center gap-2 p-1.5 bg-background rounded-md border border-primary shadow-lg text-xs max-w-xs'>
       <GripVertical className='h-4 w-4 text-muted-foreground' />
       <Image
-        src={tab.favIconUrl || getFaviconUrl(tab.url)}
+        src={tab.favIconUrl || favicon}
         alt='favicon'
         width={16}
         height={16}

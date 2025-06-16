@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
-import { extractFavicon } from '../lib/faviconService';
+import { getFaviconUrl } from '@/lib/utils';
 
 export interface DragItem {
   id: string;
@@ -386,7 +386,7 @@ export function useDragAndDrop() {
             if (!urlExists) {
               const favIconUrl = tab.favIconUrl
                 ? tab.favIconUrl
-                : await extractFavicon(tab.url);
+                : await getFaviconUrl(tab.url);
 
               addLink(projectId, collectionId, {
                 title: tab.title,
@@ -416,7 +416,7 @@ export function useDragAndDrop() {
             if (!urlExists) {
               const favIconUrl = bookmark.favIconUrl
                 ? bookmark.favIconUrl
-                : await extractFavicon(bookmark.url);
+                : await getFaviconUrl(bookmark.url);
 
               addLink(projectId, collectionId, {
                 title: bookmark.title,

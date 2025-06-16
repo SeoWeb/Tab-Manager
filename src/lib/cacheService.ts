@@ -1,5 +1,5 @@
-const CACHE_PREFIX = 'favicon_cache_';
-const CACHE_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_PREFIX = 'favicon_url_cache_';
+const CACHE_EXPIRATION_MS = 0; // 30 * 24 * 60 * 60 * 1000; // 30 days
 
 interface CacheEntry {
   faviconUrl: string;

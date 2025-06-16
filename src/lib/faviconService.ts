@@ -1,3 +1,5 @@
+import { getFullUrl } from './utils';
+
 const PLACEHOLDER_FAVICON =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAEklEQVR42mNkIAAYIeACwB4AACQ6A/0I6a9hAAAAAElFTkSuQmCC';
 
@@ -11,9 +13,9 @@ const PLACEHOLDER_FAVICON =
  * @param pageUrl The URL of the page to extract the favicon from.
  * @returns A promise that resolves to the URL of the best favicon, or a default placeholder if none is found.
  */
-export async function extractFavicon(pageUrl: string): Promise<string> {
+export async function extractFavicon(pageUrl: string): Promise<string | null> {
   try {
-    const response = await fetch(pageUrl, { mode: 'no-cors' });
+    const response = await fetch(getFullUrl(pageUrl), { mode: 'no-cors' });
     if (!response.ok) {
       return PLACEHOLDER_FAVICON;
     }
@@ -26,7 +28,7 @@ export async function extractFavicon(pageUrl: string): Promise<string> {
     if (links.length === 0) {
       // Fallback to checking for /favicon.ico
       try {
-        const faviconUrl = new URL('/favicon.ico', pageUrl).href;
+        const faviconUrl = new URL('/favicon.ico', getFullUrl(pageUrl)).href;
         const faviconResponse = await fetch(faviconUrl);
         if (faviconResponse.ok) {
           return faviconUrl;
@@ -62,9 +64,9 @@ export async function extractFavicon(pageUrl: string): Promise<string> {
       }
     }
 
-    return new URL(bestIcon.href, pageUrl).href;
+    return new URL(bestIcon.href, getFullUrl(pageUrl)).href;
   } catch (error) {
     console.error(`Failed to extract favicon for ${pageUrl}:`, error);
-    return PLACEHOLDER_FAVICON;
+    return null;
   }
 }

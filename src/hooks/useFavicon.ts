@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { extractFavicon } from '@/lib/faviconService';
-import { getCachedFavicon, setCachedFavicon } from '@/lib/cacheService';
+import { getFaviconUrl } from '@/lib/utils';
 
 export function useFavicon(url: string) {
   const [favicon, setFavicon] = useState<string>('');
@@ -18,16 +17,8 @@ export function useFavicon(url: string) {
       setError(null);
 
       try {
-        const cachedFavicon = await getCachedFavicon(url);
-        if (cachedFavicon) {
-          setFavicon(cachedFavicon);
-          setLoading(false);
-          return;
-        }
-
-        const faviconUrl = await extractFavicon(url);
+        const faviconUrl = await getFaviconUrl(url);
         setFavicon(faviconUrl);
-        await setCachedFavicon(url, faviconUrl);
       } catch (err) {
         setError('Failed to fetch favicon');
         console.error(err);

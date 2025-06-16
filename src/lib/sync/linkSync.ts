@@ -1,5 +1,6 @@
 import { useAppStore } from '@/stores/appStore';
 import type { Link } from '@/types';
+import { getFaviconUrl } from '../utils';
 
 export class LinkSync {
   /**
@@ -62,7 +63,7 @@ export class LinkSync {
     const linkData = {
       title: bookmark.title || 'Untitled Link',
       url: bookmark.url || '',
-      favIconUrl: `https://www.google.com/s2/favicons?domain=${new URL(bookmark.url || '').hostname}`,
+      favIconUrl: await getFaviconUrl(bookmark.url || ''),
       tags: [],
       notes: 'Imported from bookmarks',
     };
