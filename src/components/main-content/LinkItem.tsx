@@ -43,7 +43,7 @@ export default function LinkItem({
 
   return (
     <div
-      className={`group flex items-center gap-2 p-2 bg-background rounded-lg border border-input transition-colors duration-150 shadow-sm w-64 ${
+      className={`group flex items-center p-1 gap-2 bg-background rounded-lg border border-input transition-colors duration-150 shadow-sm w-64 ${
         isDraggingExternalItem ? 'opacity-75' : 'hover:bg-secondary/50'
       }`}
     >
@@ -58,17 +58,17 @@ export default function LinkItem({
         </div>
       )}
       {loading ? (
-        <Skeleton className='h-6 w-6 rounded' />
+        <Skeleton className='h-8 w-8 rounded' />
       ) : (
         <Image
           src={link.favIconUrl || favicon}
           alt='favicon'
-          width={24}
-          height={24}
+          width={32}
+          height={32}
           className='rounded shrink-0'
           unoptimized
           onError={(e) => {
-            e.currentTarget.src = 'https://placehold.co/20x20.png';
+            e.currentTarget.src = 'https://placehold.co/32x32.png';
           }}
         />
       )}
