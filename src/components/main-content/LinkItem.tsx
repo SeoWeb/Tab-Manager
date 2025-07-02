@@ -47,7 +47,7 @@ export default function LinkItem({
         isDraggingExternalItem ? 'opacity-75' : 'hover:bg-secondary/50'
       }`}
     >
-      {/* Drag handle */}
+      {/* Drag handle test */}
       {showDragHandle && (
         <div
           {...dragHandleProps}
