@@ -3,6 +3,8 @@
 import { useAppStore } from '@/stores/appStore';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function SettingsView() {
   const { themeColor, setThemeColor } = useAppStore((state) => ({
@@ -13,7 +15,7 @@ export default function SettingsView() {
   return (
     <div className='p-8'>
       <h1 className='text-2xl font-bold mb-4'>Settings</h1>
-      <div className='space-y-4'>
+      <div className='space-y-6'>
         <div>
           <Label htmlFor='theme-color'>Theme Color</Label>
           <Input
@@ -23,6 +25,16 @@ export default function SettingsView() {
             onChange={(e) => setThemeColor(e.target.value)}
             className='w-24'
           />
+        </div>
+
+        <div>
+          <Label className='text-base font-medium'>Favicon Management</Label>
+          <p className='text-sm text-muted-foreground mb-2'>
+            Update all existing favicons with improved quality and caching.
+          </p>
+          <Button asChild variant='outline'>
+            <Link href='/favicon-migration'>Update Favicons</Link>
+          </Button>
         </div>
       </div>
     </div>

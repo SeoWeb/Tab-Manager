@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { Link, Project, Collection } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
+import { preloadFavicon } from '@/lib/utils';
 
 const generateId = () => nanoid();
 
@@ -21,11 +22,31 @@ export const createLinkActions = (set: any, get: () => AppState) => ({
       );
       if (!collection) return state;
 
+      // Preload favicon to ensure we get the best quality from tabs API
+      const faviconUrl = linkData.favIconUrl || '';
+      if (linkData.url && !faviconUrl) {
+        // Preload favicon asynchronously without blocking link creation
+        preloadFavicon(linkData.url)
+          .then((url) => {
+            // Update the link with the preloaded favicon
+            get().updateLink(
+              projectId,
+              collectionId,
+              newLink.id,
+              { favIconUrl: url },
+              true // isInternalCall
+            );
+          })
+          .catch((error) => {
+            console.error('Failed to preload favicon:', error);
+          });
+      }
+
       const newLink: Link = {
         id: generateId(),
         title: linkData.title || 'Untitled Link',
         url: linkData.url,
-        favIconUrl: linkData.favIconUrl || '',
+        favIconUrl: faviconUrl,
         tags: linkData.tags || [],
         notes: linkData.notes || '',
         createdAt: new Date(),

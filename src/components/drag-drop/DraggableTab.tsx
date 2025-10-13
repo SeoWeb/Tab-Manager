@@ -11,6 +11,7 @@ import { ExternalLink, X, GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import type { ChromeTabInfo } from '@/types';
 import { useFavicon } from '@/hooks/useFavicon';
+import { convertChromeFaviconUrl } from '@/lib/faviconService';
 
 interface DraggableTabProps {
   tab: ChromeTabInfo;
@@ -75,7 +76,7 @@ export function DraggableTab({
 
       {/* Favicon */}
       <Image
-        src={tab.favIconUrl || favicon}
+        src={convertChromeFaviconUrl(tab.favIconUrl || favicon)}
         alt='favicon'
         width={16}
         height={16}
@@ -129,7 +130,7 @@ export function TabDragOverlay({ tab }: { tab: ChromeTabInfo }) {
     <div className='flex items-center gap-2 p-1.5 bg-background rounded-md border border-primary shadow-lg text-xs max-w-xs'>
       <GripVertical className='h-4 w-4 text-muted-foreground' />
       <Image
-        src={tab.favIconUrl || favicon}
+        src={convertChromeFaviconUrl(tab.favIconUrl || favicon)}
         alt='favicon'
         width={16}
         height={16}

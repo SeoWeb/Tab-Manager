@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
-import { getFaviconUrl } from '@/lib/utils';
+import { createLinkDataFromTab } from '@/lib/faviconUtils';
 
 export interface DragItem {
   id: string;
@@ -384,14 +384,13 @@ export function useDragAndDrop() {
               ) || false;
 
             if (!urlExists) {
-              const favIconUrl = tab.favIconUrl
-                ? tab.favIconUrl
-                : await getFaviconUrl(tab.url);
+              // Use the improved favicon service to preserve high-quality tab favicons
+              const linkData = await createLinkDataFromTab(tab);
 
               addLink(projectId, collectionId, {
-                title: tab.title,
-                url: tab.url,
-                favIconUrl: favIconUrl,
+                title: linkData.title,
+                url: linkData.url,
+                favIconUrl: linkData.favIconUrl,
                 tags: [],
                 notes: '',
               });
@@ -414,9 +413,11 @@ export function useDragAndDrop() {
               ) || false;
 
             if (!urlExists) {
+              // Use the improved favicon service for bookmarks as well
+              const { preloadFavicon } = await import('@/lib/utils');
               const favIconUrl = bookmark.favIconUrl
                 ? bookmark.favIconUrl
-                : await getFaviconUrl(bookmark.url);
+                : await preloadFavicon(bookmark.url);
 
               addLink(projectId, collectionId, {
                 title: bookmark.title,

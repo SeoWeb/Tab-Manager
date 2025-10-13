@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getFaviconUrl } from '@/lib/utils';
+import { getFaviconUrl } from '@/lib/faviconService';
 
 export function useFavicon(url: string) {
   const [favicon, setFavicon] = useState<string>('');

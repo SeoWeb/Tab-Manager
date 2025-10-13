@@ -3,6 +3,7 @@ import { DragOverlay as DndKitDragOverlay } from '@dnd-kit/core';
 import { Card, CardContent } from '@/components/ui/card';
 import { ExternalLink, GripVertical } from 'lucide-react';
 import type { DragItem } from '@/hooks/useDragAndDrop';
+import { convertChromeFaviconUrl } from '@/lib/faviconService';
 
 interface DragOverlayProps {
   activeItem: DragItem | null;
@@ -25,7 +26,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
                 {link.favIconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={link.favIconUrl}
+                    src={convertChromeFaviconUrl(link.favIconUrl)}
                     alt=''
                     className='w-4 h-4 flex-shrink-0'
                     onError={(e) => {
@@ -85,7 +86,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
                 {tab.favIconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={tab.favIconUrl}
+                    src={convertChromeFaviconUrl(tab.favIconUrl)}
                     alt=''
                     className='w-4 h-4 flex-shrink-0 rounded'
                     onError={(e) => {
@@ -121,7 +122,7 @@ export function DragOverlay({ activeItem }: DragOverlayProps) {
                 {bookmark.favIconUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={bookmark.favIconUrl}
+                    src={convertChromeFaviconUrl(bookmark.favIconUrl)}
                     alt=''
                     className='w-4 h-4 flex-shrink-0 rounded'
                     onError={(e) => {

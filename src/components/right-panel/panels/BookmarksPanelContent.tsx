@@ -14,6 +14,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '@/stores/appStore';
 import { useFavicon } from '@/hooks/useFavicon';
+import { convertChromeFaviconUrl } from '@/lib/faviconService';
 
 interface FaviconProps {
   url: string;
@@ -24,7 +25,7 @@ const Favicon: React.FC<FaviconProps> = ({ url }) => {
 
   return (
     <Image
-      src={favicon}
+      src={convertChromeFaviconUrl(favicon)}
       alt='favicon'
       width={16}
       height={16}
@@ -58,7 +59,7 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
           id: node.id,
           title: node.title,
           url: node.url || '',
-          favIconUrl: favicon,
+          favIconUrl: convertChromeFaviconUrl(favicon),
         },
         projectId: activeProjectId,
       },

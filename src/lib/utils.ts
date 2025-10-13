@@ -1,7 +1,9 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-// import { extractFavicon } from './faviconService';
-import { setCachedFavicon } from './cacheService';
+import {
+  getFaviconUrl as getFaviconUrlFromService,
+  preloadFavicon as preloadFaviconFromService,
+} from './faviconService';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -37,71 +39,18 @@ export function getFullUrl(url: string): string {
   return urlObject.href;
 }
 
-function getGoogleFavicon(hostname: string): string {
-  try {
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
-  } catch {
-    return `https://placehold.co/32x32.png`;
-  }
+/**
+ * Wrapper function for the improved favicon service
+ * Maintains backward compatibility with existing code
+ */
+export async function getFaviconUrl(url: string): Promise<string> {
+  return await getFaviconUrlFromService(url);
 }
 
-async function getTabsFavicon(url: string): Promise<string | null> {
-  try {
-    // First try Chrome tabs API
-    const tabs = await chrome.tabs.query({ url: getFullUrl(url) });
-    console.log(tabs, getFullUrl(url));
-    if (tabs[0]?.favIconUrl) {
-      return tabs[0].favIconUrl;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-
-  return null;
-}
-
-function getFaviconFromCache(url: string): string {
-  const domain = new URL(getFullUrl(url)).origin;
-  return `chrome://favicon/size/16@1x/${domain}`;
-}
-
-export async function getFaviconUrl(url: string) {
-  let domain = url;
-  try {
-    const urlObject = new URL(url);
-    domain = urlObject.hostname;
-  } catch (e) {
-    console.log(e);
-  }
-
-  let favicon = null;
-
-  // favicon = await getCachedFavicon(domain);
-  // if (favicon) {
-  //   return favicon;
-  // }
-
-  favicon = await getTabsFavicon(domain);
-  if (favicon) {
-    await setCachedFavicon(domain, favicon);
-    return favicon;
-  }
-
-  // favicon = await extractFavicon(domain);
-  // if (favicon) {
-  //   await setCachedFavicon(domain, favicon);
-  //   return favicon;
-  // }
-
-  favicon = getFaviconFromCache(domain);
-  await setCachedFavicon(domain, favicon);
-  if (favicon) {
-    return favicon;
-  }
-
-  // Fallback to Google's service
-  favicon = getGoogleFavicon(domain);
-  await setCachedFavicon(domain, favicon);
-
-  return favicon;
+/**
+ * Preloads and caches favicon for a URL
+ * Useful when adding new links from tabs to preserve high-quality favicons
+ */
+export async function preloadFavicon(url: string): Promise<string> {
+  return await preloadFaviconFromService(url);
 }

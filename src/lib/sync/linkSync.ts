@@ -1,6 +1,6 @@
 import { useAppStore } from '@/stores/appStore';
 import type { Link } from '@/types';
-import { getFaviconUrl } from '../utils';
+import { preloadFavicon } from '../utils';
 
 export class LinkSync {
   /**
@@ -60,10 +60,16 @@ export class LinkSync {
 
     const store = useAppStore.getState();
 
+    // Preload favicon to ensure we get the best quality available
+    let faviconUrl = '';
+    if (bookmark.url) {
+      faviconUrl = await preloadFavicon(bookmark.url);
+    }
+
     const linkData = {
       title: bookmark.title || 'Untitled Link',
       url: bookmark.url || '',
-      favIconUrl: await getFaviconUrl(bookmark.url || ''),
+      favIconUrl: faviconUrl,
       tags: [],
       notes: 'Imported from bookmarks',
     };
@@ -118,9 +124,9 @@ export class LinkSync {
         `Link URL changed in bookmarks: "${link.url}" -> "${bookmark.url}"`
       );
       updates.url = bookmark.url || link.url;
-      // Update favicon for new URL
+      // Update favicon for new URL using the improved service
       if (bookmark.url) {
-        updates.favIconUrl = `https://www.google.com/s2/favicons?domain=${new URL(bookmark.url).hostname}`;
+        updates.favIconUrl = await preloadFavicon(bookmark.url);
       }
     }
 
