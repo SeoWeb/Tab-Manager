@@ -37,7 +37,7 @@ const TodosView = () => {
         {todos.map((todo) => (
           <div
             key={todo.id}
-            className='flex items-center justify-between p-2 rounded-lg bg-gray-100 dark:bg-gray-800'
+            className='flex items-center justify-between p-2 rounded-lg bg-secondary'
           >
             <div className='flex items-center space-x-2'>
               <Checkbox

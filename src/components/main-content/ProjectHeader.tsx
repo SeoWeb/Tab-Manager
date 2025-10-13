@@ -44,8 +44,8 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
 
     if (!project) {
       return (
-        <header className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700'>
-          <h1 className='text-2xl font-semibold text-gray-500 dark:text-gray-400'>
+        <header className='flex items-center justify-between p-4 border-b border-border'>
+          <h1 className='text-2xl font-semibold text-muted-foreground'>
             No project selected
           </h1>
           <div className='flex items-center space-x-3'></div>
@@ -54,9 +54,9 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
     }
 
     return (
-      <header className='flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700'>
+      <header className='flex items-center justify-between p-4 border-b border-border'>
         <h1
-          className='text-2xl font-semibold text-gray-900 dark:text-gray-100 truncate'
+          className='text-2xl font-semibold text-foreground truncate'
           title={project.name}
         >
           {highlightText(project.name, searchQuery)}

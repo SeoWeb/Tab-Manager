@@ -60,23 +60,33 @@ export default function LinkItem({
       {loading ? (
         <Skeleton className='h-8 w-8 rounded' />
       ) : (
-        <Image
-          src={link.favIconUrl || favicon}
-          alt='favicon'
-          width={32}
-          height={32}
-          className='rounded shrink-0'
-          unoptimized
-          onError={(e) => {
-            e.currentTarget.src = 'https://placehold.co/32x32.png';
-          }}
-        />
+        <a
+          href={link.url}
+          target='_blank'
+          rel='noopener noreferrer'
+          onClick={
+            isDraggingExternalItem ? (e) => e.preventDefault() : undefined
+          }
+          className={isDraggingExternalItem ? 'pointer-events-none' : ''}
+        >
+          <Image
+            src={link.favIconUrl || favicon}
+            alt='favicon'
+            width={32}
+            height={32}
+            className='rounded shrink-0 hover:opacity-80 transition-opacity cursor-pointer'
+            unoptimized
+            onError={(e) => {
+              e.currentTarget.src = 'https://placehold.co/32x32.png';
+            }}
+          />
+        </a>
       )}
       <div className='flex-1 min-w-0'>
         <a
           href={link.url}
           rel='noopener noreferrer'
-          className={`text-sm font-medium text-foreground truncate block ${
+          className={`text-sm font-medium text-foreground truncate block pt-2 pb-2 ${
             isDraggingExternalItem ? 'pointer-events-none' : 'hover:underline'
           }`}
           title={link.url}

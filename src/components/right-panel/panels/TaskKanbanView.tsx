@@ -326,7 +326,7 @@ const KanbanColumn = ({
       )}
     >
       {/* Column Header */}
-      <div className='p-3 border-b bg-gray-100 dark:bg-gray-800 rounded-t-lg'>
+      <div className='p-3 border-b bg-secondary rounded-t-lg'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <Icon className='h-4 w-4' />

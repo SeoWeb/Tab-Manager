@@ -76,7 +76,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   return (
     <div
       ref={setNodeRef}
-      className={`relative bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50 transition-colors duration-200 ${
+      className={`relative bg-secondary/50 rounded-lg border border-border transition-colors duration-200 ${
         isDraggingExternalItem && isOver && !urlExists
           ? 'bg-primary/10 border-primary border-2 border-dashed ring-2 ring-primary/50'
           : isDraggingExternalItem && isOver && urlExists
@@ -88,7 +88,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
               : ''
       }`}
     >
-      <div className='flex items-center p-1 rounded-t-lg bg-black/10 dark:bg-gray-700 mb-2'>
+      <div className='flex items-center p-1 rounded-t-lg bg-muted mb-2'>
         {/* Drag handle */}
         {showDragHandle && (
           <div
@@ -111,7 +111,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
             <ChevronRight className='h-4 w-4' />
           )}
         </Button>
-        <h3 className='flex-1 text-base font-semibold text-gray-800 dark:text-gray-200 ml-1'>
+        <h3 className='flex-1 text-base font-semibold text-foreground ml-1'>
           {name}
         </h3>
         <div className='flex items-center gap-0.5'>
@@ -164,7 +164,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
           {links.length === 0 &&
           (!linkDropPlaceholder ||
             linkDropPlaceholder.collectionId !== collectionId) ? (
-            <div className='text-center py-8 text-gray-500 dark:text-gray-400'>
+            <div className='text-center py-8 text-muted-foreground'>
               <p>No links in this collection yet.</p>
               <Button
                 variant='outline'

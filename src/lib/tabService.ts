@@ -202,7 +202,7 @@ export const createWindow = async (
       type: 'normal',
     });
 
-    if (!window.id) {
+    if (!window?.id) {
       throw new Error('Failed to create window');
     }
 
@@ -331,14 +331,14 @@ export const setupTabMonitoring = (
 
   const handleTabRemoved = (
     tabId: number,
-    removeInfo: chrome.tabs.TabRemoveInfo
+    removeInfo: { windowId: number }
   ) => {
     onTabRemoved(tabId, removeInfo.windowId);
   };
 
   const handleTabUpdated = (
     tabId: number,
-    changeInfo: chrome.tabs.TabChangeInfo,
+    changeInfo: { title?: string; url?: string; favIconUrl?: string },
     tab: chrome.tabs.Tab
   ) => {
     // Only notify on meaningful updates
