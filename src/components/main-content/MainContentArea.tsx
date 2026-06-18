@@ -190,10 +190,13 @@ const MainContentArea: React.FC = () => {
             )}
           </TabsContent>
           <TabsContent value='tasks'>
-            <TasksView />
+            <TasksView projectId={activeProjectId ?? undefined} />
           </TabsContent>
           <TabsContent value='calendar'>
-            <TasksView initialTab='calendar' />
+            <TasksView
+              initialTab='calendar'
+              projectId={activeProjectId ?? undefined}
+            />
           </TabsContent>
           <TabsContent value='notes'>
             <NotesView />

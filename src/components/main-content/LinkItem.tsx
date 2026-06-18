@@ -26,6 +26,7 @@ interface LinkItemProps {
 
 export default function LinkItem({
   link,
+  projectId,
   collectionId,
   showDragHandle = false,
   dragHandleProps,
@@ -36,6 +37,12 @@ export default function LinkItem({
     openEditLinkModal: state.openEditLinkModal,
     searchQuery: state.searchQuery,
   }));
+  // Known viewer role on a shared cloud project → disable edits. Local-only
+  // projects (no role) are fully editable; the backend still guards writes.
+  const readOnly = useAppStore((state) => {
+    const project = state.projects.find((p) => p.id === projectId);
+    return !!project?.cloudRole && project.cloudRole === 'viewer';
+  });
   const { favicon, loading } = useFavicon(link.url);
 
   // Check if we're dragging an external item (tab/bookmark)
@@ -154,7 +161,7 @@ export default function LinkItem({
             className='h-6 w-6'
             aria-label='Edit link'
             onClick={() => openEditLinkModal(collectionId, link.id)}
-            disabled={isDraggingExternalItem}
+            disabled={isDraggingExternalItem || readOnly}
           >
             <Edit3 className='h-3 w-3 text-muted-foreground' />
           </Button>

@@ -1,0 +1,32 @@
+name = "tab-manager-cloudflare-backend"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[dev]
+local_protocol = "http"
+
+[vars]
+ENABLE_DEMO_AUTH = "false"
+ALLOWED_ORIGINS = "*"
+
+[[d1_databases]]
+# Any non-empty UUID works for local development (`wrangler dev`, `migrate:local`).
+# Before deploying to Cloudflare, run `npx wrangler d1 create tab-manager-dev` and
+# replace this value with the returned database_id. See deployment.md.
+binding = "D1_DATABASE"
+database_name = "tab-manager-dev"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Phase 5 realtime: one ProjectRoom Durable Object per project id. The DO uses
+# the WebSocket Hibernation API for presence + change fan-out.
+[[durable_objects.bindings]]
+name = "PROJECT_ROOM"
+class_name = "ProjectRoom"
+
+# Registers the Durable Object class on first deploy. No SQLite state is used
+# (presence is rebuilt from hibernation tags), but `new_sqlite_classes` is the
+# modern default and works locally with `wrangler dev`.
+[[migrations]]
+tag = "v1-realtime"
+new_sqlite_classes = ["ProjectRoom"]

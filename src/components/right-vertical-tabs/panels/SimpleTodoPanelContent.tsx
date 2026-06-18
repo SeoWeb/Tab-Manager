@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
+import {
+  useAppStoreWithDefaults,
+  useActiveProjectId,
+} from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 export default function SimpleTodoPanelContent() {
   const todos = useAppStoreWithDefaults((state) => state.todos, []);
+  const activeProjectId = useActiveProjectId();
   const addTodo = useAppStoreWithDefaults(
     (state) => state.addTodo,
     () => {}
@@ -19,6 +23,11 @@ export default function SimpleTodoPanelContent() {
   const removeTodo = useAppStoreWithDefaults(
     (state) => state.removeTodo,
     () => {}
+  );
+
+  // Scope todos to the active project
+  const visibleTodos = todos.filter(
+    (todo) => todo.projectId === activeProjectId
   );
 
   const [newTodoText, setNewTodoText] = useState('');
@@ -47,9 +56,9 @@ export default function SimpleTodoPanelContent() {
         </Button>
       </div>
 
-      {todos.length > 0 ? (
+      {visibleTodos.length > 0 ? (
         <ul className='space-y-2'>
-          {todos.map((todo) => (
+          {visibleTodos.map((todo) => (
             <li
               key={todo.id}
               className='flex items-center gap-2 p-2 bg-secondary/30 rounded-md'

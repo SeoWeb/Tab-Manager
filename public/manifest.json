@@ -3,7 +3,15 @@
   "name": "Tab Manager (Next.js)",
   "version": "0.1.0",
   "description": "A Chrome extension for managing tabs and bookmarks, built with Next.js.",
-  "permissions": ["storage", "tabs", "bookmarks", "activeTab"],
+  "permissions": ["storage", "tabs", "bookmarks", "activeTab", "alarms"],
+  "host_permissions": [
+    "http://localhost:8787/*",
+    "https://*.workers.dev/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "Tab Manager"

@@ -3,6 +3,7 @@ import type { Project } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { bookmarkSyncService } from '@/lib/bookmarkSyncService';
+import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 
 const generateId = () => nanoid();
 
@@ -10,54 +11,62 @@ const generateId = () => nanoid();
 export const createProjectActions = (set: any, get: () => AppState) => ({
   addProject: (
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>,
-    skipBookmarkCreation = false
+    options?: {
+      skipBookmarkCreation?: boolean;
+      id?: string;
+      cloudEnabled?: boolean;
+      cloudRole?: Project['cloudRole'];
+    }
   ) => {
-    set((state: AppState) => {
-      const newProject: Project = {
-        id: generateId(),
-        name: projectData.name,
-        description: projectData.description || '',
-        color: projectData.color || '#CCCCCC',
-        icon: projectData.icon || '',
-        collections: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        order: state.projects.length,
-        bookmarkFolderId: null, // Initialize with null
-      };
+    const skipBookmarkCreation = options?.skipBookmarkCreation ?? false;
+    const newProject: Project = {
+      id: options?.id ?? generateId(),
+      name: projectData.name,
+      description: projectData.description || '',
+      color: projectData.color || '#CCCCCC',
+      icon: projectData.icon || '',
+      collections: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      order: get().projects.length,
+      bookmarkFolderId: null, // Initialize with null
+      cloudEnabled: options?.cloudEnabled ?? false,
+      cloudRole: options?.cloudRole,
+    };
 
-      // Asynchronous part for bookmark creation
-      if (!skipBookmarkCreation) {
-        (async () => {
-          const rootFolderId = get().tabManagerRootFolderId;
-          if (rootFolderId) {
-            try {
-              const newBookmarkFolder = await bookmarkStorage.createProject(
-                newProject.name,
-                rootFolderId
-              );
-              // Update the project in the store with the bookmarkFolderId
-              get().updateProject(
-                newProject.id,
-                { bookmarkFolderId: newBookmarkFolder.id },
-                true
-              );
-            } catch (error) {
-              console.error(
-                `Failed to create bookmark folder for project ${newProject.name}:`,
-                error
-              );
-            }
-          } else {
-            console.warn(
-              'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
+    set((state: AppState) => ({
+      projects: [...state.projects, newProject],
+    }));
+
+    // Asynchronous part for bookmark creation
+    if (!skipBookmarkCreation) {
+      (async () => {
+        const rootFolderId = get().tabManagerRootFolderId;
+        if (rootFolderId) {
+          try {
+            const newBookmarkFolder = await bookmarkStorage.createProject(
+              newProject.name,
+              rootFolderId
+            );
+            // Update the project in the store with the bookmarkFolderId
+            get().updateProject(
+              newProject.id,
+              { bookmarkFolderId: newBookmarkFolder.id },
+              true
+            );
+          } catch (error) {
+            console.error(
+              `Failed to create bookmark folder for project ${newProject.name}:`,
+              error
             );
           }
-        })();
-      }
-
-      return { projects: [...state.projects, newProject] };
-    });
+        } else {
+          console.warn(
+            'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
+          );
+        }
+      })();
+    }
   },
 
   updateProject: (
@@ -102,6 +111,22 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       }
       return { projects: updatedProjects };
     });
+
+    // Enqueue a project update mutation for cloud projects. Internal calls
+    // (e.g. bookmarkFolderId backfill) are skipped, and only cloud-relevant
+    // fields are sent — bookmarkFolderId is device-local.
+    if (!isInternalCall) {
+      const patch = buildProjectUpdatePatch(updates);
+      if (patch) {
+        void enqueueCloudChange({
+          projectId: id,
+          entityType: 'project',
+          entityId: id,
+          operation: 'update',
+          patch,
+        });
+      }
+    }
   },
 
   deleteProject: (id: string) => {
@@ -136,7 +161,22 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       return {
         projects: updatedProjects,
         activeProjectId: newActiveProjectId,
+        // Cascade-delete the project's notes/todos/tasks locally. The backend
+        // already cascades these via ON DELETE CASCADE on project_id.
+        notes: state.notes.filter((note) => note.projectId !== id),
+        todos: state.todos.filter((todo) => todo.projectId !== id),
+        tasks: state.tasks.filter((task) => task.projectId !== id),
       };
+    });
+
+    // Tell the server to soft-delete the project too. enqueueCloudChange is a
+    // no-op for local-only projects.
+    void enqueueCloudChange({
+      projectId: id,
+      entityType: 'project',
+      entityId: id,
+      operation: 'delete',
+      patch: {},
     });
   },
 
@@ -236,3 +276,21 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
     });
   },
 });
+
+/**
+ * Build the cloud patch for a project update from the local `updates` object,
+ * keeping only fields the Worker stores (name/description/color/icon). Returns
+ * null when there is nothing cloud-relevant to sync (e.g. a bookmarkFolderId-only
+ * internal update).
+ */
+function buildProjectUpdatePatch(
+  updates: Partial<Project>
+): Record<string, unknown> | null {
+  const patch: Record<string, unknown> = {};
+  if (updates.name !== undefined) patch.name = updates.name;
+  if (updates.description !== undefined)
+    patch.description = updates.description;
+  if (updates.color !== undefined) patch.color = updates.color;
+  if (updates.icon !== undefined) patch.icon = updates.icon;
+  return Object.keys(patch).length > 0 ? patch : null;
+}

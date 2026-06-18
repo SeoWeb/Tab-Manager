@@ -1,5 +1,305 @@
-# Firebase Studio
+# Tab Manager
 
-This is a NextJS starter in Firebase Studio.
+A Chrome (MV3) extension that turns the new-tab page and toolbar popup into a
+project-oriented workspace: organize links into **projects → collections →
+links**, and keep **tasks, a calendar, notes, and todos** scoped per project.
+Everything is local-first; optionally connect a self-hosted **Cloudflare**
+backend to share a project with a team and sync it across browsers and devices.
 
-To get started, take a look at src/app/page.tsx.
+Built with [Next.js](https://nextjs.org/) (static export), [React](https://react.dev/),
+[TypeScript](https://www.typescriptlang.org/), [Tailwind CSS](https://tailwindcss.com/),
+and [Zustand](https://github.com/pmndrs/zustand).
+
+---
+
+## Table of contents
+
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Getting started](#getting-started)
+- [Loading the extension in Chrome](#loading-the-extension-in-chrome)
+- [How it works](#how-it-works)
+- [Per-project data & cloud sync](#per-project-data--cloud-sync)
+- [Setting up cloud sync](#setting-up-cloud-sync)
+- [Testing](#testing)
+- [Project structure](#project-structure)
+- [Documentation](#documentation)
+- [Build & packaging notes](#build--packaging-notes)
+
+---
+
+## Features
+
+- **Project-based organization.** Each project holds its own collections of links,
+  and its own tasks, notes, todos, and calendar — switching projects switches the
+  whole view.
+- **Tab & bookmark management.** Save open windows/tabs as collections, mirror
+  projects into the Chrome bookmark tree, and import bookmark folders back as
+  projects/collections.
+- **Advanced tasks.** Priorities, statuses, categories, tags, due dates, progress,
+  subtasks, comments, activity history, templates, Kanban/list/calendar views,
+  Pomodoro sessions, and bulk operations. A **Calendar** view renders tasks by
+  due date (per active project).
+- **Notes & todos.** Per-project rich notes (colors, pinning) and lightweight
+  todos.
+- **Cloud sync & collaboration (optional).** Connect a Cloudflare Worker backend
+  to sync a project's links, collections, tasks, notes, and todos. Invite
+  teammates with **owner / admin / editor / viewer** roles, see realtime presence,
+  and resolve conflicts under last-write-wins.
+- **Local-first.** Without a backend the extension is fully functional; sync is an
+  opt-in layer on top. Data persists in `chrome.storage`.
+- **Drag & drop**, **dark mode**, **global search**, **quick links**, and a
+  background service worker that keeps cloud projects synced even when the popup
+  is closed.
+
+---
+
+## Tech stack
+
+| Concern         | Choice                                             |
+| --------------- | -------------------------------------------------- |
+| UI framework    | Next.js 15 (static export) + React 18              |
+| Language        | TypeScript                                         |
+| Styling         | Tailwind CSS + Radix UI primitives                 |
+| State           | Zustand (with `chrome.storage` persistence)        |
+| Drag & drop     | @dnd-kit                                           |
+| Extension shell | Manifest V3 (service worker + new-tab override)    |
+| Backend (opt.)  | Cloudflare Worker + D1 (+ Durable Objects for RT)  |
+| Tests           | Jest (extension), Vitest (backend)                 |
+
+---
+
+## Prerequisites
+
+- **Node.js 20+**
+- A package manager. The repo currently uses **pnpm** (see `pnpm-lock.yaml`);
+  the `build` script calls `pnpm run …` for its sub-steps, so install pnpm:
+  ```bash
+  corepack enable
+  # or: npm install -g pnpm
+  ```
+- **Google Chrome** (or any Chromium browser) for loading the unpacked extension.
+
+---
+
+## Getting started
+
+Install dependencies from the repo root:
+
+```bash
+pnpm install
+```
+
+Run the type checker and the linter:
+
+```bash
+pnpm typecheck   # tsc --noEmit
+pnpm lint        # next lint
+```
+
+Run the unit tests:
+
+```bash
+pnpm test        # jest
+```
+
+### Build the extension
+
+```bash
+pnpm build
+```
+
+`build` chains: `lint` → `typecheck` → `next build` (static export to `out/`) →
+`scripts/build-background.mjs` (bundles the MV3 service worker to `out/background.js`)
+→ `post-build.js` (copies `public/manifest.json`, icons, and other extension
+assets into `out/`). The resulting **`out/`** directory is the loadable extension.
+
+> During development you can iterate with `next dev` for UI work, but the
+> extension APIs (and the service worker) only run when you load the built `out/`
+> folder as an unpacked extension.
+
+---
+
+## Loading the extension in Chrome
+
+1. Build the extension (`pnpm build`) so the `out/` folder exists.
+2. Open `chrome://extensions`.
+3. Enable **Developer mode** (top-right toggle).
+4. Click **Load unpacked** and select the project's `out/` directory.
+5. The extension overrides the **New Tab** page and provides a toolbar **popup**.
+   Pin it from the puzzle menu for quick access.
+6. After source changes: rebuild (`pnpm build`) and click the **reload** icon on
+   the extension card in `chrome://extensions`.
+
+Inspect logs/service-worker output via the **"Inspect views: service worker"**
+link on the extension card, and the popup's devtools via right-click → Inspect.
+
+---
+
+## How it works
+
+### State (Zustand)
+
+All app state lives in a single Zustand store (`src/stores/appStore.ts`) and is
+split into focused "action slices" under `src/stores/actions/`:
+
+- `projectActions`, `collectionActions`, `linkActions` — the nested
+  project → collection → link tree (also mirrored into Chrome bookmarks).
+- `taskActions` — the advanced task system.
+- `noteActions` — per-project notes.
+- `uiActions` — todos, quick links, modals, panel state, and theme.
+- `cloudSyncActions` — cloud-sync status, cursors, role/flag setters, and the
+  remote-change reducer bridge.
+- `dragDropActions` — reorder/move links and collections.
+
+State persists to `chrome.storage` via Zustand's `persist` middleware; a `merge`
+hook runs a one-time migration to assign legacy items to the active project (see
+[Per-project data](#per-project-data--cloud-sync)).
+
+### Extension shell (Manifest V3)
+
+`public/manifest.json` declares an MV3 extension: a **service worker**
+(`background.js`, built from `src/background/index.ts`) and a **popup / new-tab**
+page (`index.html`, the Next.js export). The worker owns the periodic cloud-sync
+alarm and coordination lock; the popup owns the UI and interactive sync.
+
+### Cloud sync pipeline (optional)
+
+When connected, sync is a local-first mutation queue:
+
+1. A local edit on a **cloud-enabled** project calls `enqueueCloudChange(...)`,
+   which no-ops unless sync is enabled **and** the owning project is
+   `cloudEnabled`. Otherwise it appends a mutation to a persisted queue.
+2. **Push/pull** (`syncProjectNow`) sends queued mutations to
+   `POST /projects/:id/sync` and pulls change-log rows since the last cursor.
+3. **Apply** (`applyRemoteChanges`) folds remote rows into the store, skipping
+   this client's own echoes. Conflicts surface as status/errors under
+   last-write-wins.
+4. The **background service worker** runs the same flow on an alarm so cloud
+   projects stay current while the popup is closed; an advisory lock prevents
+   the popup and the worker from double-syncing.
+
+The backend (`backend/`) is a Cloudflare Worker over a D1 database — see
+[`deployment.md`](./deployment.md).
+
+---
+
+## Per-project data & cloud sync
+
+Tasks, notes, todos, and (task-derived) calendar entries are **scoped to the
+active project**. Every item carries a `projectId`; the views filter by the
+active project, and new items are always stamped with the active project at
+creation.
+
+- **Creation** stamps `activeProjectId` on every new note/todo/task.
+- **Views** (`NotesView`, `TodosView`, `TasksView`) filter by the active project.
+  The full-width global **Tasks** route intentionally shows tasks across all
+  projects (a cross-project dashboard).
+- **Migration** — on rehydrate, any pre-existing item lacking a `projectId` is
+  assigned to the active (or first) project, so nothing is orphaned.
+- **Project delete** cascades locally to that project's notes/todos/tasks (the
+  backend cascades via `ON DELETE CASCADE`).
+
+### Cloud sync write path (Phase B)
+
+Notes, todos, and tasks now push to the cloud just like collections and links:
+
+- **Write path.** `addNote/updateNote/deleteNote`, `addTodo/toggleTodo/removeTodo`,
+  and `addTask/updateTask/deleteTask` enqueue cloud mutations. Each carries the
+  entity's full payload (`{ title, payload: { … } }`) because the backend stores
+  these as a `title` column plus a `payload_json` blob and **replaces** the blob
+  wholesale on update — so the merged entity is always sent. Patch shapes live in
+  [`src/lib/cloudflareSync/entityPatches.ts`](./src/lib/cloudflareSync/entityPatches.ts).
+- **Read path.** Incoming note/todo/task change rows are stamped with
+  `projectId` from the change row's `project_id` (authoritative), so remote items
+  always land in the right project. `projectId` is immutable once set.
+- **Convert to cloud.** Turning a local project into a cloud project re-keys the
+  project (and its flat notes/todos/tasks) to the server id and backfills
+  `create` mutations for every existing item, so the server mirrors local state
+  on the next sync.
+
+> Scope note: pin toggles, note/task duplication, task archiving, and subtasks are
+> intentionally **not** cloud-synced in this phase (the core CRUD + toggle are).
+> See [`PER_PROJECT_VIEWS_SYNC_PLAN.md`](./PER_PROJECT_VIEWS_SYNC_PLAN.md).
+
+---
+
+## Setting up cloud sync
+
+Cloud sync is optional. To enable it:
+
+1. Deploy the backend Worker + D1 database — full instructions in
+   [`deployment.md`](./deployment.md).
+2. Add the Worker URL to `public/manifest.json` → `host_permissions` and rebuild.
+3. In the extension, open **Settings → Cloud Sync**, enter the Worker URL, and
+   sign in (demo auth by default; swap in a real provider for production).
+4. Create a cloud project, or convert an existing local project to cloud, then
+   invite teammates via a share code.
+
+---
+
+## Testing
+
+```bash
+pnpm test                 # extension unit tests (jest)
+pnpm test:backend         # backend typecheck + tests (vitest)
+pnpm test:all             # both
+```
+
+The cloud-sync applier, action enqueue shapes, role helpers, coordination lock,
+realtime messages, and background sync are all covered. Tests run under jsdom;
+`jest.setup.ts` polyfills `structuredClone` and `crypto.randomUUID` for the
+jsdom environment.
+
+---
+
+## Project structure
+
+```
+.
+├── public/                 # manifest.json, icons (copied into out/ at build)
+├── src/
+│   ├── app/                # Next.js app (entry, layout, global styles)
+│   ├── background/         # MV3 service worker source (→ out/background.js)
+│   ├── components/         # UI: views, panels, modals, cloud-sync, sidebar, …
+│   │   └── views/          # NotesView, TodosView, TasksView, TaskCalendarView, …
+│   ├── lib/
+│   │   ├── cloudflareSync/ # client: queue, API, applier, orchestrator, realtime
+│   │   ├── bookmarkStorage.ts, bookmarkSyncService.ts  # bookmark tree bridge
+│   │   └── tabService.ts   # chrome.tabs / chrome.windows helpers
+│   ├── stores/             # Zustand store + action slices
+│   │   ├── appStore.ts     # store definition, persistence, migration
+│   │   ├── types.ts        # AppState, Note, …
+│   │   └── actions/        # project/collection/link/note/task/ui/cloudSync/…
+│   └── types/              # shared domain types (Project, Link, tasks.ts, …)
+├── backend/                # Cloudflare Worker + D1 (sync, auth, collaboration)
+├── scripts/                # build-background.mjs, favicon tooling
+├── docs/                   # feature/feature design docs
+├── deployment.md           # backend deploy guide
+└── BUILD_INSTRUCTIONS.md   # build + load-the-extension walkthrough
+```
+
+---
+
+## Documentation
+
+- [`BUILD_INSTRUCTIONS.md`](./BUILD_INSTRUCTIONS.md) — build and load the extension.
+- [`deployment.md`](./deployment.md) — deploy the Cloudflare backend (D1, secrets,
+  realtime Durable Object, API quick-test).
+- [`PER_PROJECT_VIEWS_SYNC_PLAN.md`](./PER_PROJECT_VIEWS_SYNC_PLAN.md) — design for
+  per-project tasks/notes/todos + cloud sync (Phase A scoping, Phase B write path).
+- [`docs/`](./docs/) — feature deep-dives (bookmark sync, enhanced tasks, favicons).
+
+---
+
+## Build & packaging notes
+
+- The extension is a **static export**; `next build` outputs `out/`, which is the
+  directory you load unpacked.
+- The MV3 service worker is bundled separately (`scripts/build-background.mjs`)
+  because Next.js doesn't emit a worker entry; it lands at `out/background.js`.
+- `post-build.js` stages `manifest.json`, icons, and other extension assets into
+  `out/` so the folder is self-contained.
+- Bookmark-folder ids and Chrome bookmark ids are **device-local** and never sent
+  to the cloud — only canonical entity data is synced.

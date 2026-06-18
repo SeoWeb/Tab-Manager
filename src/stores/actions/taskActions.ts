@@ -11,6 +11,8 @@ import type {
   TaskComment,
   TaskActivity,
 } from '@/types/tasks';
+import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import { buildTaskPatch } from '@/lib/cloudflareSync/entityPatches';
 
 // Utility functions
 const generateId = () => crypto.randomUUID();
@@ -140,6 +142,10 @@ export const createTaskActions = (
       const now = generateTimestamp();
       const newTask: AdvancedTask = {
         ...taskData,
+        // Strict per-project: default to the active project unless the caller
+        // explicitly assigned one.
+        projectId:
+          taskData.projectId ?? state.activeProjectId ?? state.projects[0]?.id,
         id: newTaskId,
         createdAt: now,
         updatedAt: now,
@@ -161,10 +167,24 @@ export const createTaskActions = (
         taskStats: calculateTaskStats(updatedTasks),
       };
     });
+
+    // Enqueue a task create for cloud projects. Read the materialized task from
+    // the store so the patch reflects defaulted fields (e.g. projectId resolved
+    // to the active project). enqueueCloudChange is a no-op for local-only.
+    const newTask = get().tasks.find((t) => t.id === newTaskId);
+    if (newTask?.projectId) {
+      void enqueueCloudChange({
+        projectId: newTask.projectId,
+        entityType: 'task',
+        entityId: newTaskId,
+        operation: 'create',
+        patch: buildTaskPatch(newTask),
+      });
+    }
     return newTaskId;
   },
 
-  updateTask: (id: string, updates: Partial<AdvancedTask>) =>
+  updateTask: (id: string, updates: Partial<AdvancedTask>) => {
     set((state: AppState) => {
       const updatedTasks = state.tasks.map((task) => {
         if (task.id === id) {
@@ -203,22 +223,46 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
 
-  deleteTask: (id: string) =>
+    // Enqueue the task's full current payload. The backend replaces payload_json
+    // wholesale on update, so read the merged task after the optimistic update
+    // and send all flat fields (a partial patch would clobber the others).
+    const updated = get().tasks.find((t) => t.id === id);
+    if (updated?.projectId) {
+      void enqueueCloudChange({
+        projectId: updated.projectId,
+        entityType: 'task',
+        entityId: id,
+        operation: 'update',
+        patch: buildTaskPatch(updated),
+      });
+    }
+  },
+
+  deleteTask: (id: string) => {
+    // Resolve the deletion set (a task plus its recursive subtasks) from the
+    // current state before `set` removes them, so we can both filter in the
+    // reducer and enqueue a cloud delete for each removed id.
+    const currentTasks = get().tasks;
+    const tasksToDelete = new Set<string>();
+    const findSubtasksRecursively = (taskId: string) => {
+      if (tasksToDelete.has(taskId)) return;
+      tasksToDelete.add(taskId);
+      const task = currentTasks.find((t) => t.id === taskId);
+      if (task) {
+        task.subtasks.forEach(findSubtasksRecursively);
+      }
+    };
+
+    findSubtasksRecursively(id);
+
+    // Capture each deleted task's owning project before removal.
+    const deletions = currentTasks
+      .filter((t) => tasksToDelete.has(t.id))
+      .map((t) => ({ id: t.id, projectId: t.projectId }));
+
     set((state: AppState) => {
-      const tasksToDelete = new Set<string>();
-      const findSubtasksRecursively = (taskId: string) => {
-        if (tasksToDelete.has(taskId)) return;
-        tasksToDelete.add(taskId);
-        const task = state.tasks.find((t) => t.id === taskId);
-        if (task) {
-          task.subtasks.forEach(findSubtasksRecursively);
-        }
-      };
-
-      findSubtasksRecursively(id);
-
       const updatedTasks = state.tasks.filter(
         (task) => !tasksToDelete.has(task.id)
       );
@@ -231,9 +275,26 @@ export const createTaskActions = (
           ? null
           : state.activeTaskId,
       };
-    }),
+    });
 
-  duplicateTask: (id: string) =>
+    // Enqueue a cloud delete for the task and each cascaded subtask. The backend
+    // cascades project deletes but not task deletes, so each id is deleted
+    // explicitly.
+    for (const del of deletions) {
+      if (del.projectId) {
+        void enqueueCloudChange({
+          projectId: del.projectId,
+          entityType: 'task',
+          entityId: del.id,
+          operation: 'delete',
+          patch: {},
+        });
+      }
+    }
+  },
+
+  duplicateTask: (id: string) => {
+    const duplicatedId = generateId();
     set((state: AppState) => {
       const originalTask = state.tasks.find((task) => task.id === id);
       if (!originalTask) return state;
@@ -241,7 +302,7 @@ export const createTaskActions = (
       const now = generateTimestamp();
       const duplicatedTask: AdvancedTask = {
         ...originalTask,
-        id: generateId(),
+        id: duplicatedId,
         title: `${originalTask.title} (Copy)`,
         status: 'todo',
         progress: 0,
@@ -267,40 +328,68 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
 
-  archiveTask: (id: string) =>
-    set((state: AppState) => {
-      const tasksToArchive = new Set<string>();
-      const findSubtasks = (taskId: string) => {
-        if (tasksToArchive.has(taskId)) return;
-        tasksToArchive.add(taskId);
-        const task = state.tasks.find((t) => t.id === taskId);
-        if (task) {
-          task.subtasks.forEach(findSubtasks);
-        }
-      };
-
-      findSubtasks(id);
-
-      const updatedTasks = state.tasks.map((task) => {
-        if (tasksToArchive.has(task.id)) {
-          return addActivity(
-            { ...task, isArchived: true },
-            { type: 'updated', description: 'Task archived', author: 'user' }
-          );
-        }
-        return task;
+    // Sync the duplicate as a new task create. It inherits the original's
+    // projectId via the spread above.
+    const duplicated = get().tasks.find((t) => t.id === duplicatedId);
+    if (duplicated?.projectId) {
+      void enqueueCloudChange({
+        projectId: duplicated.projectId,
+        entityType: 'task',
+        entityId: duplicatedId,
+        operation: 'create',
+        patch: buildTaskPatch(duplicated),
       });
+    }
+  },
+
+  archiveTask: (id: string) => {
+    const tasksToArchive = new Set<string>();
+    const findSubtasks = (taskId: string) => {
+      if (tasksToArchive.has(taskId)) return;
+      tasksToArchive.add(taskId);
+      const task = get().tasks.find((t) => t.id === taskId);
+      if (task) {
+        task.subtasks.forEach(findSubtasks);
+      }
+    };
+    findSubtasks(id);
+
+    set((state: AppState) => {
+      const updatedTasks = state.tasks.map((task) =>
+        tasksToArchive.has(task.id)
+          ? addActivity(
+              { ...task, isArchived: true },
+              { type: 'updated', description: 'Task archived', author: 'user' }
+            )
+          : task
+      );
 
       return {
         ...state,
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
 
-  unarchiveTask: (id: string) =>
+    // Sync the archive toggle for each affected task (the subtask cascade is
+    // included). isArchived now rides in the task patch.
+    for (const archivedId of tasksToArchive) {
+      const updated = get().tasks.find((t) => t.id === archivedId);
+      if (updated?.projectId) {
+        void enqueueCloudChange({
+          projectId: updated.projectId,
+          entityType: 'task',
+          entityId: archivedId,
+          operation: 'update',
+          patch: buildTaskPatch(updated),
+        });
+      }
+    }
+  },
+
+  unarchiveTask: (id: string) => {
     set((state: AppState) => {
       const updatedTasks = state.tasks.map((task) =>
         task.id === id
@@ -320,7 +409,19 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
+
+    const updated = get().tasks.find((t) => t.id === id);
+    if (updated?.projectId) {
+      void enqueueCloudChange({
+        projectId: updated.projectId,
+        entityType: 'task',
+        entityId: id,
+        operation: 'update',
+        patch: buildTaskPatch(updated),
+      });
+    }
+  },
 
   // Task Status & Progress
   setTaskStatus: (id: string, status: TaskStatus) => {
@@ -364,12 +465,23 @@ export const createTaskActions = (
       AdvancedTask,
       'id' | 'createdAt' | 'updatedAt' | 'activities' | 'parentTaskId'
     >
-  ) =>
+  ) => {
+    const subtaskId = generateId();
     set((state: AppState) => {
       const now = generateTimestamp();
+      // Inherit the parent task's project so subtasks stay scoped correctly,
+      // mirroring addTask's active-project fallback. The TaskDetailModal path
+      // already passes projectId explicitly, but this keeps the store action
+      // consistent with the strict per-project invariant for any other caller.
+      const parent = state.tasks.find((t) => t.id === parentId);
       const subtask: AdvancedTask = {
         ...subtaskData,
-        id: generateId(),
+        projectId:
+          subtaskData.projectId ??
+          parent?.projectId ??
+          state.activeProjectId ??
+          state.projects[0]?.id,
+        id: subtaskId,
         parentTaskId: parentId,
         createdAt: now,
         updatedAt: now,
@@ -401,9 +513,39 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
 
-  removeSubtask: (parentId: string, subtaskId: string) =>
+    // Sync: create the subtask, and update the parent (its subtasks[] changed).
+    const storeState = get();
+    const subtask = storeState.tasks.find((t) => t.id === subtaskId);
+    if (subtask?.projectId) {
+      void enqueueCloudChange({
+        projectId: subtask.projectId,
+        entityType: 'task',
+        entityId: subtaskId,
+        operation: 'create',
+        patch: buildTaskPatch(subtask),
+      });
+    }
+    const parent = storeState.tasks.find((t) => t.id === parentId);
+    if (parent?.projectId) {
+      void enqueueCloudChange({
+        projectId: parent.projectId,
+        entityType: 'task',
+        entityId: parentId,
+        operation: 'update',
+        patch: buildTaskPatch(parent),
+      });
+    }
+  },
+
+  removeSubtask: (parentId: string, subtaskId: string) => {
+    // Capture the subtask's owning project before removal so its cloud delete
+    // can be enqueued.
+    const subtaskProjectId = get().tasks.find(
+      (t) => t.id === subtaskId
+    )?.projectId;
+
     set((state: AppState) => {
       const updatedTasks = state.tasks
         .filter((task) => task.id !== subtaskId)
@@ -429,15 +571,36 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
 
-  moveSubtask: (subtaskId: string, newParentId: string) =>
+    // Sync: delete the subtask, and update the parent (its subtasks[] changed).
+    if (subtaskProjectId) {
+      void enqueueCloudChange({
+        projectId: subtaskProjectId,
+        entityType: 'task',
+        entityId: subtaskId,
+        operation: 'delete',
+        patch: {},
+      });
+    }
+    const parent = get().tasks.find((t) => t.id === parentId);
+    if (parent?.projectId) {
+      void enqueueCloudChange({
+        projectId: parent.projectId,
+        entityType: 'task',
+        entityId: parentId,
+        operation: 'update',
+        patch: buildTaskPatch(parent),
+      });
+    }
+  },
+
+  moveSubtask: (subtaskId: string, newParentId: string) => {
+    const subtask = get().tasks.find((t) => t.id === subtaskId);
+    if (!subtask || !subtask.parentTaskId) return;
+    const oldParentId = subtask.parentTaskId;
+
     set((state: AppState) => {
-      const subtask = state.tasks.find((t) => t.id === subtaskId);
-      if (!subtask || !subtask.parentTaskId) return state;
-
-      const oldParentId = subtask.parentTaskId;
-
       const updatedTasks = state.tasks.map((task) => {
         if (task.id === oldParentId) {
           // Remove from old parent
@@ -473,7 +636,24 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
+
+    // Sync: the subtask's parentTaskId changed and both parents' subtasks[]
+    // changed — enqueue an update for each affected task.
+    const storeState = get();
+    for (const tid of [oldParentId, newParentId, subtaskId]) {
+      const t = storeState.tasks.find((x) => x.id === tid);
+      if (t?.projectId) {
+        void enqueueCloudChange({
+          projectId: t.projectId,
+          entityType: 'task',
+          entityId: tid,
+          operation: 'update',
+          patch: buildTaskPatch(t),
+        });
+      }
+    }
+  },
 
   // Task Organization
   addTaskTag: (id: string, tag: string) => {
@@ -645,7 +825,18 @@ export const createTaskActions = (
     })),
 
   // Bulk Operations
-  performBulkOperation: (operation: TaskBulkOperation) =>
+  performBulkOperation: (operation: TaskBulkOperation) => {
+    // For deletes, capture each target's owning project before the tasks are
+    // removed so cloud deletes can be enqueued afterwards.
+    const deleteProjects = new Map<string, string | undefined>();
+    if (operation.type === 'delete') {
+      for (const task of get().tasks) {
+        if (operation.taskIds.includes(task.id)) {
+          deleteProjects.set(task.id, task.projectId);
+        }
+      }
+    }
+
     set((state: AppState) => {
       let updatedTasks = [...state.tasks];
 
@@ -706,7 +897,38 @@ export const createTaskActions = (
         tasks: updatedTasks,
         taskStats: calculateTaskStats(updatedTasks),
       };
-    }),
+    });
+
+    // Sync each affected task. Deletes enqueue a cloud delete (the task is gone
+    // from state, so its project was captured above); update/archive/move
+    // enqueue the merged task's full payload under its current project.
+    const after = get().tasks;
+    for (const taskId of operation.taskIds) {
+      if (operation.type === 'delete') {
+        const pid = deleteProjects.get(taskId);
+        if (pid) {
+          void enqueueCloudChange({
+            projectId: pid,
+            entityType: 'task',
+            entityId: taskId,
+            operation: 'delete',
+            patch: {},
+          });
+        }
+      } else {
+        const t = after.find((x) => x.id === taskId);
+        if (t?.projectId) {
+          void enqueueCloudChange({
+            projectId: t.projectId,
+            entityType: 'task',
+            entityId: taskId,
+            operation: 'update',
+            patch: buildTaskPatch(t),
+          });
+        }
+      }
+    }
+  },
 
   // Selection Management (stored in component state, not global state)
   selectTask: () => {

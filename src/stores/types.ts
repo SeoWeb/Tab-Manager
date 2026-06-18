@@ -16,6 +16,12 @@ import type {
   TaskBulkOperation,
   LegacyTask,
 } from '@/types/tasks';
+import type {
+  CloudPresenceUser,
+  CloudRole,
+  CloudSyncChange,
+  CloudSyncState,
+} from '@/lib/cloudflareSync/types';
 
 // Define ActiveViewType
 export type ActiveViewType =
@@ -41,6 +47,8 @@ export interface Note {
   createdAt: Date;
   updatedAt: Date;
   isPinned: boolean;
+  /** Project this note belongs to. Older notes are stamped at rehydrate. */
+  projectId?: string;
 }
 
 export interface AppState {
@@ -87,6 +95,9 @@ export interface AppState {
   editingCollectionId: string | null;
   editingLinkId: string | null;
 
+  // Cloud sync state
+  cloudSync: CloudSyncState;
+
   // Hydration state
   _hasHydrated: boolean;
   _themeFromStorage: boolean;
@@ -116,7 +127,16 @@ export interface AppState {
   syncBookmarks: () => Promise<void>;
   addProject: (
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>,
-    skipBookmarkCreation?: boolean
+    options?: {
+      /** Skip creating a Chrome bookmark folder (e.g. cloud projects, import). */
+      skipBookmarkCreation?: boolean;
+      /** Use a server-assigned id for cloud projects instead of a fresh nanoid. */
+      id?: string;
+      /** Mark the project as cloud-synced. */
+      cloudEnabled?: boolean;
+      /** The current user's role on a cloud project (Phase 4). */
+      cloudRole?: CloudRole;
+    }
   ) => void;
   updateProject: (
     id: string,
@@ -127,6 +147,30 @@ export interface AppState {
   moveProject: (projectId: string, direction: 'up' | 'down') => void;
   reorderProjects: (activeId: string, overId: string) => void;
   migrateProjectOrder: () => void;
+
+  // Cloud sync actions
+  setCloudSyncState: (patch: Partial<Omit<CloudSyncState, 'cursors'>>) => void;
+  setProjectCursor: (projectId: string, cursor: number) => void;
+  clearProjectCursor: (projectId: string) => void;
+  clearProjectCursors: () => void;
+  mergeRemoteChanges: (changes: CloudSyncChange[], clientId: string) => void;
+  /** Whether the active project's realtime socket is connected (Phase 5). */
+  setRealtimeConnected: (connected: boolean) => void;
+  /** Members currently connected to the active project's realtime room. */
+  setOnlinePresence: (users: CloudPresenceUser[]) => void;
+  /** Toggle a project's cloud-synced flag (used by convert/disconnect). */
+  setProjectCloudEnabled: (projectId: string, enabled: boolean) => void;
+  /** Set the current user's role on a cloud project (Phase 4 role refresh). */
+  setProjectCloudRole: (projectId: string, role: CloudRole) => void;
+  /**
+   * Re-key a local project to its server-assigned id and mark it cloud-enabled.
+   * Used by convertProjectToCloud after POST /projects returns the server id.
+   * Entity ids (collections/links) are unchanged since they are client-authoritative.
+   */
+  convertProjectToCloudState: (
+    localId: string,
+    serverProjectId: string
+  ) => void;
 
   // Collection actions
   addCollection: (

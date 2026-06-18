@@ -6,13 +6,20 @@ import { Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const TodosView = () => {
-  const { todos, toggleTodo, removeTodo, addTodo } = useAppStore((state) => ({
-    todos: state.todos,
-    toggleTodo: state.toggleTodo,
-    removeTodo: state.removeTodo,
-    addTodo: state.addTodo,
-  }));
+  const { todos, activeProjectId, toggleTodo, removeTodo, addTodo } =
+    useAppStore((state) => ({
+      todos: state.todos,
+      activeProjectId: state.activeProjectId,
+      toggleTodo: state.toggleTodo,
+      removeTodo: state.removeTodo,
+      addTodo: state.addTodo,
+    }));
   const [newTodoText, setNewTodoText] = useState('');
+
+  // Scope todos to the active project
+  const visibleTodos = todos.filter(
+    (todo) => todo.projectId === activeProjectId
+  );
 
   const handleAddTodo = () => {
     if (newTodoText.trim()) {
@@ -34,7 +41,7 @@ const TodosView = () => {
         <Button onClick={handleAddTodo}>Add</Button>
       </div>
       <div className='space-y-2'>
-        {todos.map((todo) => (
+        {visibleTodos.map((todo) => (
           <div
             key={todo.id}
             className='flex items-center justify-between p-2 rounded-lg bg-secondary'

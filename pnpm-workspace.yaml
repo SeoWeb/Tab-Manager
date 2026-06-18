@@ -1,0 +1,13 @@
+# pnpm 11 gates install on packages with unacknowledged build scripts
+# (ERR_PNPM_IGNORED_BUILDS), which also fails the pre-run deps check that gates
+# every `pnpm run <script>` (test/build/lint/typecheck). These four native build
+# scripts are not needed here — the build uses unoptimized images and the tests
+# do not touch them — so explicitly mark each as disallowed. With an explicit
+# decision recorded, pnpm no longer treats them as pending, so neither the error
+# nor the warning fires and `pnpm install` / `pnpm run` succeed cleanly.
+allowBuilds:
+  '@firebase/util': false
+  esbuild: false
+  protobufjs: false
+  sharp: false
+  unrs-resolver: false

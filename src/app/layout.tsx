@@ -5,6 +5,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import ThemeManager from '@/components/ThemeManager';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { CloudSyncProvider } from '@/components/cloud-sync/CloudSyncProvider';
+import { CloudSyncRealtime } from '@/components/cloud-sync/CloudSyncRealtime';
 import { cn } from '@/lib/utils';
 
 const fontSans = FontSans({
@@ -32,7 +34,10 @@ export default function RootLayout({
       >
         <ThemeManager />
         <ErrorBoundary>
-          <SidebarProvider>{children}</SidebarProvider>
+          <CloudSyncProvider>
+            <CloudSyncRealtime />
+            <SidebarProvider>{children}</SidebarProvider>
+          </CloudSyncProvider>
         </ErrorBoundary>
         <Toaster />
       </body>

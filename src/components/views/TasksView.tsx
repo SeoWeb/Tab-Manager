@@ -31,9 +31,17 @@ import ArchivedTasksView from './ArchivedTasksView';
 
 interface TasksViewProps {
   initialTab?: string;
+  /**
+   * When provided, only tasks belonging to this project are shown. Omit it (the
+   * global Tasks route in AppClient) to show tasks across every project.
+   */
+  projectId?: string;
 }
 
-export default function TasksView({ initialTab = 'kanban' }: TasksViewProps) {
+export default function TasksView({
+  initialTab = 'kanban',
+  projectId,
+}: TasksViewProps) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -43,7 +51,12 @@ export default function TasksView({ initialTab = 'kanban' }: TasksViewProps) {
   const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
 
   // Store data
-  const tasks = useAppStoreWithDefaults((state) => state.tasks, []);
+  const allTasks = useAppStoreWithDefaults((state) => state.tasks, []);
+  // Scope to the active project when rendered per-project; the global route
+  // (no projectId prop) intentionally shows tasks across all projects.
+  const tasks = projectId
+    ? allTasks.filter((task) => task.projectId === projectId)
+    : allTasks;
   const taskStats = useAppStoreWithDefaults((state) => state.taskStats, {
     total: 0,
     completed: 0,

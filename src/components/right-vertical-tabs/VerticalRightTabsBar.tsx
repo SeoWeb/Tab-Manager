@@ -14,7 +14,6 @@ const TABS: { id: VerticalTabId; label: string; icon: React.ElementType }[] = [
   { id: 'openTabs', label: 'Open Tabs', icon: PanelRight },
   { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
   { id: 'notes', label: 'Notes', icon: FileText },
-  { id: 'todos', label: 'Tasks', icon: ListChecks },
   { id: 'simple-todo', label: 'Todo', icon: ListChecks },
 ];
 

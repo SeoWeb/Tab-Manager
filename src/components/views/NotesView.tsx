@@ -215,6 +215,7 @@ function NoteCard({
 export default function NotesView() {
   const {
     notes,
+    activeProjectId,
     addNote,
     updateNote,
     deleteNote,
@@ -222,6 +223,7 @@ export default function NotesView() {
     duplicateNote,
   } = useAppStore((state) => ({
     notes: state.notes,
+    activeProjectId: state.activeProjectId,
     addNote: state.addNote,
     updateNote: state.updateNote,
     deleteNote: state.deleteNote,
@@ -252,12 +254,14 @@ export default function NotesView() {
     setIsCreating(false);
   };
 
-  // Filter notes based on search query
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter notes to the active project, then by search query
+  const filteredNotes = notes
+    .filter((note) => note.projectId === activeProjectId)
+    .filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   // Separate pinned and unpinned notes
   const pinnedNotes = filteredNotes.filter((note) => note.isPinned);

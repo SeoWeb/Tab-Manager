@@ -1,6 +1,44 @@
 import type { Project, Collection, Link } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
+import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+
+/**
+ * Enqueue an `update` mutation for every link in a collection carrying its
+ * current order. Reorder is last-write-wins per link, so pushing the whole
+ * collection's order keeps sibling ordering consistent across clients.
+ */
+function syncLinkOrders(
+  projectId: string,
+  collection: Collection | undefined
+): void {
+  if (!collection) return;
+  for (const link of collection.links) {
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'link',
+      entityId: link.id,
+      operation: 'update',
+      patch: { order: link.order ?? 0 },
+    });
+  }
+}
+
+/** Enqueue an `update` mutation for every collection's current order. */
+function syncCollectionOrders(
+  projectId: string,
+  collections: Collection[]
+): void {
+  for (const collection of collections) {
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'collection',
+      entityId: collection.id,
+      operation: 'update',
+      patch: { order: collection.order ?? 0 },
+    });
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createDragDropActions = (set: any, get: () => AppState) => ({
@@ -109,6 +147,33 @@ export const createDragDropActions = (set: any, get: () => AppState) => ({
 
       return { projects: updatedProjects };
     });
+
+    // Push the move to the cloud: the moved link's new collection + order, plus
+    // the shifted orders in both source and target collections.
+    const movedProject = get().projects.find((p) => p.id === projectId);
+    const target = movedProject?.collections.find(
+      (c) => c.id === targetCollectionId
+    );
+    const source = movedProject?.collections.find(
+      (c) => c.id === sourceCollectionId
+    );
+    const movedLink = target?.links.find((l) => l.id === linkId);
+    if (movedLink) {
+      void enqueueCloudChange({
+        projectId,
+        entityType: 'link',
+        entityId: linkId,
+        operation: 'update',
+        patch: {
+          collectionId: targetCollectionId,
+          order: movedLink.order ?? 0,
+        },
+      });
+    }
+    if (sourceCollectionId !== targetCollectionId) {
+      syncLinkOrders(projectId, source);
+    }
+    syncLinkOrders(projectId, target);
   },
 
   reorderLinks: (
@@ -185,6 +250,11 @@ export const createDragDropActions = (set: any, get: () => AppState) => ({
 
       return { projects: updatedProjects };
     });
+
+    // Push the reordered link orders to the cloud.
+    const project = get().projects.find((p) => p.id === projectId);
+    const collection = project?.collections.find((c) => c.id === collectionId);
+    syncLinkOrders(projectId, collection);
   },
 
   reorderCollections: (
@@ -230,5 +300,9 @@ export const createDragDropActions = (set: any, get: () => AppState) => ({
 
       return { projects: updatedProjects };
     });
+
+    // Push the reordered collection orders to the cloud.
+    const project = get().projects.find((p) => p.id === projectId);
+    if (project) syncCollectionOrders(projectId, project.collections);
   },
 });

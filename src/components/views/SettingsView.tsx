@@ -5,6 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { CloudSyncSettingsPanel } from '@/components/cloud-sync/CloudSyncSettingsPanel';
+import { CloudSyncInvitesCard } from '@/components/cloud-sync/CloudSyncInvitesCard';
 
 export default function SettingsView() {
   const { themeColor, setThemeColor } = useAppStore((state) => ({
@@ -36,6 +38,9 @@ export default function SettingsView() {
             <Link href='/favicon-migration'>Update Favicons</Link>
           </Button>
         </div>
+
+        <CloudSyncSettingsPanel />
+        <CloudSyncInvitesCard />
       </div>
     </div>
   );

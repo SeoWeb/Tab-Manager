@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
+import {
+  useAppStoreWithDefaults,
+  useActiveProjectId,
+} from '@/hooks/useAppStoreWithDefaults';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -212,6 +215,7 @@ function NoteCard({
 
 export default function NotesPanelContent() {
   const notes = useAppStoreWithDefaults((state) => state.notes, []);
+  const activeProjectId = useActiveProjectId();
   const addNote = useAppStoreWithDefaults(
     (state) => state.addNote,
     () => {}
@@ -256,12 +260,14 @@ export default function NotesPanelContent() {
     setIsCreating(false);
   };
 
-  // Filter notes based on search query
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter notes to the active project, then by search query
+  const filteredNotes = notes
+    .filter((note) => note.projectId === activeProjectId)
+    .filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   // Separate pinned and unpinned notes
   const pinnedNotes = filteredNotes.filter((note) => note.isPinned);

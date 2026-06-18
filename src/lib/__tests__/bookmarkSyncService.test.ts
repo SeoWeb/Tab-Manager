@@ -6,7 +6,22 @@ import { useAppStore } from '@/stores/appStore';
 
 // Mock the dependencies
 jest.mock('../bookmarkService');
-jest.mock('@/stores/appStore');
+// Factory mock so the real store is never loaded. The real `appStore` imports
+// `nanoid` (ESM-only) via `mockData`, which Jest's CJS transform cannot parse.
+jest.mock('@/stores/appStore', () => ({
+  useAppStore: jest.fn(),
+}));
+// Stub favicon preloading (network/cache) so link creation is deterministic.
+jest.mock('../utils', () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+  getInitials: () => '',
+  isValidUrl: () => true,
+  getFullUrl: (url: string) => url,
+  getFaviconUrl: jest.fn(),
+  preloadFavicon: jest
+    .fn()
+    .mockResolvedValue('https://www.google.com/s2/favicons?domain=newlink.com'),
+}));
 
 const mockBookmarkService = bookmarkService as jest.Mocked<
   typeof bookmarkService
@@ -44,6 +59,22 @@ describe('BookmarkSyncService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // The service is a module singleton whose `isInitialized` / `syncInProgress`
+    // flags persist across tests; clearAllMocks only clears call history, so
+    // reset the instance state explicitly to keep each test isolated.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (bookmarkSyncService as any).isInitialized = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (bookmarkSyncService as any).syncInProgress = false;
+
+    // clearAllMocks also does not clear the one-shot `mockResolvedValueOnce`
+    // queue, so leftover return values would leak between tests (e.g. an
+    // unconsumed value from one sync shifting the next test's responses). Reset
+    // the bookmark-service mocks that use one-shot queues; each test sets up the
+    // mock it needs.
+    mockBookmarkService.getChildren.mockReset();
+    mockBookmarkService.getBookmarkNode.mockReset();
 
     mockStore = {
       tabManagerRootFolderId: 'root-folder-id',
@@ -144,8 +175,14 @@ describe('BookmarkSyncService', () => {
 
       await Promise.all([promise1, promise2]);
 
-      // Should only call getChildren once
-      expect(mockBookmarkService.getChildren).toHaveBeenCalledTimes(1);
+      // A single sync starts with exactly one root-folder getChildren call; if
+      // the second concurrent sync had also run, the root call would repeat.
+      // (Each sync also makes nested project/collection getChildren calls, so a
+      // raw call count would not prove the second sync was skipped.)
+      const rootCalls = mockBookmarkService.getChildren.mock.calls.filter(
+        ([id]) => id === 'root-folder-id'
+      );
+      expect(rootCalls).toHaveLength(1);
     });
   });
 
@@ -178,12 +215,15 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
-      expect(mockStore.addProject).toHaveBeenCalledWith({
-        name: 'New Project',
-        description: 'Imported from bookmarks',
-        color: '#4285F4',
-        icon: 'N',
-      });
+      expect(mockStore.addProject).toHaveBeenCalledWith(
+        {
+          name: 'New Project',
+          description: 'Imported from bookmarks',
+          color: '#4285F4',
+          icon: 'N',
+        },
+        { skipBookmarkCreation: true } // importing FROM bookmarks
+      );
     });
   });
 
@@ -248,11 +288,15 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
-      expect(mockStore.addCollection).toHaveBeenCalledWith('project-1', {
-        name: 'New Collection',
-        description: 'Imported from bookmarks',
-        color: undefined,
-      });
+      expect(mockStore.addCollection).toHaveBeenCalledWith(
+        'project-1',
+        {
+          name: 'New Collection',
+          description: 'Imported from bookmarks',
+          color: undefined,
+        },
+        true // skipBookmarkCreation: importing FROM bookmarks
+      );
     });
   });
 
@@ -310,18 +354,20 @@ describe('BookmarkSyncService', () => {
           favIconUrl: 'https://www.google.com/s2/favicons?domain=newlink.com',
           tags: [],
           notes: 'Imported from bookmarks',
-        }
+        },
+        true // skipBookmarkCreation: importing FROM bookmarks
       );
     });
   });
 
   describe('handleBookmarkCreated', () => {
     it('should trigger sync when bookmark is created in managed folder', async () => {
-      // Mock isWithinManagedFolders to return true
+      // Make the managed-folder walk terminate at the root in one step:
+      // collection-folder-id -> parent (root-folder-id) -> matches root.
       mockBookmarkService.getBookmarkNode.mockResolvedValue({
         id: 'root-folder-id',
         title: 'Tab Manager Projects',
-        parentId: '2',
+        parentId: 'root-folder-id',
         index: 0,
         dateAdded: Date.now(),
         dateGroupModified: Date.now(),
@@ -337,15 +383,27 @@ describe('BookmarkSyncService', () => {
         parentId: 'collection-folder-id',
       };
 
-      // Simulate bookmark created event
+      // Avoid the real debounced performFullSync firing on a timer; we only care
+      // that a sync is triggered.
+      const partialSyncSpy = jest
+        .spyOn(bookmarkSyncService, 'performPartialSync')
+        .mockResolvedValue(undefined);
+
+      // Listeners are registered during initialize(), so capture the handler
+      // after initializing (not before).
+      await bookmarkSyncService.initialize();
       const createdHandler =
         mockChrome.bookmarks.onCreated.addListener.mock.calls[0][0];
 
-      await bookmarkSyncService.initialize();
-      await createdHandler('new-bookmark-id', bookmark);
+      await createdHandler(
+        'new-bookmark-id',
+        bookmark as chrome.bookmarks.BookmarkTreeNode
+      );
 
-      // Should trigger a sync (with debounce)
+      // Should resolve the bookmark's lineage and trigger a partial sync.
       expect(mockBookmarkService.getBookmarkNode).toHaveBeenCalled();
+      expect(partialSyncSpy).toHaveBeenCalledWith('collection-folder-id');
+      partialSyncSpy.mockRestore();
     });
   });
 

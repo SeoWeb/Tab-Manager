@@ -32,7 +32,6 @@ This document provides instructions on how to build the Tab Manager Chrome Exten
     In the top right corner of the Extensions page, toggle the "Developer mode" switch to the ON position.
 
 3.  **Load Unpacked Extension:**
-
     - Click the "Load unpacked" button that appears after enabling Developer mode.
     - A file dialog will open. Navigate to the project's root directory and select the `out/` folder.
     - Click "Select Folder" (or "Open").

@@ -205,6 +205,8 @@ export interface LegacyTask {
   text: string;
   completed: boolean;
   category?: string;
+  /** Project this todo belongs to. Older todos are stamped at rehydrate. */
+  projectId?: string;
 }
 
 // Migration utility type

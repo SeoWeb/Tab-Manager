@@ -1,5 +1,7 @@
 // src/types/index.ts
 
+import type { CloudRole } from '@/lib/cloudflareSync/types';
+
 export interface Link {
   id: string;
   url: string;
@@ -36,6 +38,20 @@ export interface Project {
   color?: string; // e.g., a hex code for the project's theme color
   order?: number; // Optional field for explicit ordering of projects
   bookmarkFolderId?: string | null; // Store ID of the associated bookmark folder
+  /**
+   * Whether this project has a server-side counterpart and should sync through the
+   * Cloudflare Worker. Cloud projects use the server-assigned id as their local id
+   * (the Worker generates project ids via POST /projects); local-only projects use a
+   * client nanoid. Entity ids (collection/link/...) stay client-authoritative either way.
+   */
+  cloudEnabled?: boolean;
+  /**
+   * The current user's role on a cloud project (Phase 4). Absent for local-only
+   * projects, in which case the UI grants full control (local-first). Refreshed
+   * from `GET /projects/:id` during sync and set at create/convert/invite-accept.
+   * The backend remains the source of truth for actual authorization.
+   */
+  cloudRole?: CloudRole;
 }
 
 // Preserved existing types
@@ -67,6 +83,5 @@ export type VerticalTabId =
   | 'openTabs'
   | 'bookmarks'
   | 'notes'
-  | 'todos'
   | 'sessions'
   | 'simple-todo';

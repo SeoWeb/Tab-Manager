@@ -2,8 +2,43 @@ import { nanoid } from 'nanoid';
 import type { Collection, Project, Link } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
+import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 
 const generateId = () => nanoid();
+
+/**
+ * Build the cloud patch for a collection update from local `updates`, keeping
+ * only fields the Worker stores. Bookmark folder ids are device-local and
+ * excluded.
+ */
+function buildCollectionUpdatePatch(
+  updates: Partial<Collection>
+): Record<string, unknown> | null {
+  const patch: Record<string, unknown> = {};
+  if (updates.name !== undefined) patch.name = updates.name;
+  if (updates.description !== undefined)
+    patch.description = updates.description;
+  if (updates.color !== undefined) patch.color = updates.color;
+  if (updates.minimized !== undefined) patch.minimized = updates.minimized;
+  if (updates.order !== undefined) patch.order = updates.order;
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
+/** Enqueue an `update` mutation carrying each collection's current order. */
+function syncCollectionOrders(
+  projectId: string,
+  collections: Collection[]
+): void {
+  for (const collection of collections) {
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'collection',
+      entityId: collection.id,
+      operation: 'update',
+      patch: { order: collection.order ?? 0 },
+    });
+  }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createCollectionActions = (set: any, get: () => AppState) => ({
@@ -12,54 +47,28 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
     collectionData: Pick<Collection, 'name' | 'description' | 'color'>,
     skipBookmarkCreation = false
   ) => {
+    const project = get().projects.find((p: Project) => p.id === projectId);
+    if (!project) {
+      console.error(
+        `Project with ID ${projectId} not found for adding collection.`
+      );
+      return;
+    }
+
+    const newCollection: Collection = {
+      id: generateId(),
+      name: collectionData.name,
+      description: collectionData.description || '',
+      color: collectionData.color,
+      links: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      minimized: false,
+      order: project.collections.length,
+      bookmarkFolderId: null,
+    };
+
     set((state: AppState) => {
-      const project = state.projects.find((p: Project) => p.id === projectId);
-      if (!project) {
-        console.error(
-          `Project with ID ${projectId} not found for adding collection.`
-        );
-        return state;
-      }
-
-      const newCollection: Collection = {
-        id: generateId(),
-        name: collectionData.name,
-        description: collectionData.description || '',
-        color: collectionData.color,
-        links: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        minimized: false,
-        order: project.collections.length,
-        bookmarkFolderId: null,
-      };
-
-      if (!skipBookmarkCreation && project.bookmarkFolderId) {
-        (async () => {
-          try {
-            const newBookmarkFolder = await bookmarkStorage.createCollection(
-              newCollection.name,
-              project.bookmarkFolderId!
-            );
-            get().updateCollection(
-              projectId,
-              newCollection.id,
-              { bookmarkFolderId: newBookmarkFolder.id },
-              true // isInternalCall
-            );
-          } catch (error) {
-            console.error(
-              `Failed to create bookmark folder for collection ${newCollection.name}:`,
-              error
-            );
-          }
-        })();
-      } else if (!skipBookmarkCreation) {
-        console.warn(
-          `Project ${projectId} does not have a bookmarkFolderId. Cannot create collection bookmark folder.`
-        );
-      }
-
       const updatedProjects = state.projects.map((p: Project) =>
         p.id === projectId
           ? {
@@ -70,6 +79,48 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
           : p
       );
       return { projects: updatedProjects };
+    });
+
+    if (!skipBookmarkCreation && project.bookmarkFolderId) {
+      (async () => {
+        try {
+          const newBookmarkFolder = await bookmarkStorage.createCollection(
+            newCollection.name,
+            project.bookmarkFolderId!
+          );
+          get().updateCollection(
+            projectId,
+            newCollection.id,
+            { bookmarkFolderId: newBookmarkFolder.id },
+            true // isInternalCall
+          );
+        } catch (error) {
+          console.error(
+            `Failed to create bookmark folder for collection ${newCollection.name}:`,
+            error
+          );
+        }
+      })();
+    } else if (!skipBookmarkCreation) {
+      console.warn(
+        `Project ${projectId} does not have a bookmarkFolderId. Cannot create collection bookmark folder.`
+      );
+    }
+
+    // Enqueue a collection create for cloud projects. Bookmark folder id is
+    // device-local and deliberately omitted from the patch.
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'collection',
+      entityId: newCollection.id,
+      operation: 'create',
+      patch: {
+        name: newCollection.name,
+        description: newCollection.description ?? null,
+        color: newCollection.color ?? null,
+        minimized: newCollection.minimized ?? false,
+        order: newCollection.order ?? 0,
+      },
     });
   },
 
@@ -130,6 +181,21 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       }
       return { projects: updatedProjects };
     });
+
+    // Enqueue a collection update for cloud projects (skips internal calls like
+    // bookmarkFolderId backfill).
+    if (!isInternalCall) {
+      const patch = buildCollectionUpdatePatch(updates);
+      if (patch) {
+        void enqueueCloudChange({
+          projectId,
+          entityType: 'collection',
+          entityId: collectionId,
+          operation: 'update',
+          patch,
+        });
+      }
+    }
   },
 
   deleteCollection: (projectId: string, collectionId: string) => {
@@ -171,6 +237,14 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
         })();
       }
       return { projects: updatedProjects };
+    });
+
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'collection',
+      entityId: collectionId,
+      operation: 'delete',
+      patch: {},
     });
   },
 
@@ -229,6 +303,11 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
 
       return { projects: updatedProjects };
     });
+
+    // Reorder is last-write-wins per collection, so push every collection's new
+    // order to keep sibling ordering consistent across clients.
+    const movedProject = get().projects.find((p) => p.id === projectId);
+    if (movedProject) syncCollectionOrders(projectId, movedProject.collections);
   },
 
   openCollectionInNewWindow: (projectId: string, collectionId: string) => {
@@ -260,9 +339,27 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
       });
       return { projects: updatedProjects };
     });
+
+    // Push each collection's new minimized state to the cloud.
+    const project = get().projects.find((p) => p.id === projectId);
+    if (project) {
+      for (const collection of project.collections) {
+        void enqueueCloudChange({
+          projectId,
+          entityType: 'collection',
+          entityId: collection.id,
+          operation: 'update',
+          patch: { minimized: collection.minimized ?? false },
+        });
+      }
+    }
   },
 
-  setCollectionName: (projectId: string, collectionId: string, name: string) =>
+  setCollectionName: (
+    projectId: string,
+    collectionId: string,
+    name: string
+  ) => {
     set((state: AppState) => ({
       projects: state.projects.map((p: Project) => {
         if (p.id === projectId) {
@@ -276,7 +373,16 @@ export const createCollectionActions = (set: any, get: () => AppState) => ({
         }
         return p;
       }),
-    })),
+    }));
+
+    void enqueueCloudChange({
+      projectId,
+      entityType: 'collection',
+      entityId: collectionId,
+      operation: 'update',
+      patch: { name },
+    });
+  },
 
   // Migration function to ensure all collections have order values
   migrateCollectionOrder: (projectId: string) => {

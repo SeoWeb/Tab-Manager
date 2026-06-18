@@ -9,8 +9,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SettingsIcon } from 'lucide-react';
+import {
+  SettingsIcon,
+  RefreshCw,
+  CloudUpload,
+  CloudOff,
+  Users,
+} from 'lucide-react';
 import EditProjectModal from '@/components/modals/EditProjectModal';
+import { ProjectCollaborationModal } from '@/components/cloud-sync/ProjectCollaborationModal';
+import { useAppStore } from '@/stores/appStore';
+import { useToast } from '@/hooks/use-toast';
+import {
+  syncProjectNow,
+  convertProjectToCloud,
+  disconnectProjectFromCloud,
+} from '@/lib/cloudflareSync/orchestrator';
+import { canEdit } from '@/lib/cloudflareSync/roles';
 
 interface ProjectActionsMenuProps {
   project: Project;
@@ -18,6 +33,14 @@ interface ProjectActionsMenuProps {
 
 const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const cloudSyncEnabled = useAppStore((state) => state.cloudSync.enabled);
+  const { toast } = useToast();
+
+  // Viewers (a known low cloud role) can't mutate project data; the backend
+  // would reject these anyway. Local-only projects have no role → full control.
+  const readOnly = !canEdit(project.cloudRole);
 
   const handleEditProjectTrigger = () => {
     setIsEditModalOpen(true);
@@ -26,6 +49,48 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
   const handleDeleteProjectTrigger = () => {
     // This will also open the EditProjectModal, where the user can then click the delete button.
     setIsEditModalOpen(true);
+  };
+
+  const handleSyncNow = async () => {
+    setCloudBusy(true);
+    try {
+      await syncProjectNow(project.id);
+    } finally {
+      setCloudBusy(false);
+    }
+  };
+
+  const handleConvertToCloud = async () => {
+    setCloudBusy(true);
+    try {
+      await convertProjectToCloud(project.id);
+      toast({
+        title: 'Converted to cloud',
+        description: `'${project.name}' is now syncing to the cloud.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Conversion failed',
+        description:
+          error instanceof Error ? error.message : 'Could not convert project.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCloudBusy(false);
+    }
+  };
+
+  const handleDisconnectFromCloud = async () => {
+    setCloudBusy(true);
+    try {
+      await disconnectProjectFromCloud(project.id);
+      toast({
+        title: 'Disconnected from cloud',
+        description: `'${project.name}' is now local-only. The server copy is kept.`,
+      });
+    } finally {
+      setCloudBusy(false);
+    }
   };
 
   return (
@@ -39,11 +104,55 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
         <DropdownMenuContent align='end'>
           <DropdownMenuLabel>Project Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleEditProjectTrigger}>
+          <DropdownMenuItem
+            onClick={handleEditProjectTrigger}
+            disabled={readOnly}
+          >
             Edit Project
           </DropdownMenuItem>
+
+          {/* Cloud sync actions. Only relevant when cloud sync is connected. */}
+          {cloudSyncEnabled && (
+            <>
+              <DropdownMenuSeparator />
+              {project.cloudEnabled ? (
+                <>
+                  <DropdownMenuItem onClick={() => setIsShareModalOpen(true)}>
+                    <Users className='mr-2 h-4 w-4' />
+                    Share &amp; members
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleSyncNow}
+                    disabled={cloudBusy}
+                  >
+                    <RefreshCw className='mr-2 h-4 w-4' />
+                    Sync now
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleDisconnectFromCloud}
+                    disabled={cloudBusy}
+                    className='text-amber-600 focus:text-amber-600'
+                  >
+                    <CloudOff className='mr-2 h-4 w-4' />
+                    Disconnect from cloud
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem
+                  onClick={handleConvertToCloud}
+                  disabled={cloudBusy}
+                >
+                  <CloudUpload className='mr-2 h-4 w-4' />
+                  Convert to cloud project
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleDeleteProjectTrigger}
+            disabled={readOnly}
             className='text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-700/20 dark:focus:text-red-500'
           >
             Delete Project
@@ -59,6 +168,15 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
       >
         <div />
       </EditProjectModal>
+
+      {/* Share & members — Phase 4 collaboration. Cloud projects only. */}
+      {project.cloudEnabled && (
+        <ProjectCollaborationModal
+          project={project}
+          isOpen={isShareModalOpen}
+          onOpenChange={setIsShareModalOpen}
+        />
+      )}
     </>
   );
 };

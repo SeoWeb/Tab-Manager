@@ -11,6 +11,7 @@ import { createUIActions } from './actions/uiActions';
 import { createSidebarActions } from './actions/sidebarActions';
 import { createNoteActions } from './actions/noteActions';
 import { createTaskActions, initializeTaskState } from './actions/taskActions';
+import { createCloudSyncActions } from './actions/cloudSyncActions';
 
 // Create initial state as a constant to ensure consistency
 const initialState = {
@@ -44,6 +45,18 @@ const initialState = {
   editingCollectionId: null,
   editingLinkId: null,
   tabManagerRootFolderId: null,
+  cloudSync: {
+    enabled: false,
+    status: 'idle' as const,
+    lastSyncedAt: null,
+    lastError: null,
+    pendingMutationCount: 0,
+    account: null,
+    apiBaseUrl: '',
+    cursors: {},
+    realtimeConnected: false,
+    onlinePresence: [],
+  },
   _hasHydrated: false,
   _themeFromStorage: false,
 };
@@ -68,13 +81,23 @@ export const useAppStore = create<AppState>()(
       ...createLinkActions(set, get),
       ...createDragDropActions(set, get),
       ...createSidebarActions(set, get),
-      ...createNoteActions(set),
+      ...createNoteActions(set, get),
       ...createTaskActions(set, get),
+      ...createCloudSyncActions(set, get),
       // Add hydration control method
       setHasHydrated: (hydrated: boolean) => set({ _hasHydrated: hydrated }),
     }),
     {
       name: 'tab-manager-storage',
+      // Bumped for per-project scoping: notes/todos/tasks now carry projectId.
+      // Zustand calls `migrate` whenever the stored snapshot's numeric version
+      // differs from `version` below — and if no migrate is provided it logs an
+      // error and DISCARDS the stored state (resetting to initial mock data).
+      // Pass the snapshot through untouched; the per-project `projectId`
+      // stamping is handled idempotently in `merge`, so the version bump itself
+      // needs no transformation here.
+      version: 1,
+      migrate: (persistedState) => persistedState,
       storage: createJSONStorage(() => chromeStorageApi, {
         reviver: (key, value) => {
           if (
@@ -140,6 +163,9 @@ export const useAppStore = create<AppState>()(
               state.activeVerticalTabId ?? initialState.activeVerticalTabId,
             // Persist sidebar state
             isSidebarOpen: state.isSidebarOpen ?? initialState.isSidebarOpen,
+            // Persist cloud sync config/account/cursors (token lives in its own
+            // chrome.storage.local key via authStorage, not in the store).
+            cloudSync: state.cloudSync ?? initialState.cloudSync,
           };
         } catch (error) {
           console.error('Error during state partialize:', error);
@@ -203,6 +229,24 @@ export const useAppStore = create<AppState>()(
           const persistedStateTyped = persistedState as Partial<AppState>;
           const hasStoredTheme = 'isDarkMode' in persistedStateTyped;
 
+          // Phase A per-project migration: assign the owning project to any
+          // pre-existing notes/todos/tasks that predate `projectId`. This runs
+          // in `merge` on every rehydrate (idempotent) — see the version note
+          // above for why a version-gated `migrate` can't be relied on here.
+          // Items with no resolvable project stay unscoped and surface only via
+          // the global Tasks route as a safety net.
+          const ownerProjectId =
+            persistedStateTyped.activeProjectId ??
+            persistedStateTyped.projects?.[0]?.id ??
+            null;
+          const stampProjectId = <T extends { projectId?: string }>(
+            item: T
+          ): T => {
+            if (item.projectId) return item;
+            if (ownerProjectId == null) return item;
+            return { ...item, projectId: ownerProjectId };
+          };
+
           const mergedState = {
             ...currentState,
             ...persistedState,
@@ -234,13 +278,17 @@ export const useAppStore = create<AppState>()(
             isSidebarLoaded:
               persistedStateTyped.isSidebarLoaded ??
               currentState.isSidebarLoaded,
-            // Migrate notes from string to array format
+            // Migrate notes from string to array format (and stamp projectId)
             notes: Array.isArray(persistedStateTyped.notes)
-              ? persistedStateTyped.notes
+              ? persistedStateTyped.notes.map(stampProjectId)
               : currentState.notes,
-            // Enhanced task management state merging
+            // Todos are preserved via the spread above; stamp projectId here
+            todos: Array.isArray(persistedStateTyped.todos)
+              ? persistedStateTyped.todos.map(stampProjectId)
+              : currentState.todos,
+            // Enhanced task management state merging (and stamp projectId)
             tasks: Array.isArray(persistedStateTyped.tasks)
-              ? persistedStateTyped.tasks
+              ? persistedStateTyped.tasks.map(stampProjectId)
               : currentState.tasks,
             taskTemplates: Array.isArray(persistedStateTyped.taskTemplates)
               ? persistedStateTyped.taskTemplates
@@ -259,6 +307,7 @@ export const useAppStore = create<AppState>()(
             activePomodoroSession:
               persistedStateTyped.activePomodoroSession ??
               currentState.activePomodoroSession,
+            cloudSync: persistedStateTyped.cloudSync ?? currentState.cloudSync,
           };
 
           return mergedState;

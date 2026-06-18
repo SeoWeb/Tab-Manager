@@ -113,7 +113,6 @@ interface AdvancedTask {
 ### Getting Started
 
 1. **Migration from Legacy Tasks**
-
    - System automatically detects legacy todos
    - One-click migration preserves all existing data
    - Backward compatibility maintained

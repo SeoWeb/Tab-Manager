@@ -4,3 +4,6 @@ export { createLinkActions } from './linkActions';
 export { createDragDropActions } from './dragDropActions';
 export { createUIActions } from './uiActions';
 export { createSidebarActions } from './sidebarActions';
+export { createNoteActions } from './noteActions';
+export { createTaskActions } from './taskActions';
+export { createCloudSyncActions } from './cloudSyncActions';

@@ -6,7 +6,10 @@ import type {
   ChromeTabInfo,
 } from '@/types';
 import type { ActiveViewType, AppState } from '../types';
+import type { LegacyTask } from '@/types/tasks';
 import { getAllWindows } from '@/lib/tabService';
+import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import { buildTodoPatch } from '@/lib/cloudflareSync/entityPatches';
 
 const generateId = () => nanoid();
 
@@ -120,29 +123,72 @@ export const createUIActions = (set: any, get: () => AppState) => ({
     })),
 
   // Todos actions
-  addTodo: (text: string, category?: string) =>
-    set((state: AppState) => ({
-      todos: [
-        ...state.todos,
-        { id: generateId(), text, completed: false, category },
-      ],
-    })),
+  addTodo: (text: string, category?: string) => {
+    const state = get();
+    const newTodo: LegacyTask = {
+      id: generateId(),
+      text,
+      completed: false,
+      category,
+      // Strict per-project: every new todo belongs to the active project.
+      projectId: state.activeProjectId ?? state.projects[0]?.id,
+    };
 
-  toggleTodo: (id: string) =>
     set((state: AppState) => ({
-      todos: state.todos.map(
-        (todo: { id: string; text: string; completed: boolean }) =>
-          todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      ),
-    })),
+      todos: [...state.todos, newTodo],
+    }));
 
-  removeTodo: (id: string) =>
+    // Enqueue a todo create for cloud projects (no-op for local-only todos).
+    if (newTodo.projectId) {
+      void enqueueCloudChange({
+        projectId: newTodo.projectId,
+        entityType: 'todo',
+        entityId: newTodo.id,
+        operation: 'create',
+        patch: buildTodoPatch(newTodo),
+      });
+    }
+  },
+
+  toggleTodo: (id: string) => {
     set((state: AppState) => ({
-      todos: state.todos.filter(
-        (todo: { id: string; text: string; completed: boolean }) =>
-          todo.id !== id
+      todos: state.todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
       ),
-    })),
+    }));
+
+    // Enqueue the todo's full current payload (the backend replaces payload_json
+    // wholesale, so read the merged todo after the optimistic update).
+    const updated = get().todos.find((t) => t.id === id);
+    if (updated?.projectId) {
+      void enqueueCloudChange({
+        projectId: updated.projectId,
+        entityType: 'todo',
+        entityId: id,
+        operation: 'update',
+        patch: buildTodoPatch(updated),
+      });
+    }
+  },
+
+  removeTodo: (id: string) => {
+    // Capture the owning project before removal so the cloud delete can enqueue.
+    const todo = get().todos.find((t) => t.id === id);
+
+    set((state: AppState) => ({
+      todos: state.todos.filter((t) => t.id !== id),
+    }));
+
+    if (todo?.projectId) {
+      void enqueueCloudChange({
+        projectId: todo.projectId,
+        entityType: 'todo',
+        entityId: id,
+        operation: 'delete',
+        patch: {},
+      });
+    }
+  },
 
   // Modal actions
   openAddProjectModal: () =>
