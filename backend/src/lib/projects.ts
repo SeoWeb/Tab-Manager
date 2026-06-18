@@ -1,7 +1,13 @@
 import { badRequest, forbidden, notFound } from './response';
 import { getLatestChange } from './sync';
 import { notifyRealtime } from './realtime';
-import type { Env, Project, ProjectMember, Role, SyncOperation } from '../types';
+import type {
+  Env,
+  Project,
+  ProjectMember,
+  Role,
+  SyncOperation,
+} from '../types';
 
 const roleRank: Record<Role, number> = {
   viewer: 1,
@@ -17,7 +23,9 @@ function nowIso(): string {
 }
 
 function normalizeRole(value: unknown): Role | null {
-  return typeof value === 'string' && validRoles.has(value) ? (value as Role) : null;
+  return typeof value === 'string' && validRoles.has(value)
+    ? (value as Role)
+    : null;
 }
 
 function requireMinRole(actual: Role | null, minimum: Role): boolean {
@@ -104,7 +112,10 @@ export async function requireProjectAccess(
   return member;
 }
 
-export async function listProjects(env: Env, userId: string): Promise<Project[]> {
+export async function listProjects(
+  env: Env,
+  userId: string
+): Promise<Project[]> {
   const rows = await env.D1_DATABASE.prepare(
     `
     SELECT
@@ -223,15 +234,22 @@ export async function updateProject(
     return notFound('Project not found');
   }
 
-  const name = input.name === undefined ? existing.name : parseOptionalString(input.name);
+  const name =
+    input.name === undefined ? existing.name : parseOptionalString(input.name);
   if (!name) {
     return badRequest('Project name cannot be empty');
   }
 
   const description =
-    input.description === undefined ? existing.description : parseOptionalString(input.description);
-  const color = input.color === undefined ? existing.color : parseOptionalString(input.color);
-  const icon = input.icon === undefined ? existing.icon : parseOptionalString(input.icon);
+    input.description === undefined
+      ? existing.description
+      : parseOptionalString(input.description);
+  const color =
+    input.color === undefined
+      ? existing.color
+      : parseOptionalString(input.color);
+  const icon =
+    input.icon === undefined ? existing.icon : parseOptionalString(input.icon);
   const now = nowIso();
 
   await env.D1_DATABASE.batch([
@@ -284,8 +302,9 @@ export async function deleteProject(
 
   const now = nowIso();
   await env.D1_DATABASE.batch([
-    env.D1_DATABASE.prepare('UPDATE projects SET deleted_at = ?, updated_at = ? WHERE id = ?')
-      .bind(now, now, projectId),
+    env.D1_DATABASE.prepare(
+      'UPDATE projects SET deleted_at = ?, updated_at = ? WHERE id = ?'
+    ).bind(now, now, projectId),
     prepareIncrementVersion(env, projectId, 'project', projectId, now),
     prepareInsertSyncChange(env, {
       projectId,
@@ -312,7 +331,7 @@ export async function getProjectMembers(
   user: { id: string },
   projectId: string
 ): Promise<Response> {
-  const access = await requireProjectAccess(env, user.id, projectId, 'admin');
+  const access = await requireProjectAccess(env, user.id, projectId, 'viewer');
   if (access instanceof Response) return access;
 
   const rows = await env.D1_DATABASE.prepare(
@@ -359,10 +378,13 @@ export async function createInvitation(
     return badRequest('Invitations cannot grant the owner role');
   }
   const expiresInDays =
-    typeof input.expiresInDays === 'number' && Number.isFinite(input.expiresInDays)
+    typeof input.expiresInDays === 'number' &&
+    Number.isFinite(input.expiresInDays)
       ? input.expiresInDays
       : 7;
-  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt = new Date(
+    Date.now() + expiresInDays * 24 * 60 * 60 * 1000
+  ).toISOString();
   const now = nowIso();
   const id = crypto.randomUUID();
   const code = crypto.randomUUID();
@@ -442,7 +464,11 @@ export async function acceptInvitation(
     return forbidden('Invitation is for a different email address');
   }
 
-  const existingMember = await getProjectMember(env, user.id, invite.project_id);
+  const existingMember = await getProjectMember(
+    env,
+    user.id,
+    invite.project_id
+  );
   if (existingMember) {
     await env.D1_DATABASE.prepare(
       'UPDATE invitations SET accepted_at = ? WHERE id = ?'
@@ -463,7 +489,14 @@ export async function acceptInvitation(
     VALUES (?, ?, ?, ?, ?, ?)
     `
   )
-    .bind(crypto.randomUUID(), invite.project_id, user.id, invite.role, now, now)
+    .bind(
+      crypto.randomUUID(),
+      invite.project_id,
+      user.id,
+      invite.role,
+      now,
+      now
+    )
     .run();
 
   await env.D1_DATABASE.prepare(
@@ -509,7 +542,9 @@ export async function updateMemberRole(
   // (which would otherwise allow owner lockout or takeover).
   const involvesOwner = newRole === 'owner' || currentRole === 'owner';
   if (involvesOwner && access.role !== 'owner') {
-    return forbidden('Only the project owner can assign or change the owner role');
+    return forbidden(
+      'Only the project owner can assign or change the owner role'
+    );
   }
 
   // Never let a project become ownerless.
@@ -530,7 +565,11 @@ export async function updateMemberRole(
     return notFound('Project member not found');
   }
 
-  return Response.json({ project_id: projectId, user_id: memberId, role: newRole });
+  return Response.json({
+    project_id: projectId,
+    user_id: memberId,
+    role: newRole,
+  });
 }
 
 export async function removeMember(
@@ -556,7 +595,11 @@ export async function removeMember(
     return notFound('Project member not found');
   }
 
-  return Response.json({ project_id: projectId, user_id: memberId, removed: true });
+  return Response.json({
+    project_id: projectId,
+    user_id: memberId,
+    removed: true,
+  });
 }
 
 export async function getActivity(
@@ -632,20 +675,19 @@ function prepareInsertSyncChange(
       patch_json, base_version, client_mutation_id, client_id, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-  )
-    .bind(
-      crypto.randomUUID(),
-      input.projectId,
-      input.actorId,
-      input.entityType,
-      input.entityId,
-      input.operation,
-      JSON.stringify(input.patch),
-      null,
-      input.clientMutationId,
-      input.clientId,
-      input.createdAt
-    );
+  ).bind(
+    crypto.randomUUID(),
+    input.projectId,
+    input.actorId,
+    input.entityType,
+    input.entityId,
+    input.operation,
+    JSON.stringify(input.patch),
+    null,
+    input.clientMutationId,
+    input.clientId,
+    input.createdAt
+  );
 }
 
 function prepareIncrementVersion(
@@ -663,8 +705,7 @@ function prepareIncrementVersion(
       version = version + 1,
       updated_at = excluded.updated_at
     `
-  )
-    .bind(projectId, entityType, entityId, updatedAt);
+  ).bind(projectId, entityType, entityId, updatedAt);
 }
 
 function safeJsonParse(value: string | null): unknown {

@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchProjectMembers } from '@/lib/cloudflareSync';
+import type { CloudMember } from '@/lib/cloudflareSync/types';
 import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -52,6 +54,26 @@ export default function TasksView({
 
   // Store data
   const allTasks = useAppStoreWithDefaults((state) => state.tasks, []);
+  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const [projectMembers, setProjectMembers] = useState<
+    Record<string, CloudMember[]>
+  >({});
+
+  useEffect(() => {
+    const targetIds = projectId
+      ? [projectId]
+      : projects.filter((p) => p.cloudEnabled).map((p) => p.id);
+
+    targetIds.forEach((id) => {
+      fetchProjectMembers(id)
+        .then((membersList) => {
+          setProjectMembers((prev) => ({ ...prev, [id]: membersList }));
+        })
+        .catch((err) =>
+          console.error(`Failed to load members for project ${id}`, err)
+        );
+    });
+  }, [projectId, projects]);
   // Scope to the active project when rendered per-project; the global route
   // (no projectId prop) intentionally shows tasks across all projects.
   const tasks = projectId
@@ -288,6 +310,7 @@ export default function TasksView({
                   onArchive={archiveTask}
                   showCompleted={true}
                   showArchived={false}
+                  projectMembers={projectMembers}
                 />
               </div>
             </TabsContent>

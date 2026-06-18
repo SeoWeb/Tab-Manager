@@ -21,6 +21,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import type { AdvancedTask, TaskPriority, TaskStatus } from '@/types/tasks';
+import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
+import { fetchProjectMembers } from '@/lib/cloudflareSync';
+import type { CloudMember, CloudAccount } from '@/lib/cloudflareSync/types';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -46,6 +49,41 @@ export default function TaskFormModal({
   const [category, setCategory] = useState('General');
   const [tags, setTags] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [assignee, setAssignee] = useState<string | undefined>(undefined);
+
+  const activeProjectId = useAppStoreWithDefaults(
+    (state) => state.activeProjectId,
+    null
+  );
+  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync, {
+    enabled: false,
+    status: 'idle' as const,
+    lastSyncedAt: null,
+    lastError: null,
+    pendingMutationCount: 0,
+    account: null as CloudAccount | null,
+    apiBaseUrl: '',
+    cursors: {},
+    realtimeConnected: false,
+    onlinePresence: [],
+  });
+  const currentUser = cloudSync.account;
+
+  const currentProjectId =
+    task?.projectId || activeProjectId || projects[0]?.id;
+  const project = projects.find((p) => p.id === currentProjectId);
+  const [members, setMembers] = useState<CloudMember[]>([]);
+
+  useEffect(() => {
+    if (currentProjectId && project?.cloudEnabled) {
+      fetchProjectMembers(currentProjectId)
+        .then(setMembers)
+        .catch((err) => console.error('Failed to fetch project members', err));
+    } else {
+      setMembers([]);
+    }
+  }, [currentProjectId, project?.cloudEnabled]);
 
   useEffect(() => {
     if (task) {
@@ -56,6 +94,7 @@ export default function TaskFormModal({
       setCategory(task.category);
       setTags(task.tags || []);
       setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+      setAssignee(task.assignee);
     } else {
       // Reset form for new task
       setTitle('');
@@ -65,6 +104,7 @@ export default function TaskFormModal({
       setCategory('General');
       setTags([]);
       setDueDate(undefined);
+      setAssignee(undefined);
     }
   }, [task]);
 
@@ -87,6 +127,7 @@ export default function TaskFormModal({
       category,
       tags,
       dueDate,
+      assignee,
       subtasks: task?.subtasks || [],
       attachments: task?.attachments || [],
       notes: task?.notes || '',
@@ -169,6 +210,40 @@ export default function TaskFormModal({
               }
             />
           </div>
+          {project?.cloudEnabled && (
+            <div className='flex flex-col gap-2'>
+              <label className='text-sm font-medium'>Assignee</label>
+              <div className='flex gap-2'>
+                <Select
+                  value={assignee || 'unassigned'}
+                  onValueChange={(value) =>
+                    setAssignee(value === 'unassigned' ? undefined : value)
+                  }
+                >
+                  <SelectTrigger className='flex-1'>
+                    <SelectValue placeholder='Select Assignee' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='unassigned'>Unassigned</SelectItem>
+                    {members.map((member) => (
+                      <SelectItem key={member.user_id} value={member.user_id}>
+                        {member.display_name || member.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {currentUser && assignee !== currentUser.id && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => setAssignee(currentUser.id)}
+                  >
+                    Assign to me
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
           <div>
             <label className='text-sm font-medium'>Due Date</label>
             <DatePicker date={dueDate} setDate={setDueDate} />

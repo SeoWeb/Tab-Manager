@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
+import { fetchProjectMembers } from '@/lib/cloudflareSync';
+import type { CloudMember, CloudAccount } from '@/lib/cloudflareSync/types';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,7 @@ import {
   ArrowUp,
   X,
   Archive,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Textarea } from '../ui/textarea';
@@ -160,6 +163,38 @@ export default function TaskDetailModal({
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
   const [newTag, setNewTag] = useState('');
+
+  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const project = projects.find((p) => p.id === task?.projectId);
+  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync, {
+    enabled: false,
+    status: 'idle' as const,
+    lastSyncedAt: null,
+    lastError: null,
+    pendingMutationCount: 0,
+    account: null as CloudAccount | null,
+    apiBaseUrl: '',
+    cursors: {},
+    realtimeConnected: false,
+    onlinePresence: [],
+  });
+  const currentUser = cloudSync.account;
+  const [members, setMembers] = useState<CloudMember[]>([]);
+
+  useEffect(() => {
+    if (task?.projectId && project?.cloudEnabled) {
+      fetchProjectMembers(task.projectId)
+        .then(setMembers)
+        .catch((err) => console.error('Failed to fetch project members', err));
+    } else {
+      setMembers([]);
+    }
+  }, [task?.projectId, project?.cloudEnabled]);
+
+  const assignedMember = useMemo(() => {
+    if (!task?.assignee) return null;
+    return members.find((m) => m.user_id === task.assignee) || null;
+  }, [task?.assignee, members]);
 
   const subtasks = useMemo(
     () =>
@@ -445,6 +480,69 @@ export default function TaskDetailModal({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </MetadataItem>
+
+                {project?.cloudEnabled && (
+                  <MetadataItem icon={User} label='Assignee'>
+                    <div className='flex flex-col gap-1.5'>
+                      <div className='flex items-center gap-2'>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant='ghost'
+                              className='text-sm font-semibold -ml-2 h-auto py-1 px-2 hover:bg-muted'
+                            >
+                              {assignedMember ? (
+                                assignedMember.display_name ||
+                                assignedMember.email
+                              ) : (
+                                <span className='text-muted-foreground font-normal'>
+                                  Unassigned
+                                </span>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className='max-h-60 overflow-y-auto'>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                updateTask(task.id, { assignee: undefined })
+                              }
+                            >
+                              <span className='text-muted-foreground'>
+                                Unassigned
+                              </span>
+                            </DropdownMenuItem>
+                            {members.map((member) => (
+                              <DropdownMenuItem
+                                key={member.user_id}
+                                onClick={() =>
+                                  updateTask(task.id, {
+                                    assignee: member.user_id,
+                                  })
+                                }
+                              >
+                                <span>
+                                  {member.display_name || member.email}
+                                </span>
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      {currentUser && task.assignee !== currentUser.id && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          className='h-7 text-xs w-fit'
+                          onClick={() =>
+                            updateTask(task.id, { assignee: currentUser.id })
+                          }
+                        >
+                          Assign to me
+                        </Button>
+                      )}
+                    </div>
+                  </MetadataItem>
+                )}
 
                 <MetadataItem
                   icon={priorityConfig[task.priority].icon}

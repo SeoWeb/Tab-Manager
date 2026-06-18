@@ -33,6 +33,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AdvancedTask, TaskStatus } from '@/types/tasks';
+import type { CloudMember } from '@/lib/cloudflareSync/types';
+
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+};
 
 // Status configuration for Kanban columns
 const kanbanColumns: Array<{
@@ -89,6 +99,7 @@ interface KanbanTaskCardProps {
   onEdit: (task: AdvancedTask) => void;
   onView: (task: AdvancedTask) => void;
   onArchive: (id: string) => void;
+  projectMembers?: Record<string, CloudMember[]>;
 }
 
 const KanbanTaskCard = ({
@@ -97,7 +108,13 @@ const KanbanTaskCard = ({
   onEdit,
   onView,
   onArchive,
+  projectMembers,
 }: KanbanTaskCardProps) => {
+  const assigneeInfo = useMemo(() => {
+    if (!task.assignee || !task.projectId || !projectMembers) return null;
+    const membersList = projectMembers[task.projectId] || [];
+    return membersList.find((m) => m.user_id === task.assignee) || null;
+  }, [task.assignee, task.projectId, projectMembers]);
   const isOverdue =
     task.dueDate &&
     new Date(task.dueDate) < new Date() &&
@@ -223,17 +240,27 @@ const KanbanTaskCard = ({
               )}
             </div>
 
-            {task.dueDate && (
-              <div
-                className={cn(
-                  'flex items-center gap-1',
-                  isOverdue ? 'text-red-600' : 'text-muted-foreground'
-                )}
-              >
-                <Calendar className='h-3 w-3' />
-                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-              </div>
-            )}
+            <div className='flex items-center gap-2'>
+              {task.dueDate && (
+                <div
+                  className={cn(
+                    'flex items-center gap-1',
+                    isOverdue ? 'text-red-600' : 'text-muted-foreground'
+                  )}
+                >
+                  <Calendar className='h-3 w-3' />
+                  <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                </div>
+              )}
+              {assigneeInfo && (
+                <div
+                  className='h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold border border-primary/20 flex-shrink-0'
+                  title={assigneeInfo.display_name || assigneeInfo.email}
+                >
+                  {getInitials(assigneeInfo.display_name || assigneeInfo.email)}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
@@ -249,6 +276,7 @@ const SortableTaskCard = ({
   onEdit,
   onView,
   onArchive,
+  projectMembers,
 }: KanbanTaskCardProps) => {
   const {
     attributes,
@@ -284,6 +312,7 @@ const SortableTaskCard = ({
         onEdit={onEdit}
         onView={onView}
         onArchive={onArchive}
+        projectMembers={projectMembers}
       />
     </div>
   );
@@ -298,6 +327,7 @@ interface KanbanColumnProps {
   onEdit: (task: AdvancedTask) => void;
   onView: (task: AdvancedTask) => void;
   onArchive: (id: string) => void;
+  projectMembers?: Record<string, CloudMember[]>;
 }
 
 const KanbanColumn = ({
@@ -309,6 +339,7 @@ const KanbanColumn = ({
   onEdit,
   onView,
   onArchive,
+  projectMembers,
 }: KanbanColumnProps) => {
   const Icon = column.icon;
   const { setNodeRef } = useDroppable({
@@ -360,6 +391,7 @@ const KanbanColumn = ({
                 onEdit={onEdit}
                 onView={onView}
                 onArchive={onArchive}
+                projectMembers={projectMembers}
               />
             ))}
           </SortableContext>
@@ -385,6 +417,7 @@ interface TaskKanbanViewProps {
   onArchive: (id: string) => void;
   showCompleted?: boolean;
   showArchived?: boolean;
+  projectMembers?: Record<string, CloudMember[]>;
 }
 
 export default function TaskKanbanView({
@@ -397,6 +430,7 @@ export default function TaskKanbanView({
   onArchive,
   showCompleted = true,
   showArchived = false,
+  projectMembers,
 }: TaskKanbanViewProps) {
   const [activeTask, setActiveTask] = useState<AdvancedTask | null>(null);
 
@@ -511,6 +545,7 @@ export default function TaskKanbanView({
               onEdit={onEdit}
               onView={onView}
               onArchive={onArchive}
+              projectMembers={projectMembers}
             />
           ))}
         </div>
@@ -524,6 +559,7 @@ export default function TaskKanbanView({
               onEdit={() => {}}
               onView={() => {}}
               onArchive={() => {}}
+              projectMembers={projectMembers}
             />
           ) : null}
         </DragOverlay>
