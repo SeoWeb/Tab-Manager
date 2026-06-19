@@ -50,13 +50,13 @@ const bookmarkCollectionFolders: BookmarkTreeNode[] = [];
 for (let i = 0; i < NUM_ITEMS; i++) {
   bookmarkCollectionFolders.push({
     id: `bf-${i}`,
-    title: `Folder ${i}`
+    title: `Folder ${i}`,
   });
 }
 
 const project: Project = {
   id: 'proj-1',
-  collections: []
+  collections: [],
 };
 
 // 80% matches, 10% new, 10% deleted
@@ -66,14 +66,14 @@ for (let i = 0; i < NUM_ITEMS; i++) {
     project.collections.push({
       id: `col-${i}`,
       name: `Collection ${i}`,
-      bookmarkFolderId: `bf-${i}`
+      bookmarkFolderId: `bf-${i}`,
     });
   } else if (i >= NUM_ITEMS * 0.8 && i < NUM_ITEMS * 0.9) {
     // Deleted from bookmarks (exists in project only)
     project.collections.push({
       id: `col-${i}`,
       name: `Collection ${i}`,
-      bookmarkFolderId: `deleted-bf-${i}`
+      bookmarkFolderId: `deleted-bf-${i}`,
     });
   }
 }
@@ -93,8 +93,9 @@ for (let i = 0; i < ITERATIONS; i++) {
 }
 const end = performance.now();
 
-console.log(`Baseline Execution Time (Original) for ${ITERATIONS} iterations: ${(end - start).toFixed(2)} ms`);
-
+console.log(
+  `Baseline Execution Time (Original) for ${ITERATIONS} iterations: ${(end - start).toFixed(2)} ms`
+);
 
 // Optimized logic
 function syncCollectionsOptimized(
@@ -152,6 +153,8 @@ for (let i = 0; i < ITERATIONS; i++) {
 }
 const endOptimized = performance.now();
 
-console.log(`Optimized Execution Time for ${ITERATIONS} iterations: ${(endOptimized - startOptimized).toFixed(2)} ms`);
+console.log(
+  `Optimized Execution Time for ${ITERATIONS} iterations: ${(endOptimized - startOptimized).toFixed(2)} ms`
+);
 const speedup = ((end - start) / (endOptimized - startOptimized)).toFixed(2);
 console.log(`Speedup: ${speedup}x`);
