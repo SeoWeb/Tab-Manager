@@ -111,6 +111,32 @@ const calculateTaskStats = (tasks: AdvancedTask[]): TaskStats => {
     Math.min(100, completionRate - (overdue / Math.max(total, 1)) * 20)
   );
 
+  // Calculate weekly progress (tasks completed per day for the last 7 days)
+  const weeklyProgress = Array(7).fill(0);
+  // Calculate monthly progress (tasks completed per day for the last 30 days)
+  const monthlyProgress = Array(30).fill(0);
+  const nowForProgress = new Date();
+  nowForProgress.setHours(0, 0, 0, 0); // Start of today
+
+  completedTasks.forEach((task) => {
+    if (task.completedAt) {
+      const completedDate = new Date(task.completedAt);
+      completedDate.setHours(0, 0, 0, 0);
+      const diffTime = nowForProgress.getTime() - completedDate.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays < 7) {
+        // index 0 is oldest (6 days ago), index 6 is today
+        weeklyProgress[6 - diffDays]++;
+      }
+
+      if (diffDays >= 0 && diffDays < 30) {
+        // index 0 is oldest (29 days ago), index 29 is today
+        monthlyProgress[29 - diffDays]++;
+      }
+    }
+  });
+
   return {
     total,
     completed,
@@ -121,8 +147,8 @@ const calculateTaskStats = (tasks: AdvancedTask[]): TaskStats => {
     productivityScore,
     categoryBreakdown,
     priorityBreakdown,
-    weeklyProgress: [], // TODO: Implement weekly progress calculation
-    monthlyProgress: [], // TODO: Implement monthly progress calculation
+    weeklyProgress,
+    monthlyProgress,
   };
 };
 
