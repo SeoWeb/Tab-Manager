@@ -17,11 +17,22 @@ export class CollectionSync {
     const project = store.projects.find((p) => p.id === projectId);
     if (!project) return;
 
+    // Pre-calculate lookup maps for O(1) lookups
+    const collectionByBookmarkId = new Map<string, Collection>();
+    for (const collection of project.collections) {
+      if (collection.bookmarkFolderId) {
+        collectionByBookmarkId.set(collection.bookmarkFolderId, collection);
+      }
+    }
+
+    const bookmarkExistsSet = new Set<string>();
+    for (const bf of bookmarkCollectionFolders) {
+      bookmarkExistsSet.add(bf.id);
+    }
+
     // Find collections that exist in bookmarks but not in extension
     for (const bookmarkFolder of bookmarkCollectionFolders) {
-      const existingCollection = project.collections.find(
-        (c) => c.bookmarkFolderId === bookmarkFolder.id
-      );
+      const existingCollection = collectionByBookmarkId.get(bookmarkFolder.id);
 
       if (!existingCollection) {
         // Create new collection from bookmark folder
@@ -39,10 +50,7 @@ export class CollectionSync {
     // Find collections that exist in extension but not in bookmarks (they were deleted)
     for (const collection of project.collections) {
       if (collection.bookmarkFolderId) {
-        const bookmarkExists = bookmarkCollectionFolders.find(
-          (bf) => bf.id === collection.bookmarkFolderId
-        );
-        if (!bookmarkExists) {
+        if (!bookmarkExistsSet.has(collection.bookmarkFolderId)) {
           // Collection's bookmark folder was deleted, remove collection
           console.log(
             `Collection "${collection.name}" bookmark folder was deleted, removing collection`
