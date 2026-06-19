@@ -52,7 +52,9 @@ export const PerformanceMonitor: React.FC = () => {
             }
           }
         } catch (error) {
-          console.warn('Performance measurement failed:', error);
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Performance measurement failed:', error);
+          }
         }
       };
 
@@ -79,7 +81,9 @@ export const PerformanceMonitor: React.FC = () => {
         const hydrationTime = hydrationEnd - hydrationStart;
         console.log(`⚡ React Hydration Time: ${hydrationTime.toFixed(2)}ms`);
       } catch (error) {
-        console.warn('Hydration measurement failed:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Hydration measurement failed:', error);
+        }
       }
     };
 
