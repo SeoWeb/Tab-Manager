@@ -16,19 +16,21 @@ export class ProjectSync {
     const currentProjects = store.projects;
 
     // Find projects that exist in bookmarks but not in extension
-    for (const bookmarkFolder of bookmarkProjectFolders) {
+    const syncPromises = bookmarkProjectFolders.map((bookmarkFolder) => {
       const existingProject = currentProjects.find(
         (p) => p.bookmarkFolderId === bookmarkFolder.id
       );
 
       if (!existingProject) {
         // Create new project from bookmark folder
-        await this.createProjectFromBookmark(bookmarkFolder);
+        return this.createProjectFromBookmark(bookmarkFolder);
       } else {
         // Sync existing project
-        await this.syncProject(existingProject, bookmarkFolder);
+        return this.syncProject(existingProject, bookmarkFolder);
       }
-    }
+    });
+
+    await Promise.all(syncPromises);
 
     // Find projects that exist in extension but not in bookmarks (they were deleted)
     for (const project of currentProjects) {
