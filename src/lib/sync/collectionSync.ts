@@ -31,21 +31,27 @@ export class CollectionSync {
     }
 
     // Find collections that exist in bookmarks but not in extension
-    for (const bookmarkFolder of bookmarkCollectionFolders) {
-      const existingCollection = collectionByBookmarkId.get(bookmarkFolder.id);
-
-      if (!existingCollection) {
-        // Create new collection from bookmark folder
-        await this.createCollectionFromBookmark(projectId, bookmarkFolder);
-      } else {
-        // Sync existing collection
-        await this.syncCollection(
-          projectId,
-          existingCollection,
-          bookmarkFolder
+    const syncPromises = bookmarkCollectionFolders.map(
+      async (bookmarkFolder) => {
+        const existingCollection = collectionByBookmarkId.get(
+          bookmarkFolder.id
         );
+
+        if (!existingCollection) {
+          // Create new collection from bookmark folder
+          await this.createCollectionFromBookmark(projectId, bookmarkFolder);
+        } else {
+          // Sync existing collection
+          await this.syncCollection(
+            projectId,
+            existingCollection,
+            bookmarkFolder
+          );
+        }
       }
-    }
+    );
+
+    await Promise.all(syncPromises);
 
     // Find collections that exist in extension but not in bookmarks (they were deleted)
     for (const collection of project.collections) {
