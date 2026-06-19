@@ -173,14 +173,14 @@ The sync endpoint accepts mutations for six entity types, all scoped to a
 project via `projectId` (bound to the D1 `project_id` column, `NOT NULL` with
 `ON DELETE CASCADE`):
 
-| `entityType` | Storage                          | Patch shape                                               |
-| ------------ | -------------------------------- | --------------------------------------------------------- |
-| `project`    | `projects` row                   | `{ name, description?, color?, icon? }`                   |
-| `collection` | `collections` row                | `{ name, description?, color?, minimized?, order? }`      |
-| `link`       | `links` row                      | `{ collectionId?, url, title?, favIconUrl?, tags?, … }`   |
-| `task`       | JSON entity (`tasks`)            | `{ title, collectionId?, payload: { …flat fields } }`     |
-| `note`       | JSON entity (`notes`)            | `{ title, payload: { content, color, isPinned } }`        |
-| `todo`       | JSON entity (`todos`)            | `{ title, payload: { text, completed, category } }`       |
+| `entityType` | Storage               | Patch shape                                             |
+| ------------ | --------------------- | ------------------------------------------------------- |
+| `project`    | `projects` row        | `{ name, description?, color?, icon? }`                 |
+| `collection` | `collections` row     | `{ name, description?, color?, minimized?, order? }`    |
+| `link`       | `links` row           | `{ collectionId?, url, title?, favIconUrl?, tags?, … }` |
+| `task`       | JSON entity (`tasks`) | `{ title, collectionId?, payload: { …flat fields } }`   |
+| `note`       | JSON entity (`notes`) | `{ title, payload: { content, color, isPinned } }`      |
+| `todo`       | JSON entity (`todos`) | `{ title, payload: { text, completed, category } }`     |
 
 `task`, `note`, and `todo` are **JSON entities**: the Worker stores a `title`
 column plus a `payload_json` blob (see `prepareInsertJsonEntity` /
@@ -191,7 +191,7 @@ entity), never a partial one. The extension builds these patches in
 same shape in `src/lib/cloudflareSync/applyChanges.ts` (stamping `projectId`
 from each change row's `project_id`).
 
-`project` and `collection` *creates* are rejected on the sync endpoint — project
+`project` and `collection` _creates_ are rejected on the sync endpoint — project
 ids are server-authoritative (round-trip through `POST /projects`), while
 collection/link/task/note/todo ids are client-authoritative.
 

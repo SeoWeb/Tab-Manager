@@ -162,9 +162,10 @@ export class ProjectRoom implements DurableObject {
       return new Response('Invalid JSON body', { status: 400 });
     }
 
-    const changes = isRecord(payload) && Array.isArray(payload.changes)
-      ? (payload.changes as unknown[])
-      : [];
+    const changes =
+      isRecord(payload) && Array.isArray(payload.changes)
+        ? (payload.changes as unknown[])
+        : [];
     if (changes.length === 0) {
       return new Response(null, { status: 204 });
     }
@@ -175,7 +176,10 @@ export class ProjectRoom implements DurableObject {
   }
 
   /** Hibernation handler: keep-alive ping/pong. */
-  async webSocketMessage(ws: WebSocket, message: ArrayBuffer | string): Promise<void> {
+  async webSocketMessage(
+    ws: WebSocket,
+    message: ArrayBuffer | string
+  ): Promise<void> {
     let parsed: unknown;
     try {
       parsed =

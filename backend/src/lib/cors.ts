@@ -20,18 +20,24 @@ function resolveOrigin(request: Request, env: Env): string | null {
   return null;
 }
 
-export function corsHeaders(request: Request, env: Env): Record<string, string> {
+export function corsHeaders(
+  request: Request,
+  env: Env
+): Record<string, string> {
   const origin = resolveOrigin(request, env);
   if (!origin) return {};
 
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
-    'Vary': 'Origin',
+    Vary: 'Origin',
   };
 }
 
-export function preflightHeaders(request: Request, env: Env): Record<string, string> {
+export function preflightHeaders(
+  request: Request,
+  env: Env
+): Record<string, string> {
   const origin = resolveOrigin(request, env);
   if (!origin) return {};
 
@@ -41,14 +47,20 @@ export function preflightHeaders(request: Request, env: Env): Record<string, str
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Methods': requestMethod ?? 'GET,POST,PATCH,DELETE,OPTIONS',
-    'Access-Control-Allow-Headers': requestHeaders ?? 'Authorization,Content-Type',
+    'Access-Control-Allow-Methods':
+      requestMethod ?? 'GET,POST,PATCH,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers':
+      requestHeaders ?? 'Authorization,Content-Type',
     'Access-Control-Max-Age': '86400',
-    'Vary': 'Origin',
+    Vary: 'Origin',
   };
 }
 
-export function withCors(response: Response, request: Request, env: Env): Response {
+export function withCors(
+  response: Response,
+  request: Request,
+  env: Env
+): Response {
   const headers = corsHeaders(request, env);
   for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value);

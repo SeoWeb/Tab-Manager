@@ -58,9 +58,6 @@ export class CollectionSync {
       if (collection.bookmarkFolderId) {
         if (!bookmarkExistsSet.has(collection.bookmarkFolderId)) {
           // Collection's bookmark folder was deleted, remove collection
-          console.log(
-            `Collection "${collection.name}" bookmark folder was deleted, removing collection`
-          );
           store.deleteCollection(projectId, collection.id);
         }
       }
@@ -74,10 +71,6 @@ export class CollectionSync {
     projectId: string,
     bookmarkFolder: chrome.bookmarks.BookmarkTreeNode
   ): Promise<void> {
-    console.log(
-      `Creating collection from bookmark folder: ${bookmarkFolder.title}`
-    );
-
     const store = useAppStore.getState();
 
     const collectionData = {
@@ -128,9 +121,6 @@ export class CollectionSync {
 
     // Check if collection name changed in bookmarks
     if (collection.name !== bookmarkFolder.title) {
-      console.log(
-        `Collection name changed in bookmarks: "${collection.name}" -> "${bookmarkFolder.title}"`
-      );
       store.updateCollection(
         projectId,
         collection.id,

@@ -40,9 +40,6 @@ export class ProjectSync {
         );
         if (!bookmarkExists) {
           // Project's bookmark folder was deleted, remove project
-          console.log(
-            `Project "${project.name}" bookmark folder was deleted, removing project`
-          );
           store.deleteProject(project.id);
         }
       }
@@ -55,10 +52,6 @@ export class ProjectSync {
   private async createProjectFromBookmark(
     bookmarkFolder: chrome.bookmarks.BookmarkTreeNode
   ): Promise<void> {
-    console.log(
-      `Creating project from bookmark folder: ${bookmarkFolder.title}`
-    );
-
     const store = useAppStore.getState();
 
     // Create project with basic info
@@ -108,9 +101,6 @@ export class ProjectSync {
 
     // Check if project name changed in bookmarks
     if (project.name !== bookmarkFolder.title) {
-      console.log(
-        `Project name changed in bookmarks: "${project.name}" -> "${bookmarkFolder.title}"`
-      );
       store.updateProject(
         project.id,
         { name: bookmarkFolder.title || project.name },

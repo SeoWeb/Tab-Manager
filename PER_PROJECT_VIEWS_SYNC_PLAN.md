@@ -13,6 +13,7 @@ Exploration found that **most of the infrastructure already exists**, so this is
 - **Calendar is not separate data** — `TaskCalendarView.tsx` renders tasks by `dueDate`, so it becomes per-project automatically once tasks are scoped. No new entity.
 
 **Decisions confirmed with the user:**
+
 1. **Migrate to active project** — existing global items are assigned to the active project at upgrade time; afterward every new item always belongs to the active project (strict per-project, no global bucket).
 2. **Calendar stays task-derived** (no standalone calendar-event entity).
 3. **Full plan** — both per-project scoping (Phase A) and cloud-sync write-path wiring (Phase B).
@@ -22,20 +23,24 @@ Exploration found that **most of the infrastructure already exists**, so this is
 ## Phase A — Per-project scoping (client-only; works without a backend)
 
 ### A1. Types — add `projectId`
+
 - `src/stores/types.ts` → `Note` interface: add `projectId: string`.
 - `src/types/tasks.ts` → `LegacyTask` (todo) interface: add `projectId: string`.
 - `AdvancedTask` already has `projectId?` — no change (make it `string` if tightening is desired, but optional is fine since creation always sets it).
 
 ### A2. Migration of existing global items
+
 - In the Zustand persist migration (`src/stores/appStore.ts`, the `migrate`/`onRehydrateStorage` hook — bump the persisted version), stamp `projectId` on every existing note/todo/task that lacks one, using `activeProjectId ?? projects[0]?.id ?? null`. Items that resolve to `null` (no projects exist yet) remain visible only via the global Tasks route as a safety net; normal creation always sets a real id.
 
 ### A3. Creation always stamps the active project
+
 - `src/stores/actions/noteActions.ts` → `addNote` (line ~7): set `projectId: get().activeProjectId ?? get().projects[0]?.id` on the new note.
 - `src/stores/actions/uiActions.ts` → `addTodo` (line ~123): same stamping.
 - `src/stores/actions/taskActions.ts` → `addTask` (line ~132): stamp `projectId: get().activeProjectId ?? get().projects[0]?.id` when not explicitly provided (tasks already carry the field).
 - View call sites don't need signature changes — the store reads `activeProjectId` internally.
 
 ### A4. Filter the views by `activeProjectId`
+
 - `NotesView.tsx` → filter `notes` to `n.projectId === activeProjectId`.
 - `TodosView.tsx` → filter `todos` to `t.projectId === activeProjectId`.
 - `TasksView.tsx` → add an optional `projectId?: string` prop. Filter the `tasks` selector (`state.tasks`, line ~46) to that project when the prop is present; leave unfiltered when absent.
@@ -44,6 +49,7 @@ Exploration found that **most of the infrastructure already exists**, so this is
 - `TaskCalendarView.tsx` and `ArchivedTasksView.tsx` already receive `tasks` as a prop from `TasksView`, so they inherit the filter automatically — no change.
 
 ### A5. Cascade on project delete
+
 - `src/stores/actions/projectActions.ts` delete path (around the existing `enqueueCloudChange` delete at line ~169): also remove that project's notes/todos/tasks locally (`projectId === id`). (Backend cascades via `ON DELETE CASCADE`, so remote is already handled.)
 
 ---
@@ -53,21 +59,26 @@ Exploration found that **most of the infrastructure already exists**, so this is
 The guarded entry point `enqueueCloudChange` (`src/lib/cloudflareSync/orchestrator.ts:57`) already no-ops unless cloud is enabled **and** the owning project is `cloudEnabled` — so calling it from every action is safe for local-only users.
 
 ### B1. Enqueue mutations in the three action files
+
 Add `void enqueueCloudChange({...})` to create/update/delete in each (mirroring how `collectionActions.ts`/`linkActions.ts` already do it):
+
 - `noteActions.ts` — `addNote`/`updateNote`/`deleteNote`.
 - `uiActions.ts` — `addTodo`/`toggleTodo`/`removeTodo`.
 - `taskActions.ts` — `addTask`/`updateTask` (and the delete path).
 
 **Patch shape** must match what `applyChanges.ts` expects on the way back and what the backend's JSON-entity handlers store (`title` + `payload_json`):
+
 ```
 { title, projectId, collectionId?, payload: { /* full/nested fields */ } }
 ```
+
 - Note payload: `{ content, color, isPinned }`.
 - Todo payload: `{ text, completed, category }`.
 - Task payload: `{ description, priority, status, category, tags, notes, progress, ... }` (task's flat fields).
-`projectId`/`collectionId` go at the patch top level so both the server column write and `applyChanges` can read them.
+  `projectId`/`collectionId` go at the patch top level so both the server column write and `applyChanges` can read them.
 
 ### B2. Fix the read-path to stamp `projectId` on remote notes/todos
+
 - `src/lib/cloudflareSync/applyChanges.ts`:
   - `buildNote` (~line 391): add `projectId: change.project_id` (read from the change row, not the patch).
   - `buildTodo` (~line 458): add `projectId: change.project_id`.
@@ -76,9 +87,11 @@ Add `void enqueueCloudChange({...})` to create/update/delete in each (mirroring 
   - These functions currently take `(id, patch, payload, createdAt)`; thread `change.project_id` through (e.g. pass the whole `change` or add a `projectId` arg).
 
 ### B3. Backfill on convert-to-cloud
+
 - `src/lib/cloudflareSync/orchestrator.ts` → `convertProjectToCloud` (lines ~463-482 currently backfill only collections/links): after re-keying, also enqueue `'create'` mutations for the project's existing notes/todos/tasks (filter each global array by the old local project id, push creates with the new server project id). This mirrors the existing collection/link backfill loop.
 
 ### B4. Backend — no change
+
 Confirmed: `backend/src/lib/sync.ts` `prepareInsert`/`prepareUpdate` already handle `'task' | 'note' | 'todo'` via the JSON-entity handlers and bind `mutation.projectId` to the `project_id` column. The D1 schema already enforces `project_id NOT NULL` with `ON DELETE CASCADE`.
 
 ---

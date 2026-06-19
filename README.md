@@ -57,16 +57,16 @@ and [Zustand](https://github.com/pmndrs/zustand).
 
 ## Tech stack
 
-| Concern         | Choice                                             |
-| --------------- | -------------------------------------------------- |
-| UI framework    | Next.js 15 (static export) + React 18              |
-| Language        | TypeScript                                         |
-| Styling         | Tailwind CSS + Radix UI primitives                 |
-| State           | Zustand (with `chrome.storage` persistence)        |
-| Drag & drop     | @dnd-kit                                           |
-| Extension shell | Manifest V3 (service worker + new-tab override)    |
-| Backend (opt.)  | Cloudflare Worker + D1 (+ Durable Objects for RT)  |
-| Tests           | Jest (extension), Vitest (backend)                 |
+| Concern         | Choice                                            |
+| --------------- | ------------------------------------------------- |
+| UI framework    | Next.js 15 (static export) + React 18             |
+| Language        | TypeScript                                        |
+| Styling         | Tailwind CSS + Radix UI primitives                |
+| State           | Zustand (with `chrome.storage` persistence)       |
+| Drag & drop     | @dnd-kit                                          |
+| Extension shell | Manifest V3 (service worker + new-tab override)   |
+| Backend (opt.)  | Cloudflare Worker + D1 (+ Durable Objects for RT) |
+| Tests           | Jest (extension), Vitest (backend)                |
 
 ---
 
