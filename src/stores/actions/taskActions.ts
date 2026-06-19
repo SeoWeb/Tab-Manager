@@ -57,6 +57,14 @@ const addActivity = (
   updatedAt: generateTimestamp(),
 });
 
+const getAuthor = (state: AppState) => {
+  return (
+    state.cloudSync?.account?.displayName ||
+    state.cloudSync?.account?.email ||
+    'user'
+  );
+};
+
 const calculateTaskStats = (tasks: AdvancedTask[]): TaskStats => {
   const total = tasks.filter((t) => !t.isArchived).length;
   const completed = tasks.filter(
@@ -180,7 +188,7 @@ export const createTaskActions = (
             id: generateId(),
             type: 'created',
             description: 'Task created',
-            author: 'user', // TODO: Get actual user
+            author: getAuthor(state),
             timestamp: now,
           },
         ],
@@ -227,7 +235,7 @@ export const createTaskActions = (
                 id: generateId(),
                 type: 'status_changed',
                 description: `Status changed from ${task.status} to ${updates.status}`,
-                author: 'user',
+                author: getAuthor(state),
                 timestamp: generateTimestamp(),
               },
               ...updatedTask.activities,
@@ -340,7 +348,7 @@ export const createTaskActions = (
             id: generateId(),
             type: 'created',
             description: `Duplicated from task: ${originalTask.title}`,
-            author: 'user',
+            author: getAuthor(state),
             timestamp: now,
           },
         ],
@@ -387,7 +395,11 @@ export const createTaskActions = (
         tasksToArchive.has(task.id)
           ? addActivity(
               { ...task, isArchived: true },
-              { type: 'updated', description: 'Task archived', author: 'user' }
+              {
+                type: 'updated',
+                description: 'Task archived',
+                author: getAuthor(state),
+              }
             )
           : task
       );
@@ -424,7 +436,7 @@ export const createTaskActions = (
               {
                 type: 'updated',
                 description: 'Task unarchived',
-                author: 'user',
+                author: getAuthor(state),
               }
             )
           : task
@@ -516,7 +528,7 @@ export const createTaskActions = (
             id: generateId(),
             type: 'created',
             description: 'Subtask created',
-            author: 'user',
+            author: getAuthor(state),
             timestamp: now,
           },
         ],
@@ -526,7 +538,11 @@ export const createTaskActions = (
         if (task.id === parentId) {
           return addActivity(
             { ...task, subtasks: [...task.subtasks, subtask.id] },
-            { type: 'updated', description: 'Subtask added', author: 'user' }
+            {
+              type: 'updated',
+              description: 'Subtask added',
+              author: getAuthor(state),
+            }
           );
         }
         return task;
@@ -585,7 +601,7 @@ export const createTaskActions = (
               {
                 type: 'updated',
                 description: 'Subtask removed',
-                author: 'user',
+                author: getAuthor(state),
               }
             );
           }
@@ -635,13 +651,21 @@ export const createTaskActions = (
               ...task,
               subtasks: task.subtasks.filter((id) => id !== subtaskId),
             },
-            { type: 'updated', description: 'Subtask moved', author: 'user' }
+            {
+              type: 'updated',
+              description: 'Subtask moved',
+              author: getAuthor(state),
+            }
           );
         } else if (task.id === newParentId) {
           // Add to new parent
           return addActivity(
             { ...task, subtasks: [...task.subtasks, subtaskId] },
-            { type: 'updated', description: 'Subtask added', author: 'user' }
+            {
+              type: 'updated',
+              description: 'Subtask added',
+              author: getAuthor(state),
+            }
           );
         } else if (task.id === subtaskId) {
           // Update subtask's parent
@@ -650,7 +674,7 @@ export const createTaskActions = (
             {
               type: 'updated',
               description: 'Moved to new parent task',
-              author: 'user',
+              author: getAuthor(state),
             }
           );
         }
@@ -895,7 +919,7 @@ export const createTaskActions = (
                   {
                     type: 'updated',
                     description: 'Task archived (bulk)',
-                    author: 'user',
+                    author: getAuthor(state),
                   }
                 )
               : task
