@@ -4,11 +4,14 @@ import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { bookmarkSyncService } from '@/lib/bookmarkSyncService';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createProjectActions = (set: any, get: () => AppState) => ({
+export const createProjectActions = (
+  set: StoreApi<AppState>['setState'],
+  get: () => AppState
+) => ({
   addProject: (
     projectData: Pick<Project, 'name' | 'color' | 'description' | 'icon'>,
     options?: {

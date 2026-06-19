@@ -3,6 +3,7 @@ import type { Collection, Project, Link } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
 
@@ -40,8 +41,10 @@ function syncCollectionOrders(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createCollectionActions = (set: any, get: () => AppState) => ({
+export const createCollectionActions = (
+  set: StoreApi<AppState>['setState'],
+  get: () => AppState
+) => ({
   addCollection: (
     projectId: string,
     collectionData: Pick<Collection, 'name' | 'description' | 'color'>,

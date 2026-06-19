@@ -10,11 +10,14 @@ import type { LegacyTask } from '@/types/tasks';
 import { getAllWindows } from '@/lib/tabService';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 import { buildTodoPatch } from '@/lib/cloudflareSync/entityPatches';
+import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createUIActions = (set: any, get: () => AppState) => ({
+export const createUIActions = (
+  set: StoreApi<AppState>['setState'],
+  get: () => AppState
+) => ({
   setHasHydrated: (hydrated: boolean) =>
     set((state: AppState) => ({
       ...state,
@@ -113,13 +116,6 @@ export const createUIActions = (set: any, get: () => AppState) => ({
   removeQuickLink: (id: string) =>
     set((state: AppState) => ({
       quickLinks: state.quickLinks.filter((l: QuickLink) => l.id !== id),
-    })),
-
-  // Notes actions
-  updateNotes: (notes: string) =>
-    set((state: AppState) => ({
-      ...state,
-      notes: notes,
     })),
 
   // Todos actions

@@ -4,6 +4,7 @@ import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { preloadFavicon } from '@/lib/utils';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
 
@@ -24,8 +25,10 @@ function buildLinkUpdatePatch(
   return Object.keys(patch).length > 0 ? patch : null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createLinkActions = (set: any, get: () => AppState) => ({
+export const createLinkActions = (
+  set: StoreApi<AppState>['setState'],
+  get: () => AppState
+) => ({
   addLink: (
     projectId: string,
     collectionId: string,
