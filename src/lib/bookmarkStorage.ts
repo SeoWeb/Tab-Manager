@@ -2,7 +2,6 @@
 
 import { bookmarkService } from './bookmarkService';
 import { bookmarkSyncService } from './bookmarkSyncService';
-import type {} from '@/types';
 
 const ROOT_FOLDER_NAME = 'TabManager Root';
 
