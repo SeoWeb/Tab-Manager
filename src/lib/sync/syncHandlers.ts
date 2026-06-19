@@ -13,8 +13,6 @@ export class SyncHandlers {
   ): Promise<void> {
     if (this.syncService.syncInProgress) return;
 
-    console.log('Bookmark created:', bookmark);
-
     // Check if this bookmark is within our managed folders
     if (
       bookmark.parentId &&
@@ -38,8 +36,6 @@ export class SyncHandlers {
   ): Promise<void> {
     if (this.syncService.syncInProgress) return;
 
-    console.log('Bookmark removed:', id);
-
     // Check if this was within our managed folders
     if (await this.syncService.isWithinManagedFolders(removeInfo.parentId)) {
       // Trigger a partial sync for the affected area
@@ -52,11 +48,10 @@ export class SyncHandlers {
    */
   async handleBookmarkChanged(
     id: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     changeInfo: { title?: string; url?: string }
   ): Promise<void> {
     if (this.syncService.syncInProgress) return;
-
-    console.log('Bookmark changed:', id, changeInfo);
 
     // Get the bookmark to check if it's in our managed folders
     const bookmark = await bookmarkService.getBookmarkNode(id);
@@ -83,8 +78,6 @@ export class SyncHandlers {
     }
   ): Promise<void> {
     if (this.syncService.syncInProgress) return;
-
-    console.log('Bookmark moved:', id, moveInfo);
 
     // Check both old and new parent folders
     const affectedFolders = [moveInfo.oldParentId, moveInfo.parentId];

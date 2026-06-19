@@ -15,7 +15,10 @@ function base64UrlEncode(input: ArrayBuffer | Uint8Array): string {
 
 function base64UrlDecode(input: string): Uint8Array {
   const base64 = input.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    '='
+  );
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
@@ -32,10 +35,15 @@ function parseJwtPart<T>(part: string, label: string): T {
   }
 }
 
-export async function signJwt(payload: JwtPayload, secret: string): Promise<string> {
+export async function signJwt(
+  payload: JwtPayload,
+  secret: string
+): Promise<string> {
   const header = { alg: 'HS256', typ: 'JWT' };
   const encodedHeader = base64UrlEncode(encoder.encode(JSON.stringify(header)));
-  const encodedPayload = base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+  const encodedPayload = base64UrlEncode(
+    encoder.encode(JSON.stringify(payload))
+  );
   const signingInput = `${encodedHeader}.${encodedPayload}`;
 
   const key = await crypto.subtle.importKey(
@@ -46,13 +54,20 @@ export async function signJwt(payload: JwtPayload, secret: string): Promise<stri
     ['sign']
   );
 
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(signingInput));
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(signingInput)
+  );
   const encodedSignature = base64UrlEncode(signature);
 
   return `${signingInput}.${encodedSignature}`;
 }
 
-export async function verifyJwt(token: string, secret: string): Promise<JwtPayload | null> {
+export async function verifyJwt(
+  token: string,
+  secret: string
+): Promise<JwtPayload | null> {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
 
@@ -117,7 +132,11 @@ export async function authenticateToken(
     .bind(payload.sub)
     .first<User>();
 
-  if (existing && existing.email === email && (existing.display_name ?? null) === displayName) {
+  if (
+    existing &&
+    existing.email === email &&
+    (existing.display_name ?? null) === displayName
+  ) {
     return existing;
   }
 

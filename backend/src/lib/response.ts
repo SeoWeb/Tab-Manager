@@ -7,7 +7,11 @@ export function jsonResponse<T>(body: T, init: ResponseInit = {}): Response {
   });
 }
 
-export function errorResponse(status: number, message: string, details?: unknown): Response {
+export function errorResponse(
+  status: number,
+  message: string,
+  details?: unknown
+): Response {
   return jsonResponse(
     {
       error: {

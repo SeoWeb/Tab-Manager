@@ -25,13 +25,13 @@ Current relevant extension files:
 
 Recommended Cloudflare services:
 
-| Service | Purpose |
-| --- | --- |
-| Cloudflare Workers | Serverless API for sync, auth, projects, members, and invitations |
-| Cloudflare D1 | SQLite database for projects, collections, links, tasks, notes, members, and sync changes |
-| Optional Durable Objects | Realtime presence and per-project live updates |
-| Optional R2 | Favicon, screenshot, or other project asset storage |
-| Optional Pages | Web dashboard for account, invites, and project management |
+| Service                  | Purpose                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| Cloudflare Workers       | Serverless API for sync, auth, projects, members, and invitations                         |
+| Cloudflare D1            | SQLite database for projects, collections, links, tasks, notes, members, and sync changes |
+| Optional Durable Objects | Realtime presence and per-project live updates                                            |
+| Optional R2              | Favicon, screenshot, or other project asset storage                                       |
+| Optional Pages           | Web dashboard for account, invites, and project management                                |
 
 Important: the extension should call the Worker API. It should not call D1 directly.
 
@@ -296,15 +296,15 @@ Server behavior:
 
 MVP conflict handling:
 
-| Entity/action | Strategy |
-| --- | --- |
-| Project name/description/color/icon | Last-write-wins |
-| Collection name/description/color | Last-write-wins |
-| Link add | Keep both concurrent adds |
-| Link update | Last-write-wins unless base version conflicts |
-| Link delete | Delete wins or return conflict if edited concurrently |
-| Reorder | Last reorder wins |
-| Tasks/notes/todos | Last-write-wins |
+| Entity/action                       | Strategy                                              |
+| ----------------------------------- | ----------------------------------------------------- |
+| Project name/description/color/icon | Last-write-wins                                       |
+| Collection name/description/color   | Last-write-wins                                       |
+| Link add                            | Keep both concurrent adds                             |
+| Link update                         | Last-write-wins unless base version conflicts         |
+| Link delete                         | Delete wins or return conflict if edited concurrently |
+| Reorder                             | Last reorder wins                                     |
+| Tasks/notes/todos                   | Last-write-wins                                       |
 
 Better future strategy:
 
@@ -521,7 +521,7 @@ Implementation:
 - `Project.cloudEnabled` (`src/types/index.ts`) is the explicit local/cloud
   distinction. Cloud projects carry the server-assigned id as their local id
   (the Worker mints project ids via `POST /projects` and rejects project
-  *create* on the sync endpoint); entity ids stay client-authoritative.
+  _create_ on the sync endpoint); entity ids stay client-authoritative.
 - `enqueueCloudChange` (`orchestrator.ts`) is the single guarded entry point —
   it enqueues only when sync is enabled and the project is `cloudEnabled`, and
   swallows storage errors so a sync hiccup never blocks the optimistic update.
@@ -642,7 +642,7 @@ Implementation:
     API), one instance per project (`idFromName`). Members connect over a
     WebSocket; identity (user / display name / role / client) rides as
     hibernation tags so presence is rebuilt faithfully after a wake. A `POST
-    /notify` fans `{type:'changes', …}` to every connected socket; presence
+/notify` fans `{type:'changes', …}` to every connected socket; presence
     snapshots are broadcast on join/leave.
   - Route `GET /projects/:id/realtime` (`backend/src/index.ts`) authenticates
     the `?token=` query param, verifies membership (viewer+), and forwards the
@@ -668,7 +668,7 @@ Implementation:
   `realtimeMessages` (changes apply + no-backward cursor, presence, unknown),
   `syncLock` (acquire/release/steal-stale/isLockedByOther); backend vitest —
   realtime presence helpers (tag round-trip, dedupe, malformed). `pnpm run
-  build`, `pnpm run typecheck`, `pnpm run test`, and `pnpm run test:backend` all
+build`, `pnpm run typecheck`, `pnpm run test`, and `pnpm run test:backend` all
   pass.
 
 Out of Phase 5 scope (deferred to Phase 6): a richer conflict-resolution UI,

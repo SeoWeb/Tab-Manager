@@ -39,9 +39,6 @@ export class LinkSync {
         );
         if (!bookmarkExists) {
           // Link's bookmark was deleted, remove link
-          console.log(
-            `Link "${link.title}" bookmark was deleted, removing link`
-          );
           store.deleteLink(projectId, collectionId, link.id);
         }
       }
@@ -56,8 +53,6 @@ export class LinkSync {
     collectionId: string,
     bookmark: chrome.bookmarks.BookmarkTreeNode
   ): Promise<void> {
-    console.log(`Creating link from bookmark: ${bookmark.title}`);
-
     const store = useAppStore.getState();
 
     // Preload favicon to ensure we get the best quality available
@@ -112,17 +107,11 @@ export class LinkSync {
 
     // Check if title changed in bookmarks
     if (link.title !== bookmark.title) {
-      console.log(
-        `Link title changed in bookmarks: "${link.title}" -> "${bookmark.title}"`
-      );
       updates.title = bookmark.title || link.title;
     }
 
     // Check if URL changed in bookmarks
     if (link.url !== bookmark.url) {
-      console.log(
-        `Link URL changed in bookmarks: "${link.url}" -> "${bookmark.url}"`
-      );
       updates.url = bookmark.url || link.url;
       // Update favicon for new URL using the improved service
       if (bookmark.url) {

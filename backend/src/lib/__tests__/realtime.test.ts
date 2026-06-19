@@ -50,8 +50,18 @@ describe('realtime presence helpers', () => {
   describe('presenceSnapshot', () => {
     it('builds a roster from per-socket tag arrays', () => {
       const tags = [
-        buildPresenceTags({ userId: 'u1', displayName: 'Alice', role: 'owner', clientId: 'c1' }),
-        buildPresenceTags({ userId: 'u2', displayName: 'Bob', role: 'viewer', clientId: 'c2' }),
+        buildPresenceTags({
+          userId: 'u1',
+          displayName: 'Alice',
+          role: 'owner',
+          clientId: 'c1',
+        }),
+        buildPresenceTags({
+          userId: 'u2',
+          displayName: 'Bob',
+          role: 'viewer',
+          clientId: 'c2',
+        }),
       ];
 
       expect(presenceSnapshot(tags)).toEqual<PresenceUser[]>([
@@ -62,8 +72,18 @@ describe('realtime presence helpers', () => {
 
     it('collapses a user connected from multiple sockets into one entry', () => {
       const tags = [
-        buildPresenceTags({ userId: 'u1', displayName: 'Alice', role: 'owner', clientId: 'c1' }),
-        buildPresenceTags({ userId: 'u1', displayName: 'Alice', role: 'owner', clientId: 'c2' }),
+        buildPresenceTags({
+          userId: 'u1',
+          displayName: 'Alice',
+          role: 'owner',
+          clientId: 'c1',
+        }),
+        buildPresenceTags({
+          userId: 'u1',
+          displayName: 'Alice',
+          role: 'owner',
+          clientId: 'c2',
+        }),
       ];
 
       const snapshot = presenceSnapshot(tags);
@@ -73,7 +93,12 @@ describe('realtime presence helpers', () => {
 
     it('skips sockets whose tags lack a user id', () => {
       const tags = [
-        buildPresenceTags({ userId: 'u1', displayName: 'Alice', role: 'owner', clientId: 'c1' }),
+        buildPresenceTags({
+          userId: 'u1',
+          displayName: 'Alice',
+          role: 'owner',
+          clientId: 'c1',
+        }),
         ['role:viewer'], // malformed / no user tag
       ];
 
