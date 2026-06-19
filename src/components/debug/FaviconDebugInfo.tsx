@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import type { Link } from '@/types';
 import { useAppStore } from '@/stores/appStore';
 
@@ -12,18 +13,23 @@ export default function FaviconDebugInfo({ link }: FaviconDebugInfoProps) {
     projects: state.projects,
   }));
 
-  // Find the link in the store to compare
-  let storedLink: Link | null = null;
-  for (const project of projects) {
-    for (const collection of project.collections || []) {
-      const found = collection.links?.find((l) => l.id === link.id);
-      if (found) {
-        storedLink = found;
-        break;
+  // Build a map of all links across all projects and collections
+  // to avoid O(N) searching for each link on every render.
+  const linkMap = useMemo(() => {
+    const map = new Map<string, Link>();
+    for (const project of projects) {
+      for (const collection of project.collections || []) {
+        if (!collection.links) continue;
+        for (const l of collection.links) {
+          map.set(l.id, l);
+        }
       }
     }
-    if (storedLink) break;
-  }
+    return map;
+  }, [projects]);
+
+  // Find the link in the store to compare
+  const storedLink: Link | null = linkMap.get(link.id) || null;
 
   return (
     <div className='p-2 bg-gray-100 text-xs rounded mb-2'>
