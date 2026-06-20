@@ -2,6 +2,7 @@ import type { Project, Collection, Link } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import type { StoreApi } from 'zustand';
 
 /**
  * Enqueue an `update` mutation for every link in a collection carrying its
@@ -40,8 +41,10 @@ function syncCollectionOrders(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createDragDropActions = (set: any, get: () => AppState) => ({
+export const createDragDropActions = (
+  set: StoreApi<AppState>['setState'],
+  get: () => AppState
+) => ({
   moveLink: (
     projectId: string,
     sourceCollectionId: string,
