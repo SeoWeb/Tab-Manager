@@ -1,8 +1,8 @@
 import type { Note } from '@/stores/types';
-import type { AdvancedTask, LegacyTask } from '@/types/tasks';
+import type { AdvancedTask } from '@/types/tasks';
 
 /**
- * Patch builders for the JSON-backed entities (note/todo/task).
+ * Patch builders for the JSON-backed entities (note/task).
  *
  * The backend stores these entities as a `title` column plus a `payload_json`
  * blob (see `prepareInsertJsonEntity` / `prepareUpdateJsonEntity` in
@@ -21,7 +21,7 @@ import type { AdvancedTask, LegacyTask } from '@/types/tasks';
  * `projectId` is intentionally NOT placed in the patch: the `project_id` column
  * is bound from the mutation's `projectId` field, and `applyChanges` stamps it
  * from the change row's `project_id` (Phase B2). `collectionId` is included for
- * tasks (the backend binds it to a column; notes/todos leave it unset).
+ * tasks (the backend binds it to a column; notes leave it unset).
  */
 
 export function buildNotePatch(note: Note): Record<string, unknown> {
@@ -31,17 +31,6 @@ export function buildNotePatch(note: Note): Record<string, unknown> {
       content: note.content,
       color: note.color,
       isPinned: note.isPinned,
-    },
-  };
-}
-
-export function buildTodoPatch(todo: LegacyTask): Record<string, unknown> {
-  return {
-    title: todo.text,
-    payload: {
-      text: todo.text,
-      completed: todo.completed,
-      category: todo.category ?? null,
     },
   };
 }

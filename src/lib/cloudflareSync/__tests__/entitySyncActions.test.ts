@@ -1,4 +1,4 @@
-// Phase B1: the note/todo/task action factories must enqueue cloud mutations
+// Phase B1: the note/task action factories must enqueue cloud mutations
 // with the shape the backend stores and applyChanges reads back. The real
 // orchestrator pulls in the appStore (which imports ESM-only nanoid), so the
 // orchestrator is mocked; the patch builders (entityPatches) run for real.
@@ -14,7 +14,6 @@ jest.mock('@/lib/tabService', () => ({ getAllWindows: jest.fn() }));
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 import { createNoteActions } from '@/stores/actions/noteActions';
 import { createTaskActions } from '@/stores/actions/taskActions';
-import { createUIActions } from '@/stores/actions/uiActions';
 import type { AppState } from '@/stores/types';
 import type { AdvancedTask } from '@/types/tasks';
 
@@ -127,53 +126,6 @@ describe('noteActions cloud sync', () => {
     actions.deleteNote('orphan');
     expect(mockedEnqueue).not.toHaveBeenCalled();
     expect(get().notes).toHaveLength(0);
-  });
-});
-
-describe('todo (uiActions) cloud sync', () => {
-  beforeEach(() => mockedEnqueue.mockClear());
-
-  it('enqueues create/toggle(update)/remove(delete)', () => {
-    const { get, set } = makeStore({
-      projects: [PROJECT],
-      activeProjectId: 'proj-1',
-      todos: [],
-    });
-    const actions = createUIActions(set, get);
-
-    actions.addTodo('Buy milk', 'groceries');
-    const todoId = get().todos[0].id;
-    expect(lastCall()).toMatchObject({
-      projectId: 'proj-1',
-      entityType: 'todo',
-      operation: 'create',
-      patch: {
-        title: 'Buy milk',
-        payload: { text: 'Buy milk', completed: false, category: 'groceries' },
-      },
-    });
-
-    actions.toggleTodo(todoId);
-    expect(lastCall()).toMatchObject({
-      projectId: 'proj-1',
-      entityType: 'todo',
-      entityId: todoId,
-      operation: 'update',
-      patch: {
-        title: 'Buy milk',
-        payload: { text: 'Buy milk', completed: true, category: 'groceries' },
-      },
-    });
-
-    actions.removeTodo(todoId);
-    expect(lastCall()).toMatchObject({
-      projectId: 'proj-1',
-      entityType: 'todo',
-      entityId: todoId,
-      operation: 'delete',
-      patch: {},
-    });
-    expect(get().todos).toHaveLength(0);
   });
 });
 

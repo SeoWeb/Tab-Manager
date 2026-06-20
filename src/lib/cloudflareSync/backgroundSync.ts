@@ -33,7 +33,6 @@ interface PersistedWrapper {
 interface PartialState {
   projects?: unknown[];
   notes?: unknown[];
-  todos?: unknown[];
   tasks?: unknown[];
   cloudSync?: Partial<CloudSyncState>;
 }
@@ -218,7 +217,6 @@ async function applyToStore(input: {
   const mutable: ApplyChangesInput = {
     projects: (state.projects ?? []) as ApplyChangesInput['projects'],
     notes: (state.notes ?? []) as ApplyChangesInput['notes'],
-    todos: (state.todos ?? []) as ApplyChangesInput['todos'],
     tasks: (state.tasks ?? []) as ApplyChangesInput['tasks'],
   };
 
@@ -240,7 +238,6 @@ async function applyToStore(input: {
     );
     mutable.projects = result.projects;
     mutable.notes = result.notes;
-    mutable.todos = result.todos;
     mutable.tasks = result.tasks;
     const maxId = pending.reduce(
       (max, c) => (c.id > max ? c.id : max),
@@ -254,7 +251,6 @@ async function applyToStore(input: {
 
   state.projects = mutable.projects;
   state.notes = mutable.notes;
-  state.todos = mutable.todos;
   state.tasks = mutable.tasks;
   state.cloudSync = {
     ...(state.cloudSync as CloudSyncState),

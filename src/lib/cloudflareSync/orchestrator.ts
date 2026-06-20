@@ -5,11 +5,7 @@ import * as config from './config';
 import * as authStorage from './authStorage';
 import * as queue from './queue';
 import { acquireSyncLock, releaseSyncLock } from './syncLock';
-import {
-  buildNotePatch,
-  buildTodoPatch,
-  buildTaskPatch,
-} from './entityPatches';
+import { buildNotePatch, buildTaskPatch } from './entityPatches';
 import type {
   CloudAccount,
   CloudEntityType,
@@ -486,7 +482,7 @@ export async function convertProjectToCloud(
       }
     }
 
-    // Backfill the project's existing notes/todos/tasks too. These flat arrays
+    // Backfill the project's existing notes/tasks too. These flat arrays
     // were just re-keyed to the server id by `convertProjectToCloudState`, so
     // filter by the new server id. Without this, items created before conversion
     // would never reach the server (only live creates enqueue). (Phase B3.)
@@ -501,18 +497,6 @@ export async function convertProjectToCloud(
         entityId: note.id,
         operation: 'create',
         patch: buildNotePatch(note),
-      });
-    }
-    for (const todo of storeState.todos.filter(
-      (t) => t.projectId === serverProject.id
-    )) {
-      // eslint-disable-next-line no-await-in-loop -- ordered, low-volume
-      await enqueueCloudMutation({
-        projectId: serverProject.id,
-        entityType: 'todo',
-        entityId: todo.id,
-        operation: 'create',
-        patch: buildTodoPatch(todo),
       });
     }
     for (const task of storeState.tasks.filter(

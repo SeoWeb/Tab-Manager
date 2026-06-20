@@ -161,10 +161,9 @@ export const createProjectActions = (set: any, get: () => AppState) => ({
       return {
         projects: updatedProjects,
         activeProjectId: newActiveProjectId,
-        // Cascade-delete the project's notes/todos/tasks locally. The backend
+        // Cascade-delete the project's notes/tasks locally. The backend
         // already cascades these via ON DELETE CASCADE on project_id.
         notes: state.notes.filter((note) => note.projectId !== id),
-        todos: state.todos.filter((todo) => todo.projectId !== id),
         tasks: state.tasks.filter((task) => task.projectId !== id),
       };
     });

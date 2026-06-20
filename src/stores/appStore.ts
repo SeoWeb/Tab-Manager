@@ -34,7 +34,6 @@ const initialState = {
   chromeWindows: mockChromeWindows,
   quickLinks: [],
   notes: [],
-  todos: [],
   // Enhanced task management state
   ...initializeTaskState(),
   isAddProjectModalOpen: false,
@@ -89,7 +88,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'tab-manager-storage',
-      // Bumped for per-project scoping: notes/todos/tasks now carry projectId.
+      // Bumped for per-project scoping: notes/tasks now carry projectId.
       // Zustand calls `migrate` whenever the stored snapshot's numeric version
       // differs from `version` below — and if no migrate is provided it logs an
       // error and DISCARDS the stored state (resetting to initial mock data).
@@ -137,7 +136,6 @@ export const useAppStore = create<AppState>()(
             notes: Array.isArray(state.notes)
               ? state.notes
               : initialState.notes,
-            todos: state.todos || initialState.todos,
             // Enhanced task management persistence
             tasks: Array.isArray(state.tasks) ? state.tasks : [],
             taskTemplates: Array.isArray(state.taskTemplates)
@@ -230,7 +228,7 @@ export const useAppStore = create<AppState>()(
           const hasStoredTheme = 'isDarkMode' in persistedStateTyped;
 
           // Phase A per-project migration: assign the owning project to any
-          // pre-existing notes/todos/tasks that predate `projectId`. This runs
+          // pre-existing notes/tasks that predate `projectId`. This runs
           // in `merge` on every rehydrate (idempotent) — see the version note
           // above for why a version-gated `migrate` can't be relied on here.
           // Items with no resolvable project stay unscoped and surface only via
@@ -282,10 +280,6 @@ export const useAppStore = create<AppState>()(
             notes: Array.isArray(persistedStateTyped.notes)
               ? persistedStateTyped.notes.map(stampProjectId)
               : currentState.notes,
-            // Todos are preserved via the spread above; stamp projectId here
-            todos: Array.isArray(persistedStateTyped.todos)
-              ? persistedStateTyped.todos.map(stampProjectId)
-              : currentState.todos,
             // Enhanced task management state merging (and stamp projectId)
             tasks: Array.isArray(persistedStateTyped.tasks)
               ? persistedStateTyped.tasks.map(stampProjectId)

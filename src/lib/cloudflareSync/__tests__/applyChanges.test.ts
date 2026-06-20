@@ -1,10 +1,6 @@
 import { applyRemoteChanges } from '../applyChanges';
-import {
-  buildNotePatch,
-  buildTodoPatch,
-  buildTaskPatch,
-} from '../entityPatches';
-import type { AdvancedTask, LegacyTask } from '@/types/tasks';
+import { buildNotePatch, buildTaskPatch } from '../entityPatches';
+import type { AdvancedTask } from '@/types/tasks';
 import type { Note } from '@/stores/types';
 import type { CloudEntityType, CloudSyncChange } from '../types';
 
@@ -26,7 +22,7 @@ function change(
   };
 }
 
-const EMPTY = { projects: [], notes: [], todos: [], tasks: [] };
+const EMPTY = { projects: [], notes: [], tasks: [] };
 
 describe('applyRemoteChanges — projectId stamping (Phase B2)', () => {
   it('stamps projectId from change.project_id on a created note', () => {
@@ -54,37 +50,6 @@ describe('applyRemoteChanges — projectId stamping (Phase B2)', () => {
       content: 'hello',
       color: '#fff',
       isPinned: true,
-    });
-  });
-
-  it('stamps projectId from change.project_id on a created todo', () => {
-    const result = applyRemoteChanges(
-      EMPTY,
-      [
-        change({
-          entity_type: 'todo',
-          entity_id: 'todo-1',
-          project_id: 'proj-1',
-          patch: {
-            title: 'Buy milk',
-            payload: {
-              text: 'Buy milk',
-              completed: true,
-              category: 'groceries',
-            },
-          },
-        }),
-      ],
-      'ext-me'
-    );
-
-    expect(result.todos).toHaveLength(1);
-    expect(result.todos[0]).toMatchObject({
-      id: 'todo-1',
-      projectId: 'proj-1',
-      text: 'Buy milk',
-      completed: true,
-      category: 'groceries',
     });
   });
 
@@ -211,35 +176,6 @@ describe('applyRemoteChanges — round-trips the entity patch builders', () => {
     expect(got.content).toBe(original.content);
     expect(got.color).toBe(original.color);
     expect(got.isPinned).toBe(original.isPinned);
-    expect(got.projectId).toBe(original.projectId);
-  });
-
-  it('reconstructs a todo from buildTodoPatch', () => {
-    const original: LegacyTask = {
-      id: 'todo-1',
-      text: 'Walk dog',
-      completed: false,
-      category: 'home',
-      projectId: 'proj-1',
-    };
-
-    const result = applyRemoteChanges(
-      EMPTY,
-      [
-        change({
-          entity_type: 'todo',
-          entity_id: 'todo-1',
-          project_id: 'proj-1',
-          patch: buildTodoPatch(original),
-        }),
-      ],
-      'ext-me'
-    );
-
-    const got = result.todos[0];
-    expect(got.text).toBe(original.text);
-    expect(got.completed).toBe(original.completed);
-    expect(got.category).toBe(original.category);
     expect(got.projectId).toBe(original.projectId);
   });
 

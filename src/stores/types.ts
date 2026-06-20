@@ -14,7 +14,6 @@ import type {
   TaskStats,
   PomodoroSession,
   TaskBulkOperation,
-  LegacyTask,
 } from '@/types/tasks';
 import type {
   CloudPresenceUser,
@@ -76,7 +75,6 @@ export interface AppState {
   quickLinks: QuickLink[];
   notes: Note[];
   // Legacy todos for backward compatibility
-  todos: LegacyTask[];
   // Enhanced task management
   tasks: AdvancedTask[];
   taskTemplates: TaskTemplate[];
@@ -223,11 +221,6 @@ export interface AppState {
   deleteNote: (id: string) => void;
   togglePinNote: (id: string) => void;
   duplicateNote: (id: string) => void;
-
-  // Legacy Todos actions (for backward compatibility)
-  addTodo: (text: string, category?: string) => void;
-  toggleTodo: (id: string) => void;
-  removeTodo: (id: string) => void;
 
   // Enhanced Task Management Actions
   // Task CRUD

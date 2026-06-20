@@ -11,14 +11,7 @@ import { Collection, Project } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TasksView from '../views/TasksView';
 import NotesView from '../views/NotesView';
-import TodosView from '../views/TodosView';
-import {
-  FolderOpen,
-  CheckSquare,
-  Calendar,
-  FileText,
-  ListTodo,
-} from 'lucide-react';
+import { FolderOpen, CheckSquare, Calendar, FileText } from 'lucide-react';
 
 const MainContentArea: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -164,10 +157,6 @@ const MainContentArea: React.FC = () => {
               <FileText className='h-4 w-4' />
               Notes
             </TabsTrigger>
-            <TabsTrigger value='todos' className='gap-2'>
-              <ListTodo className='h-4 w-4' />
-              Todos
-            </TabsTrigger>
           </TabsList>
           <TabsContent value='collections'>
             {activeProject ? (
@@ -200,9 +189,6 @@ const MainContentArea: React.FC = () => {
           </TabsContent>
           <TabsContent value='notes'>
             <NotesView />
-          </TabsContent>
-          <TabsContent value='todos'>
-            <TodosView />
           </TabsContent>
         </Tabs>
       </div>

@@ -66,7 +66,6 @@ export const createCloudSyncActions = (
       {
         projects: state.projects,
         notes: state.notes,
-        todos: state.todos,
         tasks: state.tasks,
       },
       changes,
@@ -76,7 +75,6 @@ export const createCloudSyncActions = (
     _set({
       projects: result.projects,
       notes: result.notes,
-      todos: result.todos,
       tasks: result.tasks,
     });
   },
@@ -121,7 +119,7 @@ export const createCloudSyncActions = (
    * Re-key a local project to its server-assigned id and mark it cloud-enabled.
    * `activeProjectId` is remapped so the current selection survives the id change.
    *
-   * The flat per-project entities (notes/todos/tasks) are re-keyed too: they
+   * The flat per-project entities (notes/tasks) are re-keyed too: they
    * carry the old local `projectId`, so without remapping they would be orphaned
    * under the old id once the project moves to its server id (the views filter by
    * the new active project id). Collections/links are nested under the project,
@@ -148,9 +146,6 @@ export const createCloudSyncActions = (
           : state.activeProjectId,
       notes: state.notes.map((n) =>
         n.projectId === localId ? { ...n, projectId: serverProjectId } : n
-      ),
-      todos: state.todos.map((t) =>
-        t.projectId === localId ? { ...t, projectId: serverProjectId } : t
       ),
       tasks: state.tasks.map((t) =>
         t.projectId === localId ? { ...t, projectId: serverProjectId } : t

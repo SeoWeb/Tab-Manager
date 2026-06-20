@@ -11,7 +11,6 @@ const defaultState: Partial<AppState> = {
   activeVerticalTabId: null,
   quickLinks: [],
   notes: [],
-  todos: [],
   chromeWindows: [],
   _hasHydrated: false,
   isAddProjectModalOpen: false,

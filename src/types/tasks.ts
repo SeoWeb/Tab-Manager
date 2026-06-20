@@ -198,19 +198,3 @@ export interface TaskBulkOperation {
   targetProjectId?: string;
   targetCollectionId?: string;
 }
-
-// Legacy task type for backward compatibility
-export interface LegacyTask {
-  id: string;
-  text: string;
-  completed: boolean;
-  category?: string;
-  /** Project this todo belongs to. Older todos are stamped at rehydrate. */
-  projectId?: string;
-}
-
-// Migration utility type
-export interface TaskMigration {
-  version: number;
-  migrateTask: (legacyTask: LegacyTask) => AdvancedTask;
-}

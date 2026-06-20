@@ -2,7 +2,6 @@ import type { Project, Collection, Link } from '@/types';
 import type { Note } from '@/stores/types';
 import type {
   AdvancedTask,
-  LegacyTask,
   TaskPriority,
   TaskStatus,
   TaskAttachment,
@@ -17,12 +16,12 @@ import type { CloudSyncChange } from './types';
  * Pure reducer that folds server change-log rows into the local store shape.
  *
  * Remote changes arrive as flat `CloudSyncChange` rows; the local store is
- * nested (Project -> Collection[] -> Link[]) plus flat arrays for notes/todos/
+ * nested (Project -> Collection[] -> Link[]) plus flat arrays for notes/tasks/
  * tasks. This maps one onto the other, skipping changes that originated on this
  * client (the local store already reflects those, so re-applying the echo would
  * be redundant and could clobber optimistic state).
  *
- * The patch payload contract for notes/todos/tasks (the `payload` object) is
+ * The patch payload contract for notes/tasks (the `payload` object) is
  * intentionally permissive: Phase 3 will tighten exactly which fields round-trip,
  * but this applier already maps the common fields defensively.
  */
@@ -30,7 +29,6 @@ import type { CloudSyncChange } from './types';
 export interface ApplyChangesInput {
   projects: Project[];
   notes: Note[];
-  todos: LegacyTask[];
   tasks: AdvancedTask[];
 }
 
@@ -91,8 +89,6 @@ function applyChange(
       return applyLink(state, change);
     case 'note':
       return applyNote(state, change);
-    case 'todo':
-      return applyTodo(state, change);
     case 'task':
       return applyTask(state, change);
     default:
@@ -434,69 +430,6 @@ function mergeNote(
         : note.color,
     isPinned: 'isPinned' in payload ? payload.isPinned === true : note.isPinned,
     updatedAt: new Date(),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Todos (legacy)
-// ---------------------------------------------------------------------------
-
-function applyTodo(state: ApplyChangesInput, change: CloudSyncChange): boolean {
-  const patch = patchOf(change);
-  const payload = payloadOf(patch);
-  const id = change.entity_id;
-
-  if (change.operation === 'delete') {
-    state.todos = state.todos.filter((t) => t.id !== id);
-    return true;
-  }
-
-  if (change.operation === 'create') {
-    if (state.todos.some((t) => t.id === id)) return true;
-    state.todos.push(buildTodo(id, patch, payload, change.project_id));
-    return true;
-  }
-
-  let found = false;
-  state.todos = state.todos.map((t) => {
-    if (t.id !== id) return t;
-    found = true;
-    return mergeTodo(t, patch, payload);
-  });
-  return found;
-}
-
-function buildTodo(
-  id: string,
-  patch: Record<string, unknown>,
-  payload: Record<string, unknown>,
-  projectId?: string
-): LegacyTask {
-  return {
-    id,
-    text: pickString([patch.title, payload.text]) ?? '',
-    completed: payload.completed === true,
-    category: pickString([payload.category, patch.collectionId]),
-    // Project is authoritative from the change row (Phase B2); projectId is
-    // immutable once set.
-    projectId: pickString([projectId, patch.projectId]),
-  };
-}
-
-function mergeTodo(
-  todo: LegacyTask,
-  patch: Record<string, unknown>,
-  payload: Record<string, unknown>
-): LegacyTask {
-  return {
-    ...todo,
-    text: pickString([patch.title, payload.text]) ?? todo.text,
-    completed:
-      'completed' in payload ? payload.completed === true : todo.completed,
-    category:
-      'category' in payload
-        ? (pickString([payload.category]) ?? todo.category)
-        : todo.category,
   };
 }
 
