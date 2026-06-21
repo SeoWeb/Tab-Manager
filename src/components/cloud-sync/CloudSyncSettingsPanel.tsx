@@ -18,13 +18,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { useAppStore } from '@/stores/appStore';
 import { CloudSyncStatusBadge } from './CloudSyncStatusBadge';
 import {
   connectCloudAccount,
   disconnectCloudAccount,
-  setCloudApiBaseUrl,
   syncAllCloudProjects,
 } from '@/lib/cloudflareSync/orchestrator';
 
@@ -42,7 +40,6 @@ function formatLastSynced(iso: string | null): string {
 export function CloudSyncSettingsPanel() {
   const cloudSync = useAppStore((state) => state.cloudSync);
 
-  const [apiUrl, setApiUrl] = useState(cloudSync.apiBaseUrl ?? '');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,26 +48,12 @@ export function CloudSyncSettingsPanel() {
   const isConnected = !!cloudSync.account;
   const isSyncing = cloudSync.status === 'syncing';
 
-  const handleSaveUrl = async () => {
-    setBusy(true);
-    setFormError(null);
-    try {
-      await setCloudApiBaseUrl(apiUrl);
-    } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : 'Failed to save URL'
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const handleConnect = async () => {
     setBusy(true);
     setFormError(null);
     try {
       await connectCloudAccount({
-        apiBaseUrl: apiUrl,
+        apiBaseUrl: cloudSync.apiBaseUrl,
         email,
         displayName: displayName.trim() || undefined,
       });
@@ -122,35 +105,6 @@ export function CloudSyncSettingsPanel() {
         </div>
       </CardHeader>
       <CardContent className='space-y-4'>
-        {/* API URL */}
-        <div className='space-y-2'>
-          <Label htmlFor='cloud-api-url'>Worker API URL</Label>
-          <Input
-            id='cloud-api-url'
-            type='url'
-            placeholder='http://localhost:8787 or https://your-worker.workers.dev'
-            value={apiUrl}
-            onChange={(e) => setApiUrl(e.target.value)}
-            disabled={busy}
-          />
-          <p className='text-xs text-muted-foreground'>
-            Add this domain to the extension host permissions in{' '}
-            <code>manifest.json</code>.
-          </p>
-          {isConnected && (
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleSaveUrl}
-              disabled={busy || apiUrl === cloudSync.apiBaseUrl}
-            >
-              Save URL
-            </Button>
-          )}
-        </div>
-
-        <Separator />
-
         {/* Status / account */}
         {isConnected ? (
           <div className='space-y-3'>
@@ -233,7 +187,7 @@ export function CloudSyncSettingsPanel() {
             </div>
             <Button
               onClick={handleConnect}
-              disabled={busy || !apiUrl.trim() || !email.trim()}
+              disabled={busy || !cloudSync.apiBaseUrl?.trim() || !email.trim()}
             >
               {busy ? 'Connecting…' : 'Connect'}
             </Button>
