@@ -3,11 +3,15 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[[routes]]
+pattern = "tab-manager-backend.ww0.dev"
+custom_domain = true
+
 [dev]
 local_protocol = "http"
 
 [vars]
-ENABLE_DEMO_AUTH = "false"
+ENABLE_DEMO_AUTH = "true"
 ALLOWED_ORIGINS = "*"
 
 [[d1_databases]]
@@ -16,7 +20,7 @@ ALLOWED_ORIGINS = "*"
 # replace this value with the returned database_id. See deployment.md.
 binding = "D1_DATABASE"
 database_name = "tab-manager-dev"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "f26c3b54-96ff-4d66-a9ca-ae9a308aecf8"
 
 # Phase 5 realtime: one ProjectRoom Durable Object per project id. The DO uses
 # the WebSocket Hibernation API for presence + change fan-out.

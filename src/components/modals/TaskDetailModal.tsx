@@ -156,8 +156,8 @@ export default function TaskDetailModal({
     (state) => state.updateTask,
     () => {}
   );
-  const addTask = useAppStoreWithDefaults(
-    (state) => state.addTask,
+  const addSubtask = useAppStoreWithDefaults(
+    (state) => state.addSubtask,
     () => {}
   );
   const [newComment, setNewComment] = useState('');
@@ -225,15 +225,14 @@ export default function TaskDetailModal({
 
   const handleAddSubtask = () => {
     if (newSubtask.trim() && task) {
-      const subtask: Omit<
+      const subtaskData: Omit<
         AdvancedTask,
-        'id' | 'createdAt' | 'updatedAt' | 'activities'
+        'id' | 'createdAt' | 'updatedAt' | 'activities' | 'parentTaskId'
       > = {
         title: newSubtask.trim(),
         status: 'todo',
         priority: task.priority,
         category: task.category,
-        parentTaskId: task.id,
         projectId: task.projectId,
         tags: [],
         subtasks: [],
@@ -246,18 +245,7 @@ export default function TaskDetailModal({
         isFavorite: false,
         customFields: {},
       };
-      const newTaskId = addTask(subtask);
-
-      if (typeof newTaskId === 'string') {
-        // Find the most up-to-date version of the parent task from the store's `tasks` array
-        const parentTask = tasks.find((t) => t.id === task.id);
-        if (parentTask) {
-          // Use the fresh subtasks array from the parentTask
-          updateTask(task.id, {
-            subtasks: [...parentTask.subtasks, newTaskId],
-          });
-        }
-      }
+      addSubtask(task.id, subtaskData);
       setNewSubtask('');
     }
   };

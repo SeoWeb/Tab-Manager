@@ -65,7 +65,7 @@ const getAuthor = (state: AppState) => {
   );
 };
 
-const calculateTaskStats = (tasks: AdvancedTask[]): TaskStats => {
+export const calculateTaskStats = (tasks: AdvancedTask[]): TaskStats => {
   const total = tasks.filter((t) => !t.isArchived).length;
   const completed = tasks.filter(
     (t) => t.status === 'completed' && !t.isArchived

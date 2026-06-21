@@ -52,7 +52,7 @@ const initialState = {
     lastError: null,
     pendingMutationCount: 0,
     account: null,
-    apiBaseUrl: '',
+    apiBaseUrl: 'https://tab-manager-backend.ww0.dev',
     cursors: {},
     realtimeConnected: false,
     onlinePresence: [],

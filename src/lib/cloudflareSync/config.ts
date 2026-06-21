@@ -1,7 +1,7 @@
 import { readJson, writeJson, CLOUD_SYNC_STORAGE_KEYS } from './storage';
 
 /** Default Worker URL. Empty until the user configures their deployment. */
-export const DEFAULT_API_BASE_URL = '';
+export const DEFAULT_API_BASE_URL = 'https://tab-manager-backend.ww0.dev';
 
 /** Get the configured Cloudflare Worker base URL. */
 export async function getApiBaseUrl(): Promise<string> {
