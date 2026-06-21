@@ -10,11 +10,22 @@ jest.mock('@/lib/cloudflareSync/orchestrator', () => ({
 // factory can be imported under Jest's CJS transform.
 jest.mock('nanoid', () => ({ nanoid: () => 'generated-id' }));
 jest.mock('@/lib/tabService', () => ({ getAllWindows: jest.fn() }));
+jest.mock('@/lib/bookmarkStorage', () => ({
+  bookmarkStorage: {
+    deleteProject: jest.fn(),
+  },
+}));
+jest.mock('@/lib/bookmarkSyncService', () => ({
+  bookmarkSyncService: {
+    performFullSync: jest.fn(),
+  },
+}));
 
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 import { createNoteActions } from '@/stores/actions/noteActions';
 import { createTaskActions } from '@/stores/actions/taskActions';
 import { createUIActions } from '@/stores/actions/uiActions';
+import { createProjectActions } from '@/stores/actions/projectActions';
 import type { AppState } from '@/stores/types';
 import type { AdvancedTask } from '@/types/tasks';
 
@@ -650,5 +661,32 @@ describe('noteActions cloud sync — pin toggle and duplicate', () => {
       projectId: 'proj-1',
     });
     expect(get().notes).toHaveLength(2);
+  });
+});
+
+describe('projectActions cloud sync', () => {
+  beforeEach(() => mockedEnqueue.mockClear());
+
+  it('enqueues a delete with the project id on deleteProject', () => {
+    const { get, set } = makeStore({
+      projects: [PROJECT],
+      activeProjectId: 'proj-1',
+      notes: [],
+      todos: [],
+      tasks: [],
+    });
+    const actions = createProjectActions(set, get);
+
+    actions.deleteProject('proj-1');
+
+    expect(mockedEnqueue).toHaveBeenCalledTimes(1);
+    expect(lastCall()).toEqual({
+      projectId: 'proj-1',
+      entityType: 'project',
+      entityId: 'proj-1',
+      operation: 'delete',
+      patch: {},
+    });
+    expect(get().projects).toHaveLength(0);
   });
 });

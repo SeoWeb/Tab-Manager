@@ -133,6 +133,18 @@ export const createProjectActions = (
   },
 
   deleteProject: (id: string) => {
+    // Tell the server to soft-delete the project too. enqueueCloudChange is a
+    // no-op for local-only projects. We do this before modifying local state so
+    // enqueueCloudChange can successfully find the project in projects and read
+    // its cloudEnabled status.
+    void enqueueCloudChange({
+      projectId: id,
+      entityType: 'project',
+      entityId: id,
+      operation: 'delete',
+      patch: {},
+    });
+
     set((state: AppState) => {
       const projectToDelete = state.projects.find((p: Project) => p.id === id);
       const updatedProjects = state.projects.filter(
@@ -170,16 +182,6 @@ export const createProjectActions = (
         todos: state.todos.filter((todo) => todo.projectId !== id),
         tasks: state.tasks.filter((task) => task.projectId !== id),
       };
-    });
-
-    // Tell the server to soft-delete the project too. enqueueCloudChange is a
-    // no-op for local-only projects.
-    void enqueueCloudChange({
-      projectId: id,
-      entityType: 'project',
-      entityId: id,
-      operation: 'delete',
-      patch: {},
     });
   },
 
