@@ -28,7 +28,7 @@ function normalizeRole(value: unknown): Role | null {
     : null;
 }
 
-function requireMinRole(actual: Role | null, minimum: Role): boolean {
+export function requireMinRole(actual: Role | null, minimum: Role): boolean {
   if (!actual) return false;
   return roleRank[actual] >= roleRank[minimum];
 }

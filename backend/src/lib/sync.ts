@@ -1,5 +1,5 @@
 import { badRequest } from './response';
-import { requireProjectAccess } from './projects';
+import { requireProjectAccess, getMembershipRole, requireMinRole } from './projects';
 import { notifyRealtime } from './realtime';
 import type {
   Env,
@@ -478,6 +478,19 @@ async function applyProjectMutation(
   }
 
   if (mutation.operation === 'delete') {
+    const role = await getMembershipRole(env, actorId, mutation.projectId);
+    if (!requireMinRole(role, 'admin')) {
+      return {
+        conflict: {
+          entityType: 'project',
+          entityId: mutation.entityId,
+          clientMutationId: mutation.clientMutationId,
+          message: 'Project deletion requires admin role or higher',
+          currentVersion,
+          expectedVersion: mutation.baseVersion,
+        },
+      };
+    }
     await env.D1_DATABASE.batch([
       env.D1_DATABASE.prepare(
         'UPDATE projects SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL'

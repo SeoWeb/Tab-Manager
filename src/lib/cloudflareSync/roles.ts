@@ -46,6 +46,11 @@ export function canManageMembers(role: CloudRole | null | undefined): boolean {
   return roleAtLeast(role, 'admin');
 }
 
+/** Can delete the project. */
+export function canDeleteProject(role: CloudRole | null | undefined): boolean {
+  return roleAtLeast(role, 'admin');
+}
+
 /** True only for the project owner. */
 export function isOwner(role: CloudRole | null | undefined): boolean {
   return role === 'owner';

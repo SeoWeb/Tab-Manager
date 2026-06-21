@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Project } from '@/types';
 import { Trash2Icon } from 'lucide-react';
+import { canDeleteProject } from '@/lib/cloudflareSync/roles';
 
 interface DeleteProjectConfirmationProps {
   project: Project;
@@ -23,11 +24,13 @@ const DeleteProjectConfirmation: React.FC<DeleteProjectConfirmationProps> = ({
   project,
   onDeleteConfirmed,
 }) => {
+  const deleteDisabled = !canDeleteProject(project.cloudRole);
+
   return (
     <div>
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant='destructive' size='sm'>
+          <Button variant='destructive' size='sm' disabled={deleteDisabled}>
             <Trash2Icon className='mr-2 h-4 w-4' /> Delete Project
           </Button>
         </AlertDialogTrigger>

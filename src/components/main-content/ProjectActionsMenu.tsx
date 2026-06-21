@@ -25,7 +25,7 @@ import {
   convertProjectToCloud,
   disconnectProjectFromCloud,
 } from '@/lib/cloudflareSync/orchestrator';
-import { canEdit } from '@/lib/cloudflareSync/roles';
+import { canEdit, canDeleteProject } from '@/lib/cloudflareSync/roles';
 
 interface ProjectActionsMenuProps {
   project: Project;
@@ -41,6 +41,7 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
   // Viewers (a known low cloud role) can't mutate project data; the backend
   // would reject these anyway. Local-only projects have no role → full control.
   const readOnly = !canEdit(project.cloudRole);
+  const deleteDisabled = !canDeleteProject(project.cloudRole);
 
   const handleEditProjectTrigger = () => {
     setIsEditModalOpen(true);
@@ -152,7 +153,7 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleDeleteProjectTrigger}
-            disabled={readOnly}
+            disabled={deleteDisabled}
             className='text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-700/20 dark:focus:text-red-500'
           >
             Delete Project
