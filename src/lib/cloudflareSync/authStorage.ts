@@ -3,7 +3,7 @@ import {
   writeJson,
   removeKey,
   CLOUD_SYNC_STORAGE_KEYS,
-} from './storage';
+} from '@/lib/cloudflareSync/storage';
 import type { CloudAccount } from './types';
 
 /**

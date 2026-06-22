@@ -42,13 +42,24 @@ export default function TasksView({
   // Store data
   const allTasks = useAppStoreWithDefaults((state) => state.tasks, []);
   const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const cloudSyncEnabled = useAppStoreWithDefaults(
+    (state) => state.cloudSync?.enabled,
+    false
+  );
   const [projectMembers, setProjectMembers] = useState<
     Record<string, CloudMember[]>
   >({});
 
   useEffect(() => {
+    if (!cloudSyncEnabled) {
+      setProjectMembers({});
+      return;
+    }
+
     const targetIds = projectId
-      ? [projectId]
+      ? projects.find((p) => p.id === projectId)?.cloudEnabled
+        ? [projectId]
+        : []
       : projects.filter((p) => p.cloudEnabled).map((p) => p.id);
 
     targetIds.forEach((id) => {
@@ -60,7 +71,7 @@ export default function TasksView({
           console.error(`Failed to load members for project ${id}`, err)
         );
     });
-  }, [projectId, projects]);
+  }, [projectId, projects, cloudSyncEnabled]);
   // Scope to the active project when rendered per-project; the global route
   // (no projectId prop) intentionally shows tasks across all projects.
   const tasks = projectId

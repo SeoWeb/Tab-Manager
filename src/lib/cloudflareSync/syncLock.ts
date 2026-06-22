@@ -3,7 +3,7 @@ import {
   writeJson,
   removeKey,
   CLOUD_SYNC_STORAGE_KEYS,
-} from './storage';
+} from '@/lib/cloudflareSync/storage';
 
 /**
  * Advisory lock (Phase 5) so the background service worker and an open popup

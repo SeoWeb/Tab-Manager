@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AppState } from './types';
-import { chromeStorageApi } from './storage';
-import { initialProjects, mockChromeWindows } from './mockData';
+import { chromeStorageApi } from '@/stores/storage';
+import { initialProjects } from './mockData';
 import { createProjectActions } from './actions/projectActions';
 import { createCollectionActions } from './actions/collectionActions';
 import { createLinkActions } from './actions/linkActions';
@@ -31,7 +31,7 @@ const initialState = {
   isSidebarOpen: false,
   isSidebarLoaded: false,
   projects: initialProjects,
-  chromeWindows: mockChromeWindows,
+  chromeWindows: [],
   quickLinks: [],
   notes: [],
   todos: [],

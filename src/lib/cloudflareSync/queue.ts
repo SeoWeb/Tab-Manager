@@ -1,4 +1,8 @@
-import { readJson, writeJson, CLOUD_SYNC_STORAGE_KEYS } from './storage';
+import {
+  readJson,
+  writeJson,
+  CLOUD_SYNC_STORAGE_KEYS,
+} from '@/lib/cloudflareSync/storage';
 import type { CloudMutation } from './types';
 
 /**

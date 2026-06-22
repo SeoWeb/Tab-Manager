@@ -1,4 +1,4 @@
-import { bookmarkService } from '../bookmarkService';
+import { bookmarkService } from '@/lib/bookmarkService';
 import type { BookmarkSyncService } from './types';
 
 export class SyncHandlers {

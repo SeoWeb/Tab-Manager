@@ -8,13 +8,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,9 +90,6 @@ export function CloudSyncSettingsPanel() {
             <Cloud className='h-5 w-5 text-muted-foreground' />
             <div>
               <CardTitle className='text-base'>Cloud Sync</CardTitle>
-              <CardDescription>
-                Sync projects to your Cloudflare Worker backend.
-              </CardDescription>
             </div>
           </div>
           <CloudSyncStatusBadge />
@@ -158,10 +149,6 @@ export function CloudSyncSettingsPanel() {
           </div>
         ) : (
           <div className='space-y-3'>
-            <p className='text-sm text-muted-foreground'>
-              Sign in with the demo auth endpoint to enable cloud sync. Requires{' '}
-              <code>ENABLE_DEMO_AUTH=true</code> on the Worker.
-            </p>
             <div className='grid gap-2'>
               <div className='space-y-1'>
                 <Label htmlFor='cloud-email'>Email</Label>

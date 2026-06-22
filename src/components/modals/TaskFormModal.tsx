@@ -76,14 +76,14 @@ export default function TaskFormModal({
   const [members, setMembers] = useState<CloudMember[]>([]);
 
   useEffect(() => {
-    if (currentProjectId && project?.cloudEnabled) {
+    if (currentProjectId && project?.cloudEnabled && cloudSync.enabled) {
       fetchProjectMembers(currentProjectId)
         .then(setMembers)
         .catch((err) => console.error('Failed to fetch project members', err));
     } else {
       setMembers([]);
     }
-  }, [currentProjectId, project?.cloudEnabled]);
+  }, [currentProjectId, project?.cloudEnabled, cloudSync.enabled]);
 
   useEffect(() => {
     if (task) {

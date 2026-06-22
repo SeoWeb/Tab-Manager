@@ -182,14 +182,14 @@ export default function TaskDetailModal({
   const [members, setMembers] = useState<CloudMember[]>([]);
 
   useEffect(() => {
-    if (task?.projectId && project?.cloudEnabled) {
+    if (task?.projectId && project?.cloudEnabled && cloudSync.enabled) {
       fetchProjectMembers(task.projectId)
         .then(setMembers)
         .catch((err) => console.error('Failed to fetch project members', err));
     } else {
       setMembers([]);
     }
-  }, [task?.projectId, project?.cloudEnabled]);
+  }, [task?.projectId, project?.cloudEnabled, cloudSync.enabled]);
 
   const assignedMember = useMemo(() => {
     if (!task?.assignee) return null;

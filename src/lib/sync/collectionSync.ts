@@ -1,4 +1,4 @@
-import { bookmarkService } from '../bookmarkService';
+import { bookmarkService } from '@/lib/bookmarkService';
 import { useAppStore } from '@/stores/appStore';
 import type { Collection } from '@/types';
 import { LinkSync } from './linkSync';

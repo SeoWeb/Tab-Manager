@@ -1,4 +1,8 @@
-import { readJson, writeJson, CLOUD_SYNC_STORAGE_KEYS } from './storage';
+import {
+  readJson,
+  writeJson,
+  CLOUD_SYNC_STORAGE_KEYS,
+} from '@/lib/cloudflareSync/storage';
 
 /** Default Worker URL. Empty until the user configures their deployment. */
 export const DEFAULT_API_BASE_URL = 'https://tab-manager-backend.ww0.dev';

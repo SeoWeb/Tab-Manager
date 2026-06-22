@@ -11,3 +11,10 @@ allowBuilds:
   protobufjs: false
   sharp: false
   unrs-resolver: false
+
+# The web frontend is a workspace member. It reuses the extension's source via
+# tsconfig `@/*` shadowing and shares the root `node_modules` (pnpm hoists the
+# shared deps), so its own dependency list mirrors the root to guarantee every
+# imported module resolves identically.
+packages:
+  - 'frontend'

@@ -1,5 +1,5 @@
 import type { AppState } from '../types';
-import { chromeStorageApi } from '../storage';
+import { chromeStorageApi } from '@/stores/storage';
 
 const SIDEBAR_STORAGE_KEY = 'sidebar-state';
 

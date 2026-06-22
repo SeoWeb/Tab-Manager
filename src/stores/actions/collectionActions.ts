@@ -323,7 +323,14 @@ export const createCollectionActions = (
     if (!collection || collection.links.length === 0) return;
 
     const urls = collection.links.map((link: Link) => link.url);
-    chrome.windows.create({ url: urls });
+    // In the extension, open all URLs in a new Chrome window. In the web build
+    // (no `chrome.windows`), open each in a new browser tab. Behavior-neutral
+    // for the extension: the guard takes the chrome branch exactly as before.
+    if (typeof chrome !== 'undefined' && chrome.windows?.create) {
+      chrome.windows.create({ url: urls });
+    } else {
+      urls.forEach((url) => window.open(url, '_blank', 'noopener'));
+    }
   },
 
   toggleAllCollections: (projectId: string, isExpanded: boolean) => {

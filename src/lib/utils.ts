@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import {
   getFaviconUrl as getFaviconUrlFromService,
   preloadFavicon as preloadFaviconFromService,
-} from './faviconService';
+} from '@/lib/faviconService';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
