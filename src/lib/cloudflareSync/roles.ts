@@ -37,21 +37,37 @@ export function roleAtLeast(
 }
 
 /** Can create/edit/delete project entities (collections, links, …). */
-export function canEdit(role: CloudRole | null | undefined): boolean {
+export function canEdit(
+  role: CloudRole | null | undefined,
+  cloudEnabled?: boolean
+): boolean {
+  if (cloudEnabled === false) return true;
   return roleAtLeast(role, 'editor');
 }
 
 /** Can manage members and invitations (role changes, invites). */
-export function canManageMembers(role: CloudRole | null | undefined): boolean {
+export function canManageMembers(
+  role: CloudRole | null | undefined,
+  cloudEnabled?: boolean
+): boolean {
+  if (cloudEnabled === false) return true;
   return roleAtLeast(role, 'admin');
 }
 
 /** Can delete the project. */
-export function canDeleteProject(role: CloudRole | null | undefined): boolean {
+export function canDeleteProject(
+  role: CloudRole | null | undefined,
+  cloudEnabled?: boolean
+): boolean {
+  if (cloudEnabled === false) return true;
   return roleAtLeast(role, 'admin');
 }
 
 /** True only for the project owner. */
-export function isOwner(role: CloudRole | null | undefined): boolean {
+export function isOwner(
+  role: CloudRole | null | undefined,
+  cloudEnabled?: boolean
+): boolean {
+  if (cloudEnabled === false) return true;
   return role === 'owner';
 }

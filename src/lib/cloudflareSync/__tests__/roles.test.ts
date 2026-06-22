@@ -2,6 +2,7 @@ import {
   roleAtLeast,
   canEdit,
   canManageMembers,
+  canDeleteProject,
   isOwner,
   CLOUD_ROLE_RANK,
   CLOUD_ROLES,
@@ -38,6 +39,10 @@ describe('cloud sync role helpers', () => {
       expect(canEdit('admin')).toBe(true);
       expect(canEdit('owner')).toBe(true);
     });
+
+    it('always allows when cloudEnabled is false', () => {
+      expect(canEdit('viewer', false)).toBe(true);
+    });
   });
 
   describe('canManageMembers', () => {
@@ -46,6 +51,23 @@ describe('cloud sync role helpers', () => {
       expect(canManageMembers('editor')).toBe(false);
       expect(canManageMembers('admin')).toBe(true);
       expect(canManageMembers('owner')).toBe(true);
+    });
+
+    it('always allows when cloudEnabled is false', () => {
+      expect(canManageMembers('viewer', false)).toBe(true);
+    });
+  });
+
+  describe('canDeleteProject', () => {
+    it('allows admin and above only', () => {
+      expect(canDeleteProject('viewer')).toBe(false);
+      expect(canDeleteProject('editor')).toBe(false);
+      expect(canDeleteProject('admin')).toBe(true);
+      expect(canDeleteProject('owner')).toBe(true);
+    });
+
+    it('always allows when cloudEnabled is false', () => {
+      expect(canDeleteProject('viewer', false)).toBe(true);
     });
   });
 
@@ -56,6 +78,10 @@ describe('cloud sync role helpers', () => {
       expect(isOwner(null)).toBe(false);
       expect(isOwner('admin')).toBe(false);
       expect(isOwner('owner')).toBe(true);
+    });
+
+    it('always allows when cloudEnabled is false', () => {
+      expect(isOwner('viewer', false)).toBe(true);
     });
   });
 

@@ -85,7 +85,13 @@ export const createCloudSyncActions = (
   setProjectCloudEnabled: (projectId: string, enabled: boolean): void => {
     _set((state: AppState) => ({
       projects: state.projects.map((p) =>
-        p.id === projectId ? { ...p, cloudEnabled: enabled } : p
+        p.id === projectId
+          ? {
+              ...p,
+              cloudEnabled: enabled,
+              ...(!enabled ? { cloudRole: 'owner' } : {}),
+            }
+          : p
       ),
     }));
   },

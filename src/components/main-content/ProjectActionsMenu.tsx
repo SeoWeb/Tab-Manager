@@ -40,8 +40,11 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
 
   // Viewers (a known low cloud role) can't mutate project data; the backend
   // would reject these anyway. Local-only projects have no role → full control.
-  const readOnly = !canEdit(project.cloudRole);
-  const deleteDisabled = !canDeleteProject(project.cloudRole);
+  const readOnly = !canEdit(project.cloudRole, project.cloudEnabled);
+  const deleteDisabled = !canDeleteProject(
+    project.cloudRole,
+    project.cloudEnabled
+  );
 
   const handleEditProjectTrigger = () => {
     setIsEditModalOpen(true);

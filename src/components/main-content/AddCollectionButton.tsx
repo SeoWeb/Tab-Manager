@@ -10,14 +10,17 @@ export default function AddCollectionButton() {
     (state) => state.openAddCollectionModal
   );
   const activeProjectId = useAppStore((state) => state.activeProjectId);
-  const activeProjectRole = useAppStore((state) => {
-    const project = state.projects.find((p) => p.id === state.activeProjectId);
-    return project?.cloudRole;
-  });
+  const activeProject = useAppStore((state) =>
+    state.projects.find((p) => p.id === state.activeProjectId)
+  );
+  const activeProjectRole = activeProject?.cloudRole;
+  const activeProjectEnabled = activeProject?.cloudEnabled;
 
   // Viewers on a shared cloud project can't add collections; the backend would
   // reject it. Local-only projects (no role) stay fully editable.
-  const readOnly = activeProjectId !== null && !canEdit(activeProjectRole);
+  const readOnly =
+    activeProjectId !== null &&
+    !canEdit(activeProjectRole, activeProjectEnabled);
 
   return (
     <Button

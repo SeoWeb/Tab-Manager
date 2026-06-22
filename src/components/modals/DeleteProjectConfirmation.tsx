@@ -24,7 +24,10 @@ const DeleteProjectConfirmation: React.FC<DeleteProjectConfirmationProps> = ({
   project,
   onDeleteConfirmed,
 }) => {
-  const deleteDisabled = !canDeleteProject(project.cloudRole);
+  const deleteDisabled = !canDeleteProject(
+    project.cloudRole,
+    project.cloudEnabled
+  );
 
   return (
     <div>

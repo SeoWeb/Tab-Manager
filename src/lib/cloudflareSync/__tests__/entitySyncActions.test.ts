@@ -26,6 +26,7 @@ import { createNoteActions } from '@/stores/actions/noteActions';
 import { createTaskActions } from '@/stores/actions/taskActions';
 import { createUIActions } from '@/stores/actions/uiActions';
 import { createProjectActions } from '@/stores/actions/projectActions';
+import { createCloudSyncActions } from '@/stores/actions/cloudSyncActions';
 import type { AppState } from '@/stores/types';
 import type { AdvancedTask } from '@/types/tasks';
 
@@ -688,5 +689,47 @@ describe('projectActions cloud sync', () => {
       patch: {},
     });
     expect(get().projects).toHaveLength(0);
+  });
+});
+
+describe('cloudSyncActions setProjectCloudEnabled', () => {
+  it('sets cloudRole to owner when cloudEnabled is set to false', () => {
+    const { get, set } = makeStore({
+      projects: [
+        {
+          id: 'proj-1',
+          name: 'Project 1',
+          cloudEnabled: true,
+          cloudRole: 'viewer',
+          collections: [],
+        },
+      ],
+    });
+    const actions = createCloudSyncActions(set, get);
+
+    actions.setProjectCloudEnabled('proj-1', false);
+
+    expect(get().projects[0].cloudEnabled).toBe(false);
+    expect(get().projects[0].cloudRole).toBe('owner');
+  });
+
+  it('does not set cloudRole to owner when cloudEnabled is set to true', () => {
+    const { get, set } = makeStore({
+      projects: [
+        {
+          id: 'proj-1',
+          name: 'Project 1',
+          cloudEnabled: false,
+          cloudRole: 'viewer',
+          collections: [],
+        },
+      ],
+    });
+    const actions = createCloudSyncActions(set, get);
+
+    actions.setProjectCloudEnabled('proj-1', true);
+
+    expect(get().projects[0].cloudEnabled).toBe(true);
+    expect(get().projects[0].cloudRole).toBe('viewer');
   });
 });
