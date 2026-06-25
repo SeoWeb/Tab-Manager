@@ -28,7 +28,7 @@ export default function LeftSidebar() {
             <div className='flex items-center'>
               {sidebarOpen && (
                 <h1 className='text-2xl font-semibold font-headline text-sidebar-foreground'>
-                  Tab Manager
+                  TabSpace
                 </h1>
               )}
             </div>

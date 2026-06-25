@@ -17,6 +17,7 @@ import type {
   CloudMember,
   CloudMutation,
   CloudOperation,
+  CloudProject,
   CloudRole,
   CloudSyncChange,
   CloudSyncStatus,
@@ -693,6 +694,114 @@ export async function acceptInviteCode(code: string): Promise<Project | null> {
     return (
       useAppStore.getState().projects.find((p) => p.id === serverProject.id) ??
       null
+    );
+  } catch (error) {
+    const status: CloudSyncStatus = isOnline() ? 'error' : 'offline';
+    setCloudState({ status, lastError: errorMessage(error) });
+    return null;
+  }
+}
+
+/**
+ * `GET /projects` — discover cloud projects the signed-in user is already a member
+ * of but that are not yet present on this device. Returns each remote project
+ * carrying the user's role, minus any whose id already exists in the local store.
+ *
+ * This is the path a fresh client (e.g. the web frontend, or a second browser)
+ * uses to pull in a project the user joined elsewhere: invite codes are
+ * single-use so re-joining is impossible, and membership is global while the
+ * local project list is per-device.
+ */
+export async function discoverCloudProjects(): Promise<
+  (CloudProject & { role: CloudRole })[]
+> {
+  const { cloudSync } = useAppStore.getState();
+  if (!cloudSync.enabled) {
+    setCloudState({
+      lastError: 'Connect cloud sync before discovering projects.',
+    });
+    return [];
+  }
+  if (!isOnline()) {
+    setCloudState({ status: 'offline' });
+    return [];
+  }
+
+  try {
+    const remote = await client.listProjects();
+    const localIds = new Set(useAppStore.getState().projects.map((p) => p.id));
+    return remote.projects.filter(
+      (p): p is CloudProject & { role: CloudRole } =>
+        !!p.role && !localIds.has(p.id)
+    );
+  } catch (error) {
+    const status: CloudSyncStatus = isOnline() ? 'error' : 'offline';
+    setCloudState({ status, lastError: errorMessage(error) });
+    return [];
+  }
+}
+
+/**
+ * Materialize a discovered cloud project on this device. If a local project with
+ * that id already exists (e.g. a previously-disconnected one), re-enable it and
+ * refresh the role; otherwise add it locally as cloud-enabled. Then run a sync to
+ * pull the project's existing collections/links. Mirrors the post-accept path in
+ * `acceptInviteCode`. Returns the local project, or null on failure.
+ */
+export async function importCloudProject(
+  project: CloudProject & { role: CloudRole }
+): Promise<Project | null> {
+  const { cloudSync } = useAppStore.getState();
+  if (!cloudSync.enabled) {
+    setCloudState({
+      lastError: 'Connect cloud sync before importing a project.',
+    });
+    return null;
+  }
+  if (!isOnline()) {
+    setCloudState({ status: 'offline' });
+    return null;
+  }
+
+  setCloudState({ status: 'syncing', lastError: null });
+  try {
+    // If the project is already local, just re-enable it and refresh its role
+    // rather than creating a duplicate.
+    const existing = useAppStore
+      .getState()
+      .projects.find((p) => p.id === project.id);
+    if (existing) {
+      const store = useAppStore.getState();
+      store.setProjectCloudEnabled(project.id, true);
+      store.setProjectCloudRole(project.id, project.role);
+    } else {
+      useAppStore.getState().addProject(
+        {
+          name: project.name,
+          description: project.description ?? '',
+          color: project.color ?? '#CCCCCC',
+          icon: project.icon ?? '',
+        },
+        {
+          id: project.id,
+          cloudEnabled: true,
+          cloudRole: project.role,
+          skipBookmarkCreation: true,
+        }
+      );
+    }
+
+    // Pull the project's existing contents (collections/links authored by others).
+    await syncProjectNow(project.id);
+
+    setCloudState({
+      status: 'synced',
+      lastSyncedAt: nowIso(),
+      lastError: null,
+    });
+
+    return (
+      useAppStore.getState().projects.find((p) => p.id === project.id) ?? null
     );
   } catch (error) {
     const status: CloudSyncStatus = isOnline() ? 'error' : 'offline';

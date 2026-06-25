@@ -82,7 +82,7 @@ async function route(
 
   if (segments.length === 0) {
     return jsonResponse({
-      name: 'Tab Manager Cloudflare Backend',
+      name: 'TabSpace Cloudflare Backend',
       status: 'ok',
       endpoints: [
         'POST /auth/demo',

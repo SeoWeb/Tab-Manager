@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Tab Manager",
+  "name": "TabSpace",
   "version": "0.1.0",
   "description": "A Chrome extension for managing tabs and bookmarks.",
   "permissions": ["storage", "tabs", "bookmarks", "activeTab", "alarms"],
   "host_permissions": [
-    "http://localhost:8787/*",
     "https://tab-manager-backend.ww0.dev/*"
   ],
   "background": {
@@ -14,7 +13,7 @@
   },
   "action": {
     "default_popup": "index.html",
-    "default_title": "Tab Manager"
+    "default_title": "TabSpace"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"

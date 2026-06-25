@@ -114,6 +114,52 @@ After deployment, Wrangler prints the Worker URL, for example:
 https://tab-manager-cloudflare-backend.your-subdomain.workers.dev
 ```
 
+## Deploy Frontend (Worker)
+
+The frontend is a Next.js static export (`output: 'export'`, `distDir: 'build'`)
+shipped as a Cloudflare **Worker** named `tab-manager` that serves the `build/`
+directory as static assets — the same `wrangler deploy` model as the backend,
+just assets-only (no D1 / Durable Object / Worker script). It is reachable at
+`https://tab-manager.siim-liimand.workers.dev`.
+
+Config lives in `frontend/wrangler.toml`:
+
+```toml
+name = "tab-manager"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./build"
+```
+
+It deliberately uses the asset defaults (no SPA fallback) to match the live
+site, which returns `404` for unknown paths and redirect-cleans `/foo.html`. If
+you ever adopt path-based routing, set `not_found_handling =
+"single-page-application"` under `[assets]` so deep links fall back to
+`index.html`.
+
+Deploy (builds first, then uploads `build/` to the worker):
+
+```bash
+cd frontend
+npm run deploy
+```
+
+Or directly:
+
+```bash
+cd frontend
+npx wrangler deploy
+```
+
+> `npx` fetches `wrangler` on demand — it is not a frontend dependency. The
+> backend pins `wrangler` in its own devDependencies; do the same here if you
+> prefer a local install.
+
+A custom domain (e.g. `tab-manager.ww0.dev`) can be attached in the Cloudflare
+dashboard under Workers & Pages → `tab-manager` → Settings → Domains & Routes.
+If you add one, update the backend's `ALLOWED_ORIGINS` to include it.
+
 ## Local development
 
 ```bash

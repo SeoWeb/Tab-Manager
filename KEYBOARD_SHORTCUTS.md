@@ -1,6 +1,6 @@
 # Keyboard Shortcuts
 
-This document lists all the available keyboard shortcuts in the Tab Manager extension.
+This document lists all the available keyboard shortcuts in the TabSpace extension.
 
 ## Global
 

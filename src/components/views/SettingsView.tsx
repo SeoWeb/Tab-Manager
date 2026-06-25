@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CloudSyncSettingsPanel } from '@/components/cloud-sync/CloudSyncSettingsPanel';
+import { CloudSyncMyProjectsCard } from '@/components/cloud-sync/CloudSyncMyProjectsCard';
 import { CloudSyncInvitesCard } from '@/components/cloud-sync/CloudSyncInvitesCard';
 
 export default function SettingsView() {
@@ -40,6 +41,7 @@ export default function SettingsView() {
         </div>
 
         <CloudSyncSettingsPanel />
+        <CloudSyncMyProjectsCard />
         <CloudSyncInvitesCard />
       </div>
     </div>

@@ -1,0 +1,16 @@
+# Web frontend → Cloudflare Worker "tab-manager" serving the Next.js static
+# export. `output: 'export'` + `distDir: 'build'` in next.config.ts produces
+# ./build; this config serves it as static assets. Deploy with `npm run deploy`.
+#
+# Assets-only (no `main`, no D1 / Durable-Object bindings) — mirrors
+# backend/wrangler.toml in shape but has no Worker script. The defaults
+# (`html_handling = "auto-trailing-slash"`, no `not_found_handling`) match the
+# live site, which returns 404 for unknown paths and redirect-cleans
+# `/foo.html`. Add `not_found_handling = "single-page-application"` under
+# [assets] if you ever adopt path-based routing (deep links would then fall
+# back to index.html instead of 404).
+name = "tab-manager"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./build"

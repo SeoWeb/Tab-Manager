@@ -170,6 +170,11 @@ export interface CloudProject {
   owner_id: string;
   created_at: string;
   updated_at: string;
+  /**
+   * The requesting user's role in this project. Populated by `GET /projects`
+   * (which joins `project_members`) but not by `POST /projects`, hence optional.
+   */
+  role?: CloudRole;
 }
 
 /** Response of `POST /auth/demo`. */

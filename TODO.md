@@ -1,4 +1,4 @@
-# Tab Manager Chrome Extension - Development Todo List
+# TabSpace Chrome Extension - Development Todo List
 
 ## 📋 Phase 1: Core Structure & Setup (Week 1-2)
 
@@ -62,7 +62,7 @@
 ### Chrome Bookmarks Integration
 
 - [x] Create bookmarkService utility functions
-- [x] Implement "Tab Manager Projects" root folder creation
+- [x] Implement "TabSpace Projects" root folder creation
 - [x] Add project-to-bookmark-folder synchronization
 - [x] Handle bookmark folder creation/deletion
 - [x] Test bookmark persistence and recovery

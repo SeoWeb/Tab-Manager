@@ -366,7 +366,7 @@ describe('BookmarkSyncService', () => {
       // collection-folder-id -> parent (root-folder-id) -> matches root.
       mockBookmarkService.getBookmarkNode.mockResolvedValue({
         id: 'root-folder-id',
-        title: 'Tab Manager Projects',
+        title: 'TabSpace Projects',
         parentId: 'root-folder-id',
         index: 0,
         dateAdded: Date.now(),

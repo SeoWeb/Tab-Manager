@@ -65,7 +65,7 @@ export const createProjectActions = (
           }
         } else {
           console.warn(
-            'Tab Manager root bookmark folder ID not found. Cannot create project bookmark folder.'
+            'TabSpace root bookmark folder ID not found. Cannot create project bookmark folder.'
           );
         }
       })();

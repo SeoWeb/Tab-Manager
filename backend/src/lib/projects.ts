@@ -115,7 +115,7 @@ export async function requireProjectAccess(
 export async function listProjects(
   env: Env,
   userId: string
-): Promise<Project[]> {
+): Promise<(Project & { role: Role })[]> {
   const rows = await env.D1_DATABASE.prepare(
     `
     SELECT
@@ -127,7 +127,8 @@ export async function listProjects(
       p.owner_id,
       p.created_at,
       p.updated_at,
-      p.deleted_at
+      p.deleted_at,
+      pm.role
     FROM projects p
     JOIN project_members pm ON pm.project_id = p.id
     WHERE pm.user_id = ? AND p.deleted_at IS NULL
@@ -135,7 +136,7 @@ export async function listProjects(
     `
   )
     .bind(userId)
-    .all<Project>();
+    .all<Project & { role: Role }>();
 
   return rows.results ?? [];
 }

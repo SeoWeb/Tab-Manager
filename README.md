@@ -1,4 +1,4 @@
-# Tab Manager
+# TabSpace
 
 A Chrome (MV3) extension that turns the new-tab page and toolbar popup into a
 project-oriented workspace: organize links into **projects → collections →

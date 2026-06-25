@@ -1,6 +1,6 @@
 # Cloudflare Sync Implementation Plan
 
-This document describes how to add Cloudflare-backed project sync and multi-user collaboration to the Tab Manager extension. The extension remains local-first. Cloudflare is used only as the backend sync layer.
+This document describes how to add Cloudflare-backed project sync and multi-user collaboration to the TabSpace extension. The extension remains local-first. Cloudflare is used only as the backend sync layer.
 
 ## Target architecture
 

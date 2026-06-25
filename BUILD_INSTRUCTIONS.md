@@ -1,6 +1,6 @@
 # Build and Test Instructions for Chrome Extension
 
-This document provides instructions on how to build the Tab Manager Chrome Extension and load it for testing in Google Chrome.
+This document provides instructions on how to build the TabSpace Chrome Extension and load it for testing in Google Chrome.
 
 ## Prerequisites
 
@@ -37,9 +37,9 @@ This document provides instructions on how to build the Tab Manager Chrome Exten
     - Click "Select Folder" (or "Open").
 
 4.  **Verify the Extension:**
-    - The "Tab Manager (Next.js)" extension should now appear in your list of extensions.
-    - **Test New Tab Page:** Open a new tab in Chrome. It should display the content from the extension (you should see the "Tab Manager Extension - Main View" heading).
-    - **Test Browser Action (Popup):** Click on the Tab Manager extension icon in the Chrome toolbar (it might be under the "puzzle piece" extensions icon). The popup should appear, also displaying the main view.
+    - The "TabSpace (Next.js)" extension should now appear in your list of extensions.
+    - **Test New Tab Page:** Open a new tab in Chrome. It should display the content from the extension (you should see the "TabSpace Extension - Main View" heading).
+    - **Test Browser Action (Popup):** Click on the TabSpace extension icon in the Chrome toolbar (it might be under the "puzzle piece" extensions icon). The popup should appear, also displaying the main view.
 
 ## Development Notes
 

@@ -5,8 +5,11 @@
 /.next/
 /out/
 
-# production build (deployed to Cloudflare Pages)
+# production build (served as static assets by the Cloudflare Worker)
 /build
+
+# wrangler local cache/state (created by `wrangler dev` / `wrangler deploy`)
+/.wrangler/
 
 # misc
 .DS_Store
