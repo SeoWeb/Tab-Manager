@@ -352,7 +352,7 @@ const KanbanColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col h-full rounded-lg border-2 border-dashed',
+        'flex flex-col h-full rounded-lg border-2 border-dashed w-[280px] shrink-0 md:w-auto md:shrink snap-center',
         column.color
       )}
     >
@@ -533,7 +533,7 @@ export default function TaskKanbanView({
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full'>
+        <div className='flex flex-row overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full w-full pb-4 scrollbar-thin snap-x snap-mandatory'>
           {kanbanColumns.map((column) => (
             <KanbanColumn
               key={column.status}

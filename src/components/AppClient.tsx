@@ -182,7 +182,7 @@ export default function AppClient() {
               {activeView === 'settings' ? (
                 <SettingsView />
               ) : activeView === 'tasks' ? (
-                <TasksView />
+                <TasksView showHeader={true} />
               ) : (
                 <MainContentArea />
               )}

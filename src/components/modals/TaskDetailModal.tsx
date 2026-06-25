@@ -150,15 +150,15 @@ export default function TaskDetailModal({
   const tasks = useAppStoreWithDefaults((state) => state.tasks, []);
   const addTaskComment = useAppStoreWithDefaults(
     (state) => state.addTaskComment,
-    () => {}
+    () => { }
   );
   const updateTask = useAppStoreWithDefaults(
     (state) => state.updateTask,
-    () => {}
+    () => { }
   );
   const addSubtask = useAppStoreWithDefaults(
     (state) => state.addSubtask,
-    () => {}
+    () => { }
   );
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
@@ -200,8 +200,8 @@ export default function TaskDetailModal({
     () =>
       task
         ? task.subtasks
-            .map((subtaskId) => tasks.find((t) => t.id === subtaskId))
-            .filter((t): t is AdvancedTask => !!t)
+          .map((subtaskId) => tasks.find((t) => t.id === subtaskId))
+          .filter((t): t is AdvancedTask => !!t)
         : [],
     [task, tasks]
   );
@@ -289,7 +289,7 @@ export default function TaskDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='max-w-4xl h-[90vh] flex flex-col p-0'>
+      <DialogContent className='w-[92vw] sm:max-w-4xl h-[90vh] flex flex-col p-0'>
         <DialogHeader className='p-4 border-b flex flex-row justify-between items-center'>
           <DialogTitle className='flex items-center gap-2'>
             <span>{task.title}</span>
@@ -302,9 +302,6 @@ export default function TaskDetailModal({
               <Pencil className='h-4 w-4' />
             </Button>
           </DialogTitle>
-          <DialogDescription>
-            View and manage the details of your task.
-          </DialogDescription>
           {task.status === 'completed' && (
             <Button variant='outline' size='sm' onClick={handleArchive}>
               <Archive className='h-4 w-4 mr-2' />
@@ -312,9 +309,8 @@ export default function TaskDetailModal({
             </Button>
           )}
         </DialogHeader>
-        <div className='flex-1 grid grid-cols-3 gap-0 overflow-hidden'>
-          <ScrollArea className='col-span-2 p-6'>
-            <div className='space-y-6'>
+        <div className='flex-1 overflow-y-auto md:overflow-hidden grid grid-cols-1 md:grid-cols-3 gap-0'>
+          <div className='p-4 md:p-6 md:col-span-2 md:h-full md:overflow-y-auto space-y-6'>
               <div>
                 <h3 className='font-semibold mb-2'>Description</h3>
                 <p className='text-sm text-muted-foreground'>
@@ -364,7 +360,7 @@ export default function TaskDetailModal({
                           className={cn(
                             'text-sm group-hover:underline',
                             subtask.status === 'completed' &&
-                              'line-through text-muted-foreground'
+                            'line-through text-muted-foreground'
                           )}
                         >
                           {subtask.title}
@@ -431,11 +427,8 @@ export default function TaskDetailModal({
                 </div>
               </div>
             </div>
-          </ScrollArea>
 
-          <aside className='col-span-1 bg-secondary/30 border-l p-6'>
-            <ScrollArea className='h-full'>
-              <div className='space-y-6'>
+          <aside className='p-4 md:p-6 bg-secondary/30 border-t md:border-t-0 md:border-l md:col-span-1 md:h-full md:overflow-y-auto space-y-6'>
                 <MetadataItem icon={CurrentStatusIcon} label='Status'>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -609,10 +602,8 @@ export default function TaskDetailModal({
                     </p>
                   )}
                 </div>
-              </div>
-            </ScrollArea>
-          </aside>
-        </div>
+              </aside>
+            </div>
       </DialogContent>
     </Dialog>
   );

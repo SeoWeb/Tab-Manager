@@ -24,7 +24,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
     setActiveProject: state.setActiveProject,
   }));
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const { open: sidebarOpen } = useSidebarState();
+  const { open: sidebarOpen, setOpen } = useSidebarState();
 
   const initials = project.name
     .split(' ')
@@ -37,7 +37,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
 
   return (
     <div className='relative group'>
-      {' '}
       {/* Added for positioning edit button */}
       <EditProjectModal
         project={project}
@@ -60,7 +59,12 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
         )}
 
         <button
-          onClick={() => setActiveProject(project.id)}
+          onClick={() => {
+            setActiveProject(project.id);
+            if (typeof window !== 'undefined' && window.innerWidth < 768) {
+              setOpen(false);
+            }
+          }}
           className={cn(
             'flex items-center hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500',
             isActive ? 'bg-primary/25' : '',

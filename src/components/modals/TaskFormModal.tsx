@@ -145,7 +145,7 @@ export default function TaskFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className='w-[92vw] sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
           <DialogDescription>
@@ -165,7 +165,7 @@ export default function TaskFormModal({
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
           />
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <Select
               value={priority}
               onValueChange={(value: TaskPriority) => setPriority(value)}
@@ -196,7 +196,7 @@ export default function TaskFormModal({
               </SelectContent>
             </Select>
           </div>
-          <div className='grid grid-cols-2 gap-4'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <Input
               placeholder='Category'
               value={category}

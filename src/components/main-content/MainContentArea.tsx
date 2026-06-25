@@ -145,26 +145,26 @@ const MainContentArea: React.FC = () => {
         onSearch={handleSearch}
         ref={searchInputRef}
       />
-      <div className='flex-1 p-6 overflow-y-auto scrollbar-modern'>
+      <div className='flex-1 p-4 md:p-6 overflow-y-auto scrollbar-modern'>
         <Tabs defaultValue='collections'>
-          <TabsList className='mb-2'>
-            <TabsTrigger value='collections' className='gap-2'>
+          <TabsList className='mb-2 max-w-full overflow-x-auto flex-nowrap justify-start scrollbar-none w-full'>
+            <TabsTrigger value='collections' className='gap-2 whitespace-nowrap'>
               <FolderOpen className='h-4 w-4' />
               Collections
             </TabsTrigger>
-            <TabsTrigger value='tasks' className='gap-2'>
+            <TabsTrigger value='tasks' className='gap-2 whitespace-nowrap'>
               <CheckSquare className='h-4 w-4' />
               Tasks
             </TabsTrigger>
-            <TabsTrigger value='calendar' className='gap-2'>
+            <TabsTrigger value='calendar' className='gap-2 whitespace-nowrap'>
               <Calendar className='h-4 w-4' />
               Calendar
             </TabsTrigger>
-            <TabsTrigger value='notes' className='gap-2'>
+            <TabsTrigger value='notes' className='gap-2 whitespace-nowrap'>
               <FileText className='h-4 w-4' />
               Notes
             </TabsTrigger>
-            <TabsTrigger value='todos' className='gap-2'>
+            <TabsTrigger value='todos' className='gap-2 whitespace-nowrap'>
               <ListTodo className='h-4 w-4' />
               Todos
             </TabsTrigger>

@@ -5,22 +5,41 @@ import AddProjectButton from './AddProjectButton';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Settings as SettingsIcon, PanelLeft, CheckSquare } from 'lucide-react';
-import { useSetActiveView } from '@/hooks/useAppStoreWithDefaults';
+import { Settings as SettingsIcon, PanelLeft, CheckSquare, FolderOpen } from 'lucide-react';
+import { useSetActiveView, useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { useSidebarState } from '@/hooks/useSidebarState';
 import { cn } from '@/lib/utils';
 
 export default function LeftSidebar() {
   const setActiveView = useSetActiveView();
-  const { open: sidebarOpen, toggleSidebar } = useSidebarState();
+  const activeView = useAppStoreWithDefaults((state) => state.activeView, 'projectDetail');
+  const { open: sidebarOpen, setOpen, toggleSidebar } = useSidebarState();
   const isCollapsed = !sidebarOpen;
+
+  const handleNavigate = (view: typeof activeView) => {
+    setActiveView(view);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setOpen(false);
+    }
+  };
 
   return (
     <>
+      {/* Backdrop overlay for mobile screens when sidebar is open */}
+      {!isCollapsed && (
+        <div
+          className='fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200'
+          onClick={toggleSidebar}
+        />
+      )}
+
       <div
-        className={`h-full z-20 transition-all duration-200 ease-linear ${
-          isCollapsed ? 'w-[3rem]' : 'w-[16rem]'
-        } bg-sidebar border-r border-sidebar-border flex flex-col`}
+        className={cn(
+          'h-full bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out z-50 md:z-20',
+          // Mobile floating overlay drawer vs Desktop relative sidebar
+          'fixed inset-y-0 left-0 w-[16rem] md:relative md:translate-x-0',
+          isCollapsed ? '-translate-x-full md:w-[3rem]' : 'translate-x-0 md:w-[16rem]'
+        )}
       >
         {/* Header */}
         <div className='p-4'>
@@ -61,10 +80,28 @@ export default function LeftSidebar() {
         <div className={cn('flex flex-col gap-2', isCollapsed ? 'p-1' : 'p-4')}>
           <AddProjectButton />
           <Button
-            variant='outline'
+            variant={activeView === 'projectDetail' ? 'secondary' : 'outline'}
             size='sm'
-            className='w-full justify-start text-sm'
-            onClick={() => setActiveView('tasks')}
+            className={cn(
+              'w-full justify-start text-sm',
+              activeView === 'projectDetail' && 'bg-primary/10 text-primary hover:bg-primary/20'
+            )}
+            onClick={() => handleNavigate('projectDetail')}
+            aria-label='Open collections'
+          >
+            <FolderOpen
+              className={`h-5 w-5 ${isCollapsed ? 'mr-0' : 'mr-2'}`}
+            />
+            {!isCollapsed && <span>Collections</span>}
+          </Button>
+          <Button
+            variant={activeView === 'tasks' ? 'secondary' : 'outline'}
+            size='sm'
+            className={cn(
+              'w-full justify-start text-sm',
+              activeView === 'tasks' && 'bg-primary/10 text-primary hover:bg-primary/20'
+            )}
+            onClick={() => handleNavigate('tasks')}
             aria-label='Open tasks'
           >
             <CheckSquare
@@ -73,10 +110,13 @@ export default function LeftSidebar() {
             {!isCollapsed && <span>Tasks</span>}
           </Button>
           <Button
-            variant='outline'
+            variant={activeView === 'settings' ? 'secondary' : 'outline'}
             size='sm'
-            className='w-full justify-start text-sm'
-            onClick={() => setActiveView('settings')}
+            className={cn(
+              'w-full justify-start text-sm',
+              activeView === 'settings' && 'bg-primary/10 text-primary hover:bg-primary/20'
+            )}
+            onClick={() => handleNavigate('settings')}
             aria-label='Open settings'
           >
             <SettingsIcon
