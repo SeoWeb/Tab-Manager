@@ -67,19 +67,25 @@ export function buildTaskPatch(task: AdvancedTask): Record<string, unknown> {
     isArchived: task.isArchived,
     isFavorite: task.isFavorite,
     customFields: task.customFields,
+    // Clearable optional fields are always sent (null when unset) so that
+    // *clearing* a previously-set value round-trips to other clients. The
+    // merge in applyChanges.ts treats an ABSENT key as "leave the local value
+    // alone", so a field omitted here could never be cleared remotely — these
+    // must stay present with an explicit null. (Dates/strings/patterns all
+    // revive null → undefined, which is the correct "unset" state.)
+    dueDate: task.dueDate ?? null,
+    scheduledDate: task.scheduledDate ?? null,
+    assignee: task.assignee ?? null,
+    parentTaskId: task.parentTaskId ?? null,
+    completedAt: task.completedAt ?? null,
+    recurringPattern: task.recurringPattern ?? null,
   };
-  // Optional fields are included only when set, so they round-trip without
-  // polluting the payload (and without overriding a real value with null).
-  if (task.dueDate) payload.dueDate = task.dueDate;
-  if (task.scheduledDate) payload.scheduledDate = task.scheduledDate;
+  // Numeric durations: 0 is a meaningful value, undefined is not, so these use
+  // an explicit presence check. They are not "cleared" through the UI.
   if (task.estimatedDuration !== undefined)
     payload.estimatedDuration = task.estimatedDuration;
   if (task.actualDuration !== undefined)
     payload.actualDuration = task.actualDuration;
-  if (task.assignee) payload.assignee = task.assignee;
-  if (task.parentTaskId) payload.parentTaskId = task.parentTaskId;
-  if (task.completedAt) payload.completedAt = task.completedAt;
-  if (task.recurringPattern) payload.recurringPattern = task.recurringPattern;
 
   const patch: Record<string, unknown> = { title: task.title, payload };
   if (task.collectionId) patch.collectionId = task.collectionId;

@@ -250,6 +250,14 @@ describe('taskActions cloud sync', () => {
           isArchived: false,
           isFavorite: false,
           customFields: {},
+          // Clearable optionals are always present (null when unset) so clearing
+          // them round-trips to other clients (see applyChanges.test.ts).
+          dueDate: null,
+          scheduledDate: null,
+          assignee: null,
+          parentTaskId: null,
+          completedAt: null,
+          recurringPattern: null,
           activities: [
             {
               id: expect.any(String),
@@ -325,7 +333,15 @@ describe('taskActions cloud sync', () => {
           isArchived: false,
           isFavorite: false,
           customFields: {},
+          // Clearable optionals are always present (null when unset) so clearing
+          // them round-trips to other clients. completedAt is a real Date here
+          // because the update marked the task completed.
+          dueDate: null,
+          scheduledDate: null,
+          assignee: null,
+          parentTaskId: null,
           completedAt: expect.any(Date),
+          recurringPattern: null,
           activities: [
             {
               id: expect.any(String),
