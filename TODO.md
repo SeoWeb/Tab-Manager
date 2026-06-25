@@ -282,7 +282,8 @@
 
 - [ ] Create extension screenshots and descriptions
 - [ ] Write comprehensive user documentation
-- [ ] Create privacy policy and terms of service
+- [x] Create privacy policy
+- [ ] Create terms of service
 - [ ] Prepare promotional materials
 - [ ] Set up Chrome Web Store developer account
 - [ ] Submit extension for review
