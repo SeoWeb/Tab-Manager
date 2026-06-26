@@ -17,6 +17,12 @@ const fontSans = FontSans({
 export const metadata: Metadata = {
   title: 'TabSpace',
   description: 'Tab and workspace management — web edition',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'TabSpace',
+  },
 };
 
 export default function RootLayout({
@@ -31,10 +37,26 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+                // Register PWA service worker
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                    console.log('TabSpace: Service Worker registered.');
+                  }).catch(function(err) {
+                    console.error('TabSpace: Service Worker registration failed:', err);
+                  });
+                });
+
+                // Unregister any other/stale service workers to prevent conflicts
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                   for (var i = 0; i < registrations.length; i++) {
-                    registrations[i].unregister();
-                    console.warn('TabSpace: Unregistered stale service worker to prevent conflicts.');
+                    var r = registrations[i];
+                    var scriptURL = (r.active && r.active.scriptURL) || 
+                                    (r.installing && r.installing.scriptURL) || 
+                                    (r.waiting && r.waiting.scriptURL) || '';
+                    if (scriptURL && scriptURL.indexOf('/sw.js') === -1) {
+                      r.unregister();
+                      console.warn('TabSpace: Unregistered stale service worker:', scriptURL);
+                    }
                   }
                 });
               }

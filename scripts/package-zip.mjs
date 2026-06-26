@@ -34,7 +34,6 @@ const EXCLUDES = [
   '*.map',
   '*.txt',
   '*debug-favicons*',
-  '*favicon-migration*',
 ];
 
 function readVersion() {

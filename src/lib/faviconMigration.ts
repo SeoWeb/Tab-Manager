@@ -250,6 +250,8 @@ export async function setMigrationComplete(): Promise<void> {
     return new Promise((resolve) => {
       chrome.storage.local.set({ 'favicon-migration-complete': true }, resolve);
     });
+  } else if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem('favicon-migration-complete', 'true');
   }
 }
 
@@ -262,6 +264,8 @@ export async function resetMigrationFlag(): Promise<void> {
     return new Promise((resolve) => {
       chrome.storage.local.remove(['favicon-migration-complete'], resolve);
     });
+  } else if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem('favicon-migration-complete');
   }
 }
 
@@ -275,6 +279,8 @@ export async function isMigrationComplete(): Promise<boolean> {
         resolve(!!result['favicon-migration-complete']);
       });
     });
+  } else if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage.getItem('favicon-migration-complete') === 'true';
   }
   return false;
 }
