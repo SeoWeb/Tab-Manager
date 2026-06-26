@@ -145,7 +145,7 @@ export default function TaskFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className='w-[92vw] sm:max-w-lg'>
+      <DialogContent className='w-[92vw] sm:max-w-4xl'>
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : 'Add New Task'}</DialogTitle>
           <DialogDescription>
@@ -163,7 +163,7 @@ export default function TaskFormModal({
             placeholder='Description (optional)...'
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
+            className='min-h-[250px]'
           />
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <Select
