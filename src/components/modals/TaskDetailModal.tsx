@@ -5,6 +5,7 @@ import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
 import { fetchProjectMembers } from '@/lib/cloudflareSync';
 import type { CloudMember, CloudAccount } from '@/lib/cloudflareSync/types';
+import { marked } from 'marked';
 import {
   Dialog,
   DialogContent,
@@ -212,6 +213,16 @@ export default function TaskDetailModal({
     [task, tasks]
   );
 
+  const descriptionHtml = useMemo(() => {
+    if (!task?.description) return '';
+    try {
+      return marked(task.description, { async: false });
+    } catch (e) {
+      console.error('Failed to parse markdown:', e);
+      return task.description;
+    }
+  }, [task?.description]);
+
   if (!task) return null;
 
   const handleAddComment = () => {
@@ -311,9 +322,16 @@ export default function TaskDetailModal({
           <div className='p-4 md:p-6 md:col-span-2 md:h-full md:overflow-y-auto space-y-6'>
             <div>
               <h3 className='font-semibold mb-2'>Description</h3>
-              <p className='text-sm text-muted-foreground whitespace-pre-wrap'>
-                {task.description || 'No description provided.'}
-              </p>
+              {task.description ? (
+                <div
+                  className='text-sm text-muted-foreground markdown-content'
+                  dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                />
+              ) : (
+                <p className='text-sm text-muted-foreground italic'>
+                  No description provided.
+                </p>
+              )}
             </div>
 
             <Separator />
