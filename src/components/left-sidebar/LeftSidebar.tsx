@@ -5,14 +5,25 @@ import AddProjectButton from './AddProjectButton';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Settings as SettingsIcon, PanelLeft, CheckSquare, FolderOpen } from 'lucide-react';
-import { useSetActiveView, useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
+import {
+  Settings as SettingsIcon,
+  PanelLeft,
+  CheckSquare,
+  FolderOpen,
+} from 'lucide-react';
+import {
+  useSetActiveView,
+  useAppStoreWithDefaults,
+} from '@/hooks/useAppStoreWithDefaults';
 import { useSidebarState } from '@/hooks/useSidebarState';
 import { cn } from '@/lib/utils';
 
 export default function LeftSidebar() {
   const setActiveView = useSetActiveView();
-  const activeView = useAppStoreWithDefaults((state) => state.activeView, 'projectDetail');
+  const activeView = useAppStoreWithDefaults(
+    (state) => state.activeView,
+    'projectDetail'
+  );
   const { open: sidebarOpen, setOpen, toggleSidebar } = useSidebarState();
   const isCollapsed = !sidebarOpen;
 
@@ -38,7 +49,9 @@ export default function LeftSidebar() {
           'h-full bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out z-50 md:z-20',
           // Mobile floating overlay drawer vs Desktop relative sidebar
           'fixed inset-y-0 left-0 w-[16rem] md:relative md:translate-x-0',
-          isCollapsed ? '-translate-x-full md:w-[3rem]' : 'translate-x-0 md:w-[16rem]'
+          isCollapsed
+            ? '-translate-x-full md:w-[3rem]'
+            : 'translate-x-0 md:w-[16rem]'
         )}
       >
         {/* Header */}
@@ -84,7 +97,8 @@ export default function LeftSidebar() {
             size='sm'
             className={cn(
               'w-full justify-start text-sm',
-              activeView === 'projectDetail' && 'bg-primary/10 text-primary hover:bg-primary/20'
+              activeView === 'projectDetail' &&
+                'bg-primary/10 text-primary hover:bg-primary/20'
             )}
             onClick={() => handleNavigate('projectDetail')}
             aria-label='Open collections'
@@ -99,7 +113,8 @@ export default function LeftSidebar() {
             size='sm'
             className={cn(
               'w-full justify-start text-sm',
-              activeView === 'tasks' && 'bg-primary/10 text-primary hover:bg-primary/20'
+              activeView === 'tasks' &&
+                'bg-primary/10 text-primary hover:bg-primary/20'
             )}
             onClick={() => handleNavigate('tasks')}
             aria-label='Open tasks'
@@ -114,7 +129,8 @@ export default function LeftSidebar() {
             size='sm'
             className={cn(
               'w-full justify-start text-sm',
-              activeView === 'settings' && 'bg-primary/10 text-primary hover:bg-primary/20'
+              activeView === 'settings' &&
+                'bg-primary/10 text-primary hover:bg-primary/20'
             )}
             onClick={() => handleNavigate('settings')}
             aria-label='Open settings'

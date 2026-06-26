@@ -10,10 +10,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { AdvancedTask, TaskStatus } from '@/types/tasks';
 import {
@@ -150,15 +148,15 @@ export default function TaskDetailModal({
   const tasks = useAppStoreWithDefaults((state) => state.tasks, []);
   const addTaskComment = useAppStoreWithDefaults(
     (state) => state.addTaskComment,
-    () => { }
+    () => {}
   );
   const updateTask = useAppStoreWithDefaults(
     (state) => state.updateTask,
-    () => { }
+    () => {}
   );
   const addSubtask = useAppStoreWithDefaults(
     (state) => state.addSubtask,
-    () => { }
+    () => {}
   );
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
@@ -200,8 +198,8 @@ export default function TaskDetailModal({
     () =>
       task
         ? task.subtasks
-          .map((subtaskId) => tasks.find((t) => t.id === subtaskId))
-          .filter((t): t is AdvancedTask => !!t)
+            .map((subtaskId) => tasks.find((t) => t.id === subtaskId))
+            .filter((t): t is AdvancedTask => !!t)
         : [],
     [task, tasks]
   );
@@ -311,299 +309,284 @@ export default function TaskDetailModal({
         </DialogHeader>
         <div className='flex-1 overflow-y-auto md:overflow-hidden grid grid-cols-1 md:grid-cols-3 gap-0'>
           <div className='p-4 md:p-6 md:col-span-2 md:h-full md:overflow-y-auto space-y-6'>
-              <div>
-                <h3 className='font-semibold mb-2'>Description</h3>
-                <p className='text-sm text-muted-foreground'>
-                  {task.description || 'No description provided.'}
-                </p>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className='font-semibold mb-3 flex items-center gap-2'>
-                  <List className='h-5 w-5' />
-                  Subtasks
-                </h3>
-                <div className='space-y-2'>
-                  {subtasks.map((subtask) => (
-                    <div
-                      key={subtask.id}
-                      className='flex items-center gap-3 p-2 hover:bg-secondary/50 rounded-md transition-colors group'
-                    >
-                      <GripVertical className='h-4 w-4 text-muted-foreground' />
-                      <button
-                        onClick={() =>
-                          handleSubtaskStatusChange(
-                            subtask.id,
-                            subtask.status === 'completed'
-                              ? 'todo'
-                              : 'completed'
-                          )
-                        }
-                        className='flex-shrink-0'
-                      >
-                        <CheckCircle2
-                          className={cn(
-                            'h-5 w-5',
-                            subtask.status === 'completed'
-                              ? 'text-green-500'
-                              : 'text-muted-foreground/50'
-                          )}
-                        />
-                      </button>
-                      <button
-                        className='flex-1 text-left'
-                        onClick={() => onView(subtask)}
-                      >
-                        <span
-                          className={cn(
-                            'text-sm group-hover:underline',
-                            subtask.status === 'completed' &&
-                            'line-through text-muted-foreground'
-                          )}
-                        >
-                          {subtask.title}
-                        </span>
-                      </button>
-                    </div>
-                  ))}
-                  <div className='flex items-center gap-2'>
-                    <Input
-                      placeholder='Add a new subtask...'
-                      value={newSubtask}
-                      onChange={(e) => setNewSubtask(e.target.value)}
-                      onKeyPress={(e) =>
-                        e.key === 'Enter' && handleAddSubtask()
-                      }
-                      className='flex-1'
-                    />
-                    <Button onClick={handleAddSubtask} size='icon'>
-                      <Plus className='h-4 w-4' />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h3 className='font-semibold mb-3 flex items-center gap-2'>
-                  <MessageSquare className='h-5 w-5' />
-                  Comments
-                </h3>
-                <div className='space-y-4'>
-                  <div className='flex gap-3'>
-                    <Textarea
-                      placeholder='Add a comment...'
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      rows={2}
-                      className='mb-2'
-                    />
-                    <Button onClick={handleAddComment} size='sm'>
-                      Comment
-                    </Button>
-                  </div>
-                  {task.comments.length > 0 ? (
-                    task.comments
-                      .slice()
-                      .reverse()
-                      .map((comment) => (
-                        <div key={comment.id} className='text-sm'>
-                          <p className='text-muted-foreground whitespace-pre-wrap'>
-                            {comment.content}
-                          </p>
-                          <div className='text-xs text-muted-foreground'>
-                            {new Date(comment.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                      ))
-                  ) : (
-                    <p className='text-sm text-muted-foreground text-center py-4'>
-                      No comments yet.
-                    </p>
-                  )}
-                </div>
-              </div>
+            <div>
+              <h3 className='font-semibold mb-2'>Description</h3>
+              <p className='text-sm text-muted-foreground whitespace-pre-wrap'>
+                {task.description || 'No description provided.'}
+              </p>
             </div>
 
-          <aside className='p-4 md:p-6 bg-secondary/30 border-t md:border-t-0 md:border-l md:col-span-1 md:h-full md:overflow-y-auto space-y-6'>
-                <MetadataItem icon={CurrentStatusIcon} label='Status'>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant='ghost'
+            <Separator />
+
+            <div>
+              <h3 className='font-semibold mb-3 flex items-center gap-2'>
+                <List className='h-5 w-5' />
+                Subtasks
+              </h3>
+              <div className='space-y-2'>
+                {subtasks.map((subtask) => (
+                  <div
+                    key={subtask.id}
+                    className='flex items-center gap-3 p-2 hover:bg-secondary/50 rounded-md transition-colors group'
+                  >
+                    <GripVertical className='h-4 w-4 text-muted-foreground' />
+                    <button
+                      onClick={() =>
+                        handleSubtaskStatusChange(
+                          subtask.id,
+                          subtask.status === 'completed' ? 'todo' : 'completed'
+                        )
+                      }
+                      className='flex-shrink-0'
+                    >
+                      <CheckCircle2
                         className={cn(
-                          'text-sm font-semibold -ml-2',
-                          statusConfig[task.status].color
+                          'h-5 w-5',
+                          subtask.status === 'completed'
+                            ? 'text-green-500'
+                            : 'text-muted-foreground/50'
+                        )}
+                      />
+                    </button>
+                    <button
+                      className='flex-1 text-left'
+                      onClick={() => onView(subtask)}
+                    >
+                      <span
+                        className={cn(
+                          'text-sm group-hover:underline',
+                          subtask.status === 'completed' &&
+                            'line-through text-muted-foreground'
                         )}
                       >
-                        {statusConfig[task.status].label}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {Object.entries(statusConfig).map(
-                        ([statusKey, config]) => (
-                          <DropdownMenuItem
-                            key={statusKey}
-                            onClick={() =>
-                              handleStatusChange(statusKey as TaskStatus)
-                            }
-                          >
-                            <config.icon
-                              className={cn('h-4 w-4 mr-2', config.color)}
-                            />
-                            <span>{config.label}</span>
-                          </DropdownMenuItem>
-                        )
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </MetadataItem>
+                        {subtask.title}
+                      </span>
+                    </button>
+                  </div>
+                ))}
+                <div className='flex items-center gap-2'>
+                  <Input
+                    placeholder='Add a new subtask...'
+                    value={newSubtask}
+                    onChange={(e) => setNewSubtask(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
+                    className='flex-1'
+                  />
+                  <Button onClick={handleAddSubtask} size='icon'>
+                    <Plus className='h-4 w-4' />
+                  </Button>
+                </div>
+              </div>
+            </div>
 
-                {project?.cloudEnabled && (
-                  <MetadataItem icon={User} label='Assignee'>
-                    <div className='flex flex-col gap-1.5'>
-                      <div className='flex items-center gap-2'>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant='ghost'
-                              className='text-sm font-semibold -ml-2 h-auto py-1 px-2 hover:bg-muted'
-                            >
-                              {assignedMember ? (
-                                assignedMember.display_name ||
-                                assignedMember.email
-                              ) : (
-                                <span className='text-muted-foreground font-normal'>
-                                  Unassigned
-                                </span>
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className='max-h-60 overflow-y-auto'>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                updateTask(task.id, { assignee: undefined })
-                              }
-                            >
-                              <span className='text-muted-foreground'>
-                                Unassigned
-                              </span>
-                            </DropdownMenuItem>
-                            {members.map((member) => (
-                              <DropdownMenuItem
-                                key={member.user_id}
-                                onClick={() =>
-                                  updateTask(task.id, {
-                                    assignee: member.user_id,
-                                  })
-                                }
-                              >
-                                <span>
-                                  {member.display_name || member.email}
-                                </span>
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+            <Separator />
+
+            <div>
+              <h3 className='font-semibold mb-3 flex items-center gap-2'>
+                <MessageSquare className='h-5 w-5' />
+                Comments
+              </h3>
+              <div className='space-y-4'>
+                <div className='flex gap-3'>
+                  <Textarea
+                    placeholder='Add a comment...'
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    rows={2}
+                    className='mb-2'
+                  />
+                  <Button onClick={handleAddComment} size='sm'>
+                    Comment
+                  </Button>
+                </div>
+                {task.comments.length > 0 ? (
+                  task.comments
+                    .slice()
+                    .reverse()
+                    .map((comment) => (
+                      <div key={comment.id} className='text-sm'>
+                        <p className='text-muted-foreground whitespace-pre-wrap'>
+                          {comment.content}
+                        </p>
+                        <div className='text-xs text-muted-foreground'>
+                          {new Date(comment.createdAt).toLocaleString()}
+                        </div>
                       </div>
-                      {currentUser && task.assignee !== currentUser.id && (
+                    ))
+                ) : (
+                  <p className='text-sm text-muted-foreground text-center py-4'>
+                    No comments yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <aside className='p-4 md:p-6 bg-secondary/30 border-t md:border-t-0 md:border-l md:col-span-1 md:h-full md:overflow-y-auto space-y-6'>
+            <MetadataItem icon={CurrentStatusIcon} label='Status'>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant='ghost'
+                    className={cn(
+                      'text-sm font-semibold -ml-2',
+                      statusConfig[task.status].color
+                    )}
+                  >
+                    {statusConfig[task.status].label}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {Object.entries(statusConfig).map(([statusKey, config]) => (
+                    <DropdownMenuItem
+                      key={statusKey}
+                      onClick={() =>
+                        handleStatusChange(statusKey as TaskStatus)
+                      }
+                    >
+                      <config.icon
+                        className={cn('h-4 w-4 mr-2', config.color)}
+                      />
+                      <span>{config.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </MetadataItem>
+
+            {project?.cloudEnabled && (
+              <MetadataItem icon={User} label='Assignee'>
+                <div className='flex flex-col gap-1.5'>
+                  <div className='flex items-center gap-2'>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
-                          variant='outline'
-                          size='sm'
-                          className='h-7 text-xs w-fit'
+                          variant='ghost'
+                          className='text-sm font-semibold -ml-2 h-auto py-1 px-2 hover:bg-muted'
+                        >
+                          {assignedMember ? (
+                            assignedMember.display_name || assignedMember.email
+                          ) : (
+                            <span className='text-muted-foreground font-normal'>
+                              Unassigned
+                            </span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className='max-h-60 overflow-y-auto'>
+                        <DropdownMenuItem
                           onClick={() =>
-                            updateTask(task.id, { assignee: currentUser.id })
+                            updateTask(task.id, { assignee: undefined })
                           }
                         >
-                          Assign to me
-                        </Button>
-                      )}
-                    </div>
-                  </MetadataItem>
-                )}
-
-                <MetadataItem
-                  icon={priorityConfig[task.priority].icon}
-                  label='Priority'
-                >
-                  <span className={priorityConfig[task.priority].color}>
-                    {priorityConfig[task.priority].label}
-                  </span>
-                </MetadataItem>
-
-                <MetadataItem icon={Calendar} label='Due Date'>
-                  {task.dueDate
-                    ? new Date(task.dueDate).toLocaleDateString()
-                    : 'Not set'}
-                </MetadataItem>
-
-                <MetadataItem icon={Tag} label='Category'>
-                  {task.category}
-                </MetadataItem>
-
-                {parentTask && (
-                  <MetadataItem icon={ArrowUp} label='Parent Task'>
-                    <a
-                      href='#'
-                      onClick={(e) => {
-                        e.preventDefault();
-                        onView(parentTask);
-                      }}
-                      className='hover:underline'
-                    >
-                      {parentTask.title}
-                    </a>
-                  </MetadataItem>
-                )}
-
-                <div>
-                  <h4 className='text-sm font-medium text-muted-foreground mb-2'>
-                    Tags
-                  </h4>
-                  <div className='flex flex-wrap gap-2'>
-                    {task.tags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant='secondary'
-                        className='flex items-center gap-1'
-                      >
-                        {tag}
-                        <button
-                          onClick={() => handleRemoveTag(tag)}
-                          className='rounded-full hover:bg-muted-foreground/20 p-0.5'
-                        >
-                          <X className='h-3 w-3' />
-                        </button>
-                      </Badge>
-                    ))}
+                          <span className='text-muted-foreground'>
+                            Unassigned
+                          </span>
+                        </DropdownMenuItem>
+                        {members.map((member) => (
+                          <DropdownMenuItem
+                            key={member.user_id}
+                            onClick={() =>
+                              updateTask(task.id, {
+                                assignee: member.user_id,
+                              })
+                            }
+                          >
+                            <span>{member.display_name || member.email}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <div className='flex items-center gap-2 mt-2'>
-                    <Input
-                      placeholder='Add a tag...'
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                      className='h-8'
-                    />
+                  {currentUser && task.assignee !== currentUser.id && (
                     <Button
-                      onClick={handleAddTag}
-                      size='icon'
-                      className='h-8 w-8'
+                      variant='outline'
+                      size='sm'
+                      className='h-7 text-xs w-fit'
+                      onClick={() =>
+                        updateTask(task.id, { assignee: currentUser.id })
+                      }
                     >
-                      <Plus className='h-4 w-4' />
+                      Assign to me
                     </Button>
-                  </div>
-                  {task.tags.length === 0 && (
-                    <p className='text-xs text-muted-foreground mt-2'>
-                      No tags.
-                    </p>
                   )}
                 </div>
-              </aside>
+              </MetadataItem>
+            )}
+
+            <MetadataItem
+              icon={priorityConfig[task.priority].icon}
+              label='Priority'
+            >
+              <span className={priorityConfig[task.priority].color}>
+                {priorityConfig[task.priority].label}
+              </span>
+            </MetadataItem>
+
+            <MetadataItem icon={Calendar} label='Due Date'>
+              {task.dueDate
+                ? new Date(task.dueDate).toLocaleDateString()
+                : 'Not set'}
+            </MetadataItem>
+
+            <MetadataItem icon={Tag} label='Category'>
+              {task.category}
+            </MetadataItem>
+
+            {parentTask && (
+              <MetadataItem icon={ArrowUp} label='Parent Task'>
+                <a
+                  href='#'
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onView(parentTask);
+                  }}
+                  className='hover:underline'
+                >
+                  {parentTask.title}
+                </a>
+              </MetadataItem>
+            )}
+
+            <div>
+              <h4 className='text-sm font-medium text-muted-foreground mb-2'>
+                Tags
+              </h4>
+              <div className='flex flex-wrap gap-2'>
+                {task.tags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant='secondary'
+                    className='flex items-center gap-1'
+                  >
+                    {tag}
+                    <button
+                      onClick={() => handleRemoveTag(tag)}
+                      className='rounded-full hover:bg-muted-foreground/20 p-0.5'
+                    >
+                      <X className='h-3 w-3' />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+              <div className='flex items-center gap-2 mt-2'>
+                <Input
+                  placeholder='Add a tag...'
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                  className='h-8'
+                />
+                <Button onClick={handleAddTag} size='icon' className='h-8 w-8'>
+                  <Plus className='h-4 w-4' />
+                </Button>
+              </div>
+              {task.tags.length === 0 && (
+                <p className='text-xs text-muted-foreground mt-2'>No tags.</p>
+              )}
             </div>
+          </aside>
+        </div>
       </DialogContent>
     </Dialog>
   );

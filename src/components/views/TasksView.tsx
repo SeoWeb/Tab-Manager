@@ -43,7 +43,7 @@ export default function TasksView({
     undefined
   );
   const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
-  
+
   const { toggleSidebar } = useSidebarState();
 
   // Store data

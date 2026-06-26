@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   DndContext,
   DragEndEvent,
@@ -328,6 +329,7 @@ interface KanbanColumnProps {
   onView: (task: AdvancedTask) => void;
   onArchive: (id: string) => void;
   projectMembers?: Record<string, CloudMember[]>;
+  isMobile: boolean;
 }
 
 const KanbanColumn = ({
@@ -340,6 +342,7 @@ const KanbanColumn = ({
   onView,
   onArchive,
   projectMembers,
+  isMobile,
 }: KanbanColumnProps) => {
   const Icon = column.icon;
   const { setNodeRef } = useDroppable({
@@ -347,6 +350,7 @@ const KanbanColumn = ({
     data: {
       type: 'Column',
     },
+    disabled: isMobile,
   });
   return (
     <div
@@ -380,9 +384,9 @@ const KanbanColumn = ({
       {/* Column Content */}
       <ScrollArea className='flex-1 p-3'>
         <div className='space-y-2'>
-          <SortableContext items={tasks.map((t) => t.id)}>
-            {tasks.map((task) => (
-              <SortableTaskCard
+          {isMobile ? (
+            tasks.map((task) => (
+              <KanbanTaskCard
                 key={task.id}
                 task={task}
                 allTasks={tasks}
@@ -393,8 +397,24 @@ const KanbanColumn = ({
                 onArchive={onArchive}
                 projectMembers={projectMembers}
               />
-            ))}
-          </SortableContext>
+            ))
+          ) : (
+            <SortableContext items={tasks.map((t) => t.id)}>
+              {tasks.map((task) => (
+                <SortableTaskCard
+                  key={task.id}
+                  task={task}
+                  allTasks={tasks}
+                  onUpdate={onUpdate}
+                  onStatusChange={onStatusChange}
+                  onEdit={onEdit}
+                  onView={onView}
+                  onArchive={onArchive}
+                  projectMembers={projectMembers}
+                />
+              ))}
+            </SortableContext>
+          )}
 
           {tasks.length === 0 && (
             <div className='text-center py-8 text-muted-foreground'>
@@ -433,6 +453,7 @@ export default function TaskKanbanView({
   projectMembers,
 }: TaskKanbanViewProps) {
   const [activeTask, setActiveTask] = useState<AdvancedTask | null>(null);
+  const isMobile = useIsMobile();
 
   // Filter tasks based on settings
   const filteredTasks = useMemo(() => {
@@ -525,6 +546,30 @@ export default function TaskKanbanView({
     }
   };
 
+  if (isMobile) {
+    return (
+      <div className='h-full'>
+        <div className='flex flex-row overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full w-full pb-4 scrollbar-thin snap-x snap-mandatory'>
+          {kanbanColumns.map((column) => (
+            <KanbanColumn
+              key={column.status}
+              column={column}
+              tasks={tasksByStatus[column.status]}
+              onUpdate={onUpdate}
+              onStatusChange={onStatusChange}
+              onAddTask={onAddTask}
+              onEdit={onEdit}
+              onView={onView}
+              onArchive={onArchive}
+              projectMembers={projectMembers}
+              isMobile={true}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='h-full'>
       <DndContext
@@ -546,6 +591,7 @@ export default function TaskKanbanView({
               onView={onView}
               onArchive={onArchive}
               projectMembers={projectMembers}
+              isMobile={false}
             />
           ))}
         </div>

@@ -61,7 +61,9 @@ const zipName = `tabspace-${version}.zip`;
 const zipPath = path.join(distDir, zipName);
 
 if (!hasBin('zip')) {
-  fail('System `zip` binary not found. Install it (e.g. `sudo apt install zip`).');
+  fail(
+    'System `zip` binary not found. Install it (e.g. `sudo apt install zip`).'
+  );
 }
 
 fs.mkdirSync(distDir, { recursive: true });
@@ -76,5 +78,5 @@ execFileSync('zip', args, { cwd: buildDir, stdio: 'inherit' });
 
 const sizeKb = (fs.statSync(zipPath).size / 1024).toFixed(1);
 console.log(
-  `${GREEN}[package-zip] Created ${path.relative(root, zipPath)} (${sizeKb} KB)${RESET}`,
+  `${GREEN}[package-zip] Created ${path.relative(root, zipPath)} (${sizeKb} KB)${RESET}`
 );
