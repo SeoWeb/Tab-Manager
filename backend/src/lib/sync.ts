@@ -3,6 +3,7 @@ import {
   requireProjectAccess,
   getMembershipRole,
   requireMinRole,
+  countMembers,
 } from './projects';
 import { notifyRealtime } from './realtime';
 import type {
@@ -490,6 +491,19 @@ async function applyProjectMutation(
           entityId: mutation.entityId,
           clientMutationId: mutation.clientMutationId,
           message: 'Project deletion requires admin role or higher',
+          currentVersion,
+          expectedVersion: mutation.baseVersion,
+        },
+      };
+    }
+    const memberCount = await countMembers(env, mutation.projectId);
+    if (memberCount > 1) {
+      return {
+        conflict: {
+          entityType: 'project',
+          entityId: mutation.entityId,
+          clientMutationId: mutation.clientMutationId,
+          message: 'Cannot delete project with multiple members',
           currentVersion,
           expectedVersion: mutation.baseVersion,
         },

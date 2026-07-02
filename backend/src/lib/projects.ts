@@ -69,6 +69,16 @@ async function countOwners(env: Env, projectId: string): Promise<number> {
   return row?.n ?? 0;
 }
 
+export async function countMembers(env: Env, projectId: string): Promise<number> {
+  const row = await env.D1_DATABASE.prepare(
+    'SELECT COUNT(*) AS n FROM project_members WHERE project_id = ?'
+  )
+    .bind(projectId)
+    .first<{ n: number }>();
+
+  return row?.n ?? 0;
+}
+
 export async function getProjectMember(
   env: Env,
   userId: string,
@@ -299,6 +309,11 @@ export async function deleteProject(
 
   if (!existing) {
     return notFound('Project not found');
+  }
+
+  const memberCount = await countMembers(env, projectId);
+  if (memberCount > 1) {
+    return badRequest('Cannot delete project with multiple members');
   }
 
   const now = nowIso();
