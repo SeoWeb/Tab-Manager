@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabSpace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Chrome extension for managing tabs and bookmarks.",
   "permissions": ["storage", "tabs", "bookmarks", "activeTab", "alarms"],
   "host_permissions": ["https://tab-manager-backend.ww0.dev/*"],

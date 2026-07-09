@@ -62,8 +62,21 @@ export function applyRemoteChanges(
   let skipped = 0;
 
   for (const change of changes) {
-    // Skip our own echoes: local state already reflects them.
-    if (change.client_id && change.client_id === clientId) {
+    // Skip our own echoes for update/delete operations: local state already
+    // reflects them (or holds newer optimistic edits we must not clobber).
+    //
+    // We deliberately DO apply our own `create` echoes. A `create` is safe to
+    // re-apply — the builders de-dupe by entity id, so an entity we already
+    // hold is left untouched and one we are missing is materialized. Skipping a
+    // create echo would permanently drop a row the server keeps, which happens
+    // whenever a *different tab* (or a post-wipe reload) performs the sync
+    // while sharing this client id: that tab never held the entity locally, yet
+    // the echo gets skipped as "ours". See the multi-tab / local-wipe desync.
+    if (
+      change.client_id &&
+      change.client_id === clientId &&
+      change.operation !== 'create'
+    ) {
       skipped += 1;
       continue;
     }
