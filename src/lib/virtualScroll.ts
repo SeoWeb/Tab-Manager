@@ -41,6 +41,13 @@ export interface UseVirtualScrollOptions {
   horizontal?: boolean;
   /** Enables dynamic measurement of real row heights after mount. */
   measureElement?: boolean;
+  /**
+   * Optional external scroll element. When provided, the virtualizer uses this
+   * element as the scroll container instead of an internally created `parentRef`.
+   * Use this when the list scrolls within an ancestor (e.g. the main content
+   * area) rather than its own wrapper.
+   */
+  scrollRef?: React.RefObject<Element | null>;
 }
 
 export interface UseVirtualScrollResult<T extends Element> {
@@ -68,12 +75,14 @@ export function useVirtualScroll<T extends Element = HTMLDivElement>({
   getItemKey,
   horizontal = false,
   measureElement = true,
+  scrollRef,
 }: UseVirtualScrollOptions): UseVirtualScrollResult<T> {
   const parentRef = useRef<T>(null);
 
   const virtualizer = useVirtualizer({
     count,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () =>
+      (scrollRef?.current ?? parentRef.current) as T | null,
     estimateSize,
     overscan,
     getItemKey,
@@ -81,7 +90,9 @@ export function useVirtualScroll<T extends Element = HTMLDivElement>({
     measureElement: measureElement
       ? (node: Element) => {
           if (node instanceof HTMLElement) {
-            return node.getBoundingClientRect()[horizontal ? 'width' : 'height'];
+            return node.getBoundingClientRect()[
+              horizontal ? 'width' : 'height'
+            ];
           }
           return estimateSize(0);
         }

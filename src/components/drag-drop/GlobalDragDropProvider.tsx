@@ -8,6 +8,10 @@ import React, { createContext, useContext } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import { useDragAndDrop, DragItem } from '@/hooks/useDragAndDrop';
 import { DragOverlay } from './DragOverlay';
+import {
+  virtualListMeasuring,
+  virtualListAutoScroll,
+} from '@/lib/virtualScroll';
 
 interface DragAndDropContextType {
   activeItem: DragItem | null;
@@ -57,6 +61,8 @@ export function GlobalDragDropProvider({
       onDragStart={dragAndDrop.handleDragStart}
       onDragOver={dragAndDrop.handleDragOver}
       onDragEnd={dragAndDrop.handleDragEnd}
+      measuring={virtualListMeasuring}
+      autoScroll={virtualListAutoScroll}
     >
       <DragAndDropContext.Provider value={contextValue}>
         {children}

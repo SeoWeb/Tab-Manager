@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Collection as CollectionType } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +27,13 @@ import EditCollectionModal from '../modals/EditCollectionModal';
 import { useAppStore } from '@/stores/appStore';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
+import { useVirtualScroll } from '@/lib/virtualScroll';
+import { useMainScroll } from '@/lib/scrollContext';
+
+// Link grid layout constants — single source of truth for both the JS column
+// count math and the CSS grid template (kept in sync with `w-64` / `gap-2`).
+const LINK_GRID_ITEM_WIDTH = 256; // w-64
+const LINK_GRID_GAP = 8; // gap-2
 
 interface DragEnabledCollectionProps {
   collection: CollectionType;
@@ -72,6 +79,46 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   const urlExists = draggedUrl && links.some((link) => link.url === draggedUrl);
 
   const linkIds = links.map((link) => link.id);
+
+  // Fixed-column grid: compute column count from the measured container width
+  // so the link grid can be windowed row-by-row with @tanstack/react-virtual.
+  const mainScrollRef = useMainScroll();
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [columnCount, setColumnCount] = useState(1);
+
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const update = () => {
+      const width = el.clientWidth;
+      setColumnCount(
+        Math.max(
+          1,
+          Math.floor((width + LINK_GRID_GAP) / (LINK_GRID_ITEM_WIDTH + LINK_GRID_GAP))
+        )
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const rowCount = Math.ceil(links.length / columnCount);
+
+  const { virtualizer } = useVirtualScroll<HTMLDivElement>({
+    count: rowCount,
+    estimateSize: () => 72,
+    overscan: 4,
+    getItemKey: (index) => `row-${index}`,
+    scrollRef: mainScrollRef ?? undefined,
+  });
+
+  useEffect(() => {
+    virtualizer.measure();
+  }, [columnCount, virtualizer]);
+
+  const virtualRows = virtualizer.getVirtualItems();
 
   return (
     <div
@@ -178,22 +225,54 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
             </div>
           ) : (
             <SortableContext items={linkIds} strategy={rectSortingStrategy}>
-              <div className='flex flex-wrap gap-2 p-0'>
-                {links.map((link, index) => (
-                  <React.Fragment key={link.id}>
-                    <LinkDropPlaceholder
-                      isVisible={
-                        linkDropPlaceholder?.collectionId === collectionId &&
-                        linkDropPlaceholder?.position === index
-                      }
-                    />
-                    <SortableLinkItem
-                      link={link}
-                      projectId={projectId}
-                      collectionId={collectionId}
-                    />
-                  </React.Fragment>
-                ))}
+              <div
+                ref={gridRef}
+                className='relative w-full'
+                style={{ height: virtualizer.getTotalSize() }}
+              >
+                {virtualRows.map((vr) => {
+                  const startIdx = vr.index * columnCount;
+                  const rowLinks = links.slice(
+                    startIdx,
+                    startIdx + columnCount
+                  );
+                  return (
+                    <div
+                      key={vr.key}
+                      data-index={vr.index}
+                      ref={virtualizer.measureElement}
+                      className='absolute left-0 w-full'
+                      style={{ transform: `translateY(${vr.start}px)` }}
+                    >
+                      <div
+                        className='grid gap-2'
+                        style={{
+                          gridTemplateColumns: `repeat(${columnCount}, ${LINK_GRID_ITEM_WIDTH}px)`,
+                        }}
+                      >
+                        {rowLinks.map((link, colIdx) => {
+                          const linkIndex = startIdx + colIdx;
+                          return (
+                            <React.Fragment key={link.id}>
+                              <LinkDropPlaceholder
+                                isVisible={
+                                  linkDropPlaceholder?.collectionId ===
+                                    collectionId &&
+                                  linkDropPlaceholder?.position === linkIndex
+                                }
+                              />
+                              <SortableLinkItem
+                                link={link}
+                                projectId={projectId}
+                                collectionId={collectionId}
+                              />
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
                 <LinkDropPlaceholder
                   isVisible={
                     linkDropPlaceholder?.collectionId === collectionId &&

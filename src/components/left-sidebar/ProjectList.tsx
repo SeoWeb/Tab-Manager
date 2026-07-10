@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { useSidebarState } from '@/hooks/useSidebarState';
 import { useAppStore } from '@/stores/appStore';
+import { useVirtualScroll } from '@/lib/virtualScroll';
 
 export default function ProjectList() {
   const projects = useProjects();
@@ -56,6 +57,13 @@ export default function ProjectList() {
   useHotkeys('up', () => handleNavigation('up'));
   useHotkeys('down', () => handleNavigation('down'));
 
+  const { parentRef, virtualizer } = useVirtualScroll<HTMLDivElement>({
+    count: sortedProjects.length,
+    estimateSize: () => 56,
+    overscan: 10,
+    getItemKey: (index) => sortedProjects[index]?.id ?? index,
+  });
+
   if (sortedProjects.length === 0) {
     return (
       <p className='text-sm text-sidebar-foreground/70 text-center group-data-[collapsible=icon]:hidden p-4'>
@@ -64,22 +72,53 @@ export default function ProjectList() {
     );
   }
 
+  const virtualItems = virtualizer.getVirtualItems();
+
   return (
-    <SidebarMenu>
-      <SortableContext
-        items={sortedProjects.map((p) => p.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        {sortedProjects.map((project) => (
-          <SidebarMenuItem key={project.id}>
-            {sidebarOpen ? (
-              <SortableProjectItem project={project} />
-            ) : (
-              <ProjectItem project={project} />
-            )}
-          </SidebarMenuItem>
-        ))}
-      </SortableContext>
-    </SidebarMenu>
+    <div
+      ref={parentRef}
+      className='h-full overflow-y-auto scrollbar-modern px-2 py-2'
+    >
+      <SidebarMenu>
+        <SortableContext
+          items={sortedProjects.map((p) => p.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div
+            style={{
+              height: virtualizer.getTotalSize(),
+              position: 'relative',
+              width: '100%',
+            }}
+          >
+            {virtualItems.map((vi) => {
+              const project = sortedProjects[vi.index];
+              return (
+                <div
+                  key={project.id}
+                  data-index={vi.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${vi.start}px)`,
+                  }}
+                >
+                  <SidebarMenuItem>
+                    {sidebarOpen ? (
+                      <SortableProjectItem project={project} />
+                    ) : (
+                      <ProjectItem project={project} />
+                    )}
+                  </SidebarMenuItem>
+                </div>
+              );
+            })}
+          </div>
+        </SortableContext>
+      </SidebarMenu>
+    </div>
   );
 }

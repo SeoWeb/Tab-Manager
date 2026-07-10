@@ -5,12 +5,14 @@ TabSpace is a Chrome new-tab extension built on Next.js (static export), React 1
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Keep only visible rows mounted for the three large lists (projects, collections, links) via `@tanstack/react-virtual`.
 - Stop unrelated re-renders with `React.memo` on list items and `useShallow` Zustand selectors.
 - Defer modal and heavy right-panel view code with `React.lazy` + `<Suspense>`.
 - Provide `Skeleton` loading states for lazy chunks and large/empty lists.
 
 **Non-Goals:**
+
 - No new user-facing features or UI rewrites beyond the link-grid layout change needed for virtualization.
 - No backend / sync performance changes (out of scope for Phase 7 UI perf).
 - No changes to persistence or data model.

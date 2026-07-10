@@ -20,9 +20,11 @@ import {
   FileText,
   ListTodo,
 } from 'lucide-react';
+import { MainScrollContext } from '@/lib/scrollContext';
 
 const MainContentArea: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
   const activeProjectId = useActiveProjectId();
   const projects = useProjects();
   const {
@@ -148,7 +150,10 @@ const MainContentArea: React.FC = () => {
         onSearch={handleSearch}
         ref={searchInputRef}
       />
-      <div className='flex-1 p-4 md:p-6 overflow-y-auto scrollbar-modern'>
+      <div
+        ref={mainScrollRef}
+        className='flex-1 p-4 md:p-6 overflow-y-auto scrollbar-modern'
+      >
         <Tabs defaultValue='collections'>
           <TabsList className='mb-2 max-w-full overflow-x-auto flex-nowrap justify-start scrollbar-none w-full'>
             <TabsTrigger
@@ -177,7 +182,12 @@ const MainContentArea: React.FC = () => {
           </TabsList>
           <TabsContent value='collections'>
             {activeProject ? (
-              <DragEnabledCollectionsList project={activeProject} />
+              <MainScrollContext.Provider value={mainScrollRef}>
+                <DragEnabledCollectionsList
+                  project={activeProject}
+                  scrollRef={mainScrollRef}
+                />
+              </MainScrollContext.Provider>
             ) : (
               <div className='text-center py-10'>
                 <h3 className='text-lg font-medium text-gray-600 dark:text-gray-300 mb-2'>

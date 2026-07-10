@@ -13,12 +13,14 @@ The TabSpace extension's TODO.md leaves the Phase 7 "Performance Optimization" i
 ## Capabilities
 
 ### New Capabilities
+
 - `list-virtualization`: Windowing of the sidebar projects list, the collections list, and the in-collection link grid so only visible rows are mounted; integrates with the existing `@dnd-kit` sortable/drop behavior.
 - `render-memoization`: `React.memo` wrapping of list item components and corrected Zustand selectors (`useShallow`) to minimize re-renders at scale.
 - `lazy-loading`: Deferred code-loading of modals and heavy right-panel views with `<Suspense>` boundaries.
 - `loading-skeletons`: `Skeleton` fallback states for lazy chunks and large/empty lists.
 
 ### Modified Capabilities
+
 <!-- No existing specs to modify -->
 
 ## Impact

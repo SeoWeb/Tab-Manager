@@ -15,9 +15,9 @@
 
 ## 4. Virtualize lists
 
-- [ ] 4.1 Virtualize the sidebar projects list in `ProjectList.tsx` (scroll container + `useVirtualizer`, keep full `<SortableContext items={allIds}>`, render only visible rows)
-- [ ] 4.2 Virtualize the collections list in `DragEnabledCollectionsList.tsx` with the same pattern
-- [ ] 4.3 Convert `DragEnabledCollection` link grid from `flex flex-wrap` to a fixed-column grid; compute column count from measured container width and apply row-based `useVirtualizer`; keep per-link `SortableLinkItem` + external tab/bookmark drop placeholders
+- [x] 4.1 Virtualize the sidebar projects list in `ProjectList.tsx` (scroll container + `useVirtualizer`, keep full `<SortableContext items={allIds}>`, render only visible rows)
+- [x] 4.2 Virtualize the collections list in `DragEnabledCollectionsList.tsx` with the same pattern
+- [x] 4.3 Convert `DragEnabledCollection` link grid from `flex flex-wrap` to a fixed-column grid; compute column count from measured container width and apply row-based `useVirtualizer`; keep per-link `SortableLinkItem` + external tab/bookmark drop placeholders
 
 ## 5. Lazy-load heavy components
 

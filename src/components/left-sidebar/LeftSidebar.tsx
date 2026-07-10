@@ -3,7 +3,6 @@
 import ProjectList from './ProjectList';
 import AddProjectButton from './AddProjectButton';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import {
   Settings as SettingsIcon,
@@ -79,12 +78,8 @@ export default function LeftSidebar() {
         <Separator className='bg-sidebar-border' />
 
         {/* Content */}
-        <div className='flex-grow p-0'>
-          <ScrollArea className='h-full scrollbar-modern'>
-            <div className={cn(isCollapsed ? 'p-1' : 'p-4')}>
-              <ProjectList />
-            </div>
-          </ScrollArea>
+        <div className='flex-grow min-h-0 p-0'>
+          <ProjectList />
         </div>
 
         <Separator className='bg-sidebar-border' />
