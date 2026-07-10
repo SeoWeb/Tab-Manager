@@ -10,9 +10,10 @@ import ProjectHeader from './ProjectHeader';
 import DragEnabledCollectionsList from './DragEnabledCollectionsList';
 import { Collection, Project } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import TasksView from '../views/TasksView';
-import NotesView from '../views/NotesView';
-import TodosView from '../views/TodosView';
+import { Skeleton } from '@/components/ui/skeleton';
+const TasksView = React.lazy(() => import('../views/TasksView'));
+const NotesView = React.lazy(() => import('../views/NotesView'));
+const TodosView = React.lazy(() => import('../views/TodosView'));
 import {
   FolderOpen,
   CheckSquare,
@@ -206,19 +207,27 @@ const MainContentArea: React.FC = () => {
             )}
           </TabsContent>
           <TabsContent value='tasks'>
-            <TasksView projectId={activeProjectId ?? undefined} />
+            <React.Suspense fallback={<Skeleton className='h-64 w-full' />}>
+              <TasksView projectId={activeProjectId ?? undefined} />
+            </React.Suspense>
           </TabsContent>
           <TabsContent value='calendar'>
-            <TasksView
-              initialTab='calendar'
-              projectId={activeProjectId ?? undefined}
-            />
+            <React.Suspense fallback={<Skeleton className='h-64 w-full' />}>
+              <TasksView
+                initialTab='calendar'
+                projectId={activeProjectId ?? undefined}
+              />
+            </React.Suspense>
           </TabsContent>
           <TabsContent value='notes'>
-            <NotesView />
+            <React.Suspense fallback={<Skeleton className='h-64 w-full' />}>
+              <NotesView />
+            </React.Suspense>
           </TabsContent>
           <TabsContent value='todos'>
-            <TodosView />
+            <React.Suspense fallback={<Skeleton className='h-64 w-full' />}>
+              <TodosView />
+            </React.Suspense>
           </TabsContent>
         </Tabs>
       </div>

@@ -4,7 +4,10 @@ import { Project } from '@/types';
 import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
-import EditProjectModal from '@/components/modals/EditProjectModal'; // Import the new modal
+import { Skeleton } from '@/components/ui/skeleton';
+const EditProjectModal = React.lazy(
+  () => import('@/components/modals/EditProjectModal')
+); // Import the new modal
 import { PencilIcon, GripVertical } from 'lucide-react'; // Example icon
 import { Button } from '@/components/ui/button'; // Import Button
 import { useSidebarState } from '@/hooks/useSidebarState';
@@ -41,14 +44,16 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
   return (
     <div className='relative group'>
       {/* Added for positioning edit button */}
-      <EditProjectModal
-        project={project}
-        isOpen={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-      >
-        {/* Hidden trigger, modal controlled by state. Actual trigger is the button below */}
-        <button style={{ display: 'none' }} />
-      </EditProjectModal>
+      <React.Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <EditProjectModal
+          project={project}
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+        >
+          {/* Hidden trigger, modal controlled by state. Actual trigger is the button below */}
+          <button style={{ display: 'none' }} />
+        </EditProjectModal>
+      </React.Suspense>
       <div className={cn('flex items-center', sidebarOpen ? 'w-full' : '')}>
         {/* Drag Handle - only show when sidebar is open and showDragHandle is true */}
         {sidebarOpen && showDragHandle && (

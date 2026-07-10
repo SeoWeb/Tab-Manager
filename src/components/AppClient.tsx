@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
-import SettingsView from '@/components/views/SettingsView';
-import TasksView from '@/components/views/TasksView';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
 import RightContentPanel from '@/components/right-vertical-tabs/RightContentPanel';
 import { GlobalDragDropProvider } from '@/components/drag-drop/GlobalDragDropProvider';
@@ -17,17 +15,21 @@ import {
   useSetActiveProject,
   useAppStoreWithDefaults,
 } from '@/hooks/useAppStoreWithDefaults';
-import AddProjectModal from './modals/AddProjectModal';
-import AddCollectionModal from './modals/AddCollectionModal';
-import AddLinkModal from './modals/AddLinkModal';
-import EditLinkModal from './modals/EditLinkModal';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useChromeTabsMonitoring } from '@/hooks/useChromeTabsMonitoring';
 import {
   deferUntilIdle,
   lazyImport,
   preloadCriticalResources,
 } from '@/lib/performanceUtils';
+
+const SettingsView = lazy(() => import('@/components/views/SettingsView'));
+const TasksView = lazy(() => import('@/components/views/TasksView'));
+const AddProjectModal = lazy(() => import('./modals/AddProjectModal'));
+const AddCollectionModal = lazy(() => import('./modals/AddCollectionModal'));
+const AddLinkModal = lazy(() => import('./modals/AddLinkModal'));
+const EditLinkModal = lazy(() => import('./modals/EditLinkModal'));
 
 export default function AppClient() {
   const isDarkMode = useIsDarkMode();
@@ -180,9 +182,13 @@ export default function AppClient() {
           >
             <main className='flex-1 w-full'>
               {activeView === 'settings' ? (
-                <SettingsView />
+                <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                  <SettingsView />
+                </Suspense>
               ) : activeView === 'tasks' ? (
-                <TasksView showHeader={true} />
+                <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                  <TasksView showHeader={true} />
+                </Suspense>
               ) : (
                 <MainContentArea />
               )}
@@ -198,12 +204,20 @@ export default function AppClient() {
           </div>
         </div>
       </GlobalDragDropProvider>
-      <AddProjectModal>
-        <div />
-      </AddProjectModal>
-      <AddCollectionModal />
-      <AddLinkModal />
-      <EditLinkModal />
+      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <AddProjectModal>
+          <div />
+        </AddProjectModal>
+      </Suspense>
+      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <AddCollectionModal />
+      </Suspense>
+      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <AddLinkModal />
+      </Suspense>
+      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <EditLinkModal />
+      </Suspense>
     </>
   );
 }

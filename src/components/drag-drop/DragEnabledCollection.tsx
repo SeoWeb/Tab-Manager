@@ -23,7 +23,10 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableLinkItem } from './SortableLinkItem';
 import { LinkDropPlaceholder } from './LinkDropPlaceholder';
 import { useDragAndDropContext } from './GlobalDragDropProvider';
-import EditCollectionModal from '../modals/EditCollectionModal';
+import { Skeleton } from '@/components/ui/skeleton';
+const EditCollectionModal = React.lazy(
+  () => import('../modals/EditCollectionModal')
+);
 import { useAppStore } from '@/stores/appStore';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
@@ -94,7 +97,9 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
       setColumnCount(
         Math.max(
           1,
-          Math.floor((width + LINK_GRID_GAP) / (LINK_GRID_ITEM_WIDTH + LINK_GRID_GAP))
+          Math.floor(
+            (width + LINK_GRID_GAP) / (LINK_GRID_ITEM_WIDTH + LINK_GRID_GAP)
+          )
         )
       );
     };
@@ -311,14 +316,16 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
         </div>
       )}
 
-      <EditCollectionModal
-        isOpen={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-        collection={collection}
-        projectId={projectId}
-      >
-        <div />
-      </EditCollectionModal>
+      <React.Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <EditCollectionModal
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+          collection={collection}
+          projectId={projectId}
+        >
+          <div />
+        </EditCollectionModal>
+      </React.Suspense>
     </div>
   );
 };

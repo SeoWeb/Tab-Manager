@@ -1,9 +1,20 @@
 'use client';
 
+import { lazy, Suspense } from 'react';
 import { useActiveVerticalTabId } from '@/hooks/useAppStoreWithDefaults';
-import BookmarksPanelContent from '@/components/right-panel/panels/BookmarksPanelContent';
-import ChromeOpenTabsPanel from './panels/ChromeOpenTabsPanel'; // New panel
-import { TabSessionsPanel } from './panels/TabSessionsPanel';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const LazyChromeOpenTabsPanel = lazy(
+  () => import('./panels/ChromeOpenTabsPanel')
+);
+const LazyBookmarksPanelContent = lazy(
+  () => import('@/components/right-panel/panels/BookmarksPanelContent')
+);
+const LazyTabSessionsPanel = lazy(() =>
+  import('./panels/TabSessionsPanel').then((m) => ({
+    default: m.TabSessionsPanel,
+  }))
+);
 
 export default function RightContentPanel() {
   const activeVerticalTabId = useActiveVerticalTabId();
@@ -11,11 +22,23 @@ export default function RightContentPanel() {
   const renderPanelContent = () => {
     switch (activeVerticalTabId) {
       case 'openTabs':
-        return <ChromeOpenTabsPanel />;
+        return (
+          <Suspense fallback={<Skeleton className='h-full w-full' />}>
+            <LazyChromeOpenTabsPanel />
+          </Suspense>
+        );
       case 'bookmarks':
-        return <BookmarksPanelContent />;
+        return (
+          <Suspense fallback={<Skeleton className='h-full w-full' />}>
+            <LazyBookmarksPanelContent />
+          </Suspense>
+        );
       case 'sessions':
-        return <TabSessionsPanel />;
+        return (
+          <Suspense fallback={<Skeleton className='h-full w-full' />}>
+            <LazyTabSessionsPanel />
+          </Suspense>
+        );
       default:
         return null;
     }

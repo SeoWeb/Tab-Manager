@@ -21,8 +21,8 @@
 
 ## 5. Lazy-load heavy components
 
-- [ ] 5.1 Wrap the four modals in `AppClient.tsx` (`AddProjectModal`, `AddCollectionModal`, `AddLinkModal`, `EditLinkModal`) with `React.lazy` + `<Suspense fallback={<Skeleton/>}>`
-- [ ] 5.2 Lazy-load `EditCollectionModal`/`EditProjectModal` and the right-panel views (`TasksView`, `NotesView`, `TodosView`, `SettingsView`, Kanban, Analytics) and `RightContentPanel` content with `React.lazy` + `<Suspense>`
+- [x] 5.1 Wrap the four modals in `AppClient.tsx` (`AddProjectModal`, `AddCollectionModal`, `AddLinkModal`, `EditLinkModal`) with `React.lazy` + `<Suspense fallback={<Skeleton/>}>`
+- [x] 5.2 Lazy-load `EditCollectionModal`/`EditProjectModal` and the right-panel views (`TasksView`, `NotesView`, `TodosView`, `SettingsView`, Kanban, Analytics) and `RightContentPanel` content with `React.lazy` + `<Suspense>`
 
 ## 6. Loading skeletons & states
 

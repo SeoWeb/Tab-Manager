@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react';
 import { calculateTaskStats } from '@/stores/actions/taskActions';
 import { fetchProjectMembers } from '@/lib/cloudflareSync';
 import type { CloudMember } from '@/lib/cloudflareSync/types';
@@ -16,8 +16,13 @@ import ThemeToggle from '@/components/main-content/ThemeToggle';
 import { useSidebarState } from '@/hooks/useSidebarState';
 
 // Import the enhanced components
-import TaskKanbanView from '../right-panel/panels/TaskKanbanView';
-import TaskAnalyticsDashboard from '../right-panel/panels/TaskAnalyticsDashboard';
+import { Skeleton } from '@/components/ui/skeleton';
+const TaskKanbanView = lazy(
+  () => import('../right-panel/panels/TaskKanbanView')
+);
+const TaskAnalyticsDashboard = lazy(
+  () => import('../right-panel/panels/TaskAnalyticsDashboard')
+);
 import TaskCalendarView from './TaskCalendarView';
 import ArchivedTasksView from './ArchivedTasksView';
 
@@ -207,18 +212,20 @@ export default function TasksView({
           <div className='flex-1 mt-6'>
             <TabsContent value='kanban' className='h-full m-0'>
               <div className='h-full'>
-                <TaskKanbanView
-                  tasks={tasks}
-                  onUpdate={updateTask}
-                  onStatusChange={handleStatusChange}
-                  onAddTask={handleAddTaskForStatus}
-                  onEdit={handleEditTask}
-                  onView={handleViewTask}
-                  onArchive={archiveTask}
-                  showCompleted={true}
-                  showArchived={false}
-                  projectMembers={projectMembers}
-                />
+                <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                  <TaskKanbanView
+                    tasks={tasks}
+                    onUpdate={updateTask}
+                    onStatusChange={handleStatusChange}
+                    onAddTask={handleAddTaskForStatus}
+                    onEdit={handleEditTask}
+                    onView={handleViewTask}
+                    onArchive={archiveTask}
+                    showCompleted={true}
+                    showArchived={false}
+                    projectMembers={projectMembers}
+                  />
+                </Suspense>
               </div>
             </TabsContent>
 
@@ -228,7 +235,9 @@ export default function TasksView({
 
             <TabsContent value='analytics' className='h-full m-0'>
               <div className='h-full max-w-4xl'>
-                <TaskAnalyticsDashboard tasks={tasks} stats={taskStats} />
+                <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                  <TaskAnalyticsDashboard tasks={tasks} stats={taskStats} />
+                </Suspense>
               </div>
             </TabsContent>
 

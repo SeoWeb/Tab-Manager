@@ -16,7 +16,10 @@ import {
   CloudOff,
   Users,
 } from 'lucide-react';
-import EditProjectModal from '@/components/modals/EditProjectModal';
+import { Skeleton } from '@/components/ui/skeleton';
+const EditProjectModal = React.lazy(
+  () => import('@/components/modals/EditProjectModal')
+);
 import { ProjectCollaborationModal } from '@/components/cloud-sync/ProjectCollaborationModal';
 import { useAppStore } from '@/stores/appStore';
 import { useToast } from '@/hooks/use-toast';
@@ -165,13 +168,15 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
       </DropdownMenu>
 
       {/* Edit Project Modal Instance */}
-      <EditProjectModal
-        project={project}
-        isOpen={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
-      >
-        <div />
-      </EditProjectModal>
+      <React.Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <EditProjectModal
+          project={project}
+          isOpen={isEditModalOpen}
+          onOpenChange={setIsEditModalOpen}
+        >
+          <div />
+        </EditProjectModal>
+      </React.Suspense>
 
       {/* Share & members — Phase 4 collaboration. Cloud projects only. */}
       {project.cloudEnabled && (
