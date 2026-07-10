@@ -123,6 +123,29 @@ function scheduleReconnect(
   }, delay);
 }
 
+/**
+ * Tell collaborators which entity + field we are currently editing, so they can
+ * see (and avoid clobbering) our in-progress work via a soft lock. Pass
+ * `field: null` (or omit) to clear when the field loses focus.
+ */
+export function sendEditingPresence(
+  entityId: string,
+  field: string | null
+): void {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  try {
+    socket.send(
+      JSON.stringify({
+        type: 'editing',
+        entityId,
+        field: field ?? null,
+      })
+    );
+  } catch {
+    // socket may be mid-close; ignore
+  }
+}
+
 /** Close the realtime socket and stop auto-reconnecting. */
 export function disconnectProjectRealtime(): void {
   activeProjectId = null;

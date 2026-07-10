@@ -176,6 +176,7 @@ export default function TaskDetailModal({
     cursors: {},
     realtimeConnected: false,
     onlinePresence: [],
+    pendingEdits: {},
   });
   const currentUser = cloudSync.account;
   const [members, setMembers] = useState<CloudMember[]>([]);

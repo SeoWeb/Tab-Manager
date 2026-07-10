@@ -21,6 +21,7 @@ import type {
   CloudRole,
   CloudSyncChange,
   CloudSyncStatus,
+  DirtyFields,
 } from './types';
 
 /**
@@ -38,6 +39,7 @@ function setCloudState(
     lastSyncedAt: string | null;
     lastError: string | null;
     pendingMutationCount: number;
+    pendingEdits: DirtyFields;
     account: CloudAccount | null;
     apiBaseUrl: string;
   }>
@@ -137,6 +139,7 @@ export async function initCloudSync(): Promise<void> {
     apiBaseUrl,
     enabled,
     pendingMutationCount: queueLength,
+    pendingEdits: queue.pendingEditsFromQueue(await queue.getQueue()),
     status: enabled ? (isOnline() ? 'idle' : 'offline') : 'idle',
     lastError: null,
   });
@@ -210,6 +213,7 @@ export async function disconnectCloudAccount(): Promise<void> {
     enabled: false,
     status: 'idle',
     pendingMutationCount: 0,
+    pendingEdits: {},
     lastError: null,
     lastSyncedAt: null,
   });
@@ -239,7 +243,10 @@ export async function enqueueCloudMutation(
   };
 
   const next = await queue.enqueueMutation(full);
-  setCloudState({ pendingMutationCount: next.length });
+  setCloudState({
+    pendingMutationCount: next.length,
+    pendingEdits: queue.pendingEditsFromQueue(next),
+  });
 }
 
 /**
@@ -292,6 +299,7 @@ export async function syncProjectNow(projectId: string): Promise<void> {
     const remaining = await queue.removeMutations(
       mutations.map((m) => m.clientMutationId)
     );
+    setCloudState({ pendingEdits: queue.pendingEditsFromQueue(remaining) });
 
     store.setProjectCursor(projectId, response.cursor);
 

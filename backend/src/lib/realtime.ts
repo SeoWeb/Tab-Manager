@@ -19,6 +19,8 @@ export interface PresenceUser {
   userId: string;
   displayName: string;
   role: Role;
+  /** The entity + field this member is currently editing, if any. */
+  editing?: { entityId: string; field: string } | null;
 }
 
 /** Identity decoded from a single socket's hibernation tags. */
@@ -78,16 +80,21 @@ export function parsePresenceFromTags(tags: string[]): PresenceInfo | null {
  * users (a member connected from two devices) collapse to one entry, keeping
  * the display stable regardless of how many sockets a user holds.
  */
-export function presenceSnapshot(allTags: string[][]): PresenceUser[] {
+export function presenceSnapshot(
+  allTags: string[][],
+  editingByUser: Record<string, { entityId: string; field: string } | null> = {}
+): PresenceUser[] {
   const byId = new Map<string, PresenceUser>();
   for (const tags of allTags) {
     const info = parsePresenceFromTags(tags);
     if (!info) continue;
     if (!byId.has(info.userId)) {
+      const editing = editingByUser[info.userId] ?? undefined;
       byId.set(info.userId, {
         userId: info.userId,
         displayName: info.displayName,
         role: info.role,
+        ...(editing ? { editing } : {}),
       });
     }
   }
@@ -108,6 +115,12 @@ function safeDecode(value: string): string {
 }
 
 export class ProjectRoom implements DurableObject {
+  /** userId -> the entity+field they are currently editing (ephemeral). */
+  private editingByUser = new Map<
+    string,
+    { entityId: string; field: string }
+  >();
+
   constructor(
     private readonly ctx: DurableObjectState,
     private readonly _env: Env
@@ -191,16 +204,41 @@ export class ProjectRoom implements DurableObject {
     }
     if (isRecord(parsed) && parsed.type === 'ping') {
       ws.send(JSON.stringify({ type: 'pong' }));
+      return;
+    }
+    // A client reports which entity + field it is editing so collaborators can
+    // see (and avoid clobbering) each other's in-progress edits. `field` may be
+    // null to clear. Best-effort: a malformed frame is ignored.
+    if (isRecord(parsed) && parsed.type === 'editing') {
+      const info = parsePresenceFromTags(this.ctx.getTags(ws));
+      if (info && typeof parsed.entityId === 'string') {
+        if (parsed.field === null || parsed.field === undefined) {
+          this.editingByUser.delete(info.userId);
+        } else if (typeof parsed.field === 'string') {
+          this.editingByUser.set(info.userId, {
+            entityId: parsed.entityId,
+            field: parsed.field,
+          });
+        }
+        this.broadcastPresence();
+      }
     }
   }
 
   /** Hibernation handler: a member left — refresh presence for the rest. */
   async webSocketClose(
-    _ws: WebSocket,
+    ws: WebSocket,
     _code: number,
     _reason: string,
     _wasClean: boolean
   ): Promise<void> {
+    const info = parsePresenceFromTags(this.ctx.getTags(ws));
+    if (info) {
+      const stillHere = this.ctx
+        .getWebSockets()
+        .some((other) => other !== ws && this.userIdOf(other) === info.userId);
+      if (!stillHere) this.editingByUser.delete(info.userId);
+    }
     this.broadcastPresence();
   }
 
@@ -209,8 +247,13 @@ export class ProjectRoom implements DurableObject {
     ws.close(1011, 'WebSocket error');
   }
 
+  private userIdOf(ws: WebSocket): string | null {
+    return parsePresenceFromTags(this.ctx.getTags(ws))?.userId ?? null;
+  }
+
   private broadcastPresence(): void {
-    const users = presenceSnapshot(this.allSocketTags());
+    const editingByUser = Object.fromEntries(this.editingByUser);
+    const users = presenceSnapshot(this.allSocketTags(), editingByUser);
     this.broadcast(JSON.stringify({ type: 'presence', users }));
   }
 

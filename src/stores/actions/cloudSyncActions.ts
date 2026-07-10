@@ -4,8 +4,14 @@ import type {
   CloudRole,
   CloudSyncChange,
   CloudSyncState,
+  SyncConflictItem,
+  SyncConflictResolution,
 } from '@/lib/cloudflareSync/types';
 import { applyRemoteChanges } from '@/lib/cloudflareSync/applyChanges';
+import {
+  buildNotePatch,
+  buildTaskPatch,
+} from '@/lib/cloudflareSync/entityPatches';
 
 type SetState = (
   partial:
@@ -59,6 +65,9 @@ export const createCloudSyncActions = (
   /**
    * Fold server change-log rows into the local store. Own echoes (changes whose
    * `client_id` matches) are skipped so optimistic local state is preserved.
+   * Remote changes that would clobber a field we have a pending local edit for
+   * are detected (via `pendingEdits`) and surfaced as conflicts instead of being
+   * silently dropped.
    */
   mergeRemoteChanges: (changes: CloudSyncChange[], clientId: string): void => {
     const state = get();
@@ -70,7 +79,8 @@ export const createCloudSyncActions = (
         tasks: state.tasks,
       },
       changes,
-      clientId
+      clientId,
+      state.cloudSync.pendingEdits
     );
 
     _set({
@@ -79,6 +89,65 @@ export const createCloudSyncActions = (
       todos: result.todos,
       tasks: result.tasks,
     });
+
+    if (result.conflicts.length) get().addSyncConflicts(result.conflicts);
+  },
+
+  /**
+   * Merge newly detected conflicts into the pending list, de-duplicating by id
+   * (the same change can arrive over both realtime and the next pull).
+   */
+  addSyncConflicts: (items: SyncConflictItem[]): void => {
+    if (!items.length) return;
+    _set((state: AppState) => {
+      const existing = new Set(state.syncConflicts.map((c) => c.id));
+      const merged = [
+        ...state.syncConflicts,
+        ...items.filter((c) => !existing.has(c.id)),
+      ];
+      return { syncConflicts: merged };
+    });
+  },
+
+  /** Apply a user's resolution to a field conflict (local / remote / merge). */
+  resolveSyncConflict: (
+    id: string,
+    resolution: SyncConflictResolution
+  ): void => {
+    const conflict = get().syncConflicts.find((c) => c.id === id);
+    if (!conflict) return;
+
+    if (resolution === 'local') {
+      // Keep the local value; re-push it so the server adopts our edit.
+      pushResolvedValue(get, conflict);
+      get().dismissSyncConflict(id);
+      return;
+    }
+
+    _set((state: AppState) => {
+      const next = applyResolution(state, conflict, resolution);
+      return {
+        ...next,
+        syncConflicts: state.syncConflicts.filter((c) => c.id !== id),
+      };
+    });
+
+    if (resolution === 'merge') {
+      // Merging produced a local-only value that must be pushed too.
+      pushResolvedValue(get, conflict);
+    }
+  },
+
+  /** Drop a conflict from the list without applying either side. */
+  dismissSyncConflict: (id: string): void => {
+    _set((state: AppState) => ({
+      syncConflicts: state.syncConflicts.filter((c) => c.id !== id),
+    }));
+  },
+
+  /** Clear all pending conflicts (e.g. on sign-out). */
+  clearSyncConflicts: (): void => {
+    _set({ syncConflicts: [] });
   },
 
   /** Toggle a project's cloud-synced flag without touching its data. */
@@ -164,3 +233,100 @@ export const createCloudSyncActions = (
     }));
   },
 });
+
+// ---------------------------------------------------------------------------
+// Conflict resolution helpers
+//
+// A field conflict means a remote change would overwrite a field we have a
+// pending local edit for. Resolution applies the chosen value locally; for
+// `local`/`merge` the resulting local value is re-pushed so the server adopts
+// it (the server holds the remote value for that field until then).
+// ---------------------------------------------------------------------------
+
+const DATE_FIELDS = new Set(['dueDate', 'scheduledDate', 'completedAt']);
+
+function reviveForField(field: string, value: unknown): unknown {
+  if (DATE_FIELDS.has(field) && typeof value === 'string') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? value : d;
+  }
+  return value;
+}
+
+/** Combine two values for a `merge` resolution; text joins, others take remote. */
+function mergeValues(local: unknown, remote: unknown): unknown {
+  if (typeof local === 'string' && typeof remote === 'string') {
+    if (local === remote) return local;
+    return `${local}\n\n---\n\n${remote}`;
+  }
+  return remote;
+}
+
+function applyResolution(
+  state: AppState,
+  conflict: SyncConflictItem,
+  resolution: SyncConflictResolution
+): Partial<AppState> {
+  const { entityType, entityId, field, localValue, remoteValue } = conflict;
+  let setValue: unknown = remoteValue;
+  if (resolution === 'merge') setValue = mergeValues(localValue, remoteValue);
+  setValue = reviveForField(field, setValue);
+
+  if (entityType === 'task') {
+    return {
+      tasks: state.tasks.map((t) =>
+        t.id === entityId ? { ...t, [field]: setValue } : t
+      ),
+    };
+  }
+  if (entityType === 'note') {
+    return {
+      notes: state.notes.map((n) =>
+        n.id === entityId ? { ...n, [field]: setValue } : n
+      ),
+    };
+  }
+  if (entityType === 'todo') {
+    return {
+      todos: state.todos.map((t) =>
+        t.id === entityId ? { ...t, [field]: setValue } : t
+      ),
+    };
+  }
+  return {};
+}
+
+/** Re-push the current local value of a conflicting entity so the server adopts it. */
+function pushResolvedValue(
+  get: () => AppState,
+  conflict: SyncConflictItem
+): void {
+  const state = get();
+  if (conflict.entityType === 'task') {
+    const task = state.tasks.find((t) => t.id === conflict.entityId);
+    if (task) {
+      void import('@/lib/cloudflareSync/orchestrator').then((m) =>
+        m.enqueueCloudChange({
+          projectId: conflict.projectId,
+          entityType: 'task',
+          entityId: conflict.entityId,
+          operation: 'update',
+          patch: buildTaskPatch(task),
+        })
+      );
+    }
+  } else if (conflict.entityType === 'note') {
+    const note = state.notes.find((n) => n.id === conflict.entityId);
+    if (note) {
+      void import('@/lib/cloudflareSync/orchestrator').then((m) =>
+        m.enqueueCloudChange({
+          projectId: conflict.projectId,
+          entityType: 'note',
+          entityId: conflict.entityId,
+          operation: 'update',
+          patch: buildNotePatch(note),
+        })
+      );
+    }
+  }
+}

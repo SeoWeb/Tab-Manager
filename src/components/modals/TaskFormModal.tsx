@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/DatePicker';
@@ -23,7 +24,12 @@ import {
 import type { AdvancedTask, TaskPriority, TaskStatus } from '@/types/tasks';
 import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { fetchProjectMembers } from '@/lib/cloudflareSync';
-import type { CloudMember, CloudAccount } from '@/lib/cloudflareSync/types';
+import { useFieldEditPresence } from '@/lib/cloudflareSync/useFieldLock';
+import type {
+  CloudMember,
+  CloudAccount,
+  CloudPresenceUser,
+} from '@/lib/cloudflareSync/types';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -67,6 +73,7 @@ export default function TaskFormModal({
     cursors: {},
     realtimeConnected: false,
     onlinePresence: [],
+    pendingEdits: {},
   });
   const currentUser = cloudSync.account;
 
@@ -84,6 +91,17 @@ export default function TaskFormModal({
       setMembers([]);
     }
   }, [currentProjectId, project?.cloudEnabled, cloudSync.enabled]);
+
+  // Co-editing presence: broadcast which field we're editing on focus, and show
+  // a soft-lock badge when a different collaborator is editing the same field.
+  const editingId = task?.id;
+  const titleLock = useFieldEditPresence(editingId, 'title');
+  const descriptionLock = useFieldEditPresence(editingId, 'description');
+  const priorityLock = useFieldEditPresence(editingId, 'priority');
+  const statusLock = useFieldEditPresence(editingId, 'status');
+  const categoryLock = useFieldEditPresence(editingId, 'category');
+  const dueDateLock = useFieldEditPresence(editingId, 'dueDate');
+  const assigneeLock = useFieldEditPresence(editingId, 'assignee');
 
   useEffect(() => {
     if (task) {
@@ -153,24 +171,34 @@ export default function TaskFormModal({
           </DialogDescription>
         </DialogHeader>
         <div className='space-y-4 py-4'>
-          <Input
-            placeholder='Task title...'
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className='font-medium'
-          />
-          <Textarea
-            placeholder='Description (optional)...'
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className='min-h-[250px]'
-          />
+          <>
+            <Input
+              placeholder='Task title...'
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className='font-medium'
+              {...titleLock}
+              disabled={titleLock.locked}
+            />
+            <LockBadge editor={titleLock.editor} />
+          </>
+          <>
+            <Textarea
+              placeholder='Description (optional)...'
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className='min-h-[250px]'
+              {...descriptionLock}
+              disabled={descriptionLock.locked}
+            />
+            <LockBadge editor={descriptionLock.editor} />
+          </>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <Select
               value={priority}
               onValueChange={(value: TaskPriority) => setPriority(value)}
             >
-              <SelectTrigger>
+              <SelectTrigger {...priorityLock} disabled={priorityLock.locked}>
                 <SelectValue placeholder='Priority' />
               </SelectTrigger>
               <SelectContent>
@@ -184,7 +212,7 @@ export default function TaskFormModal({
               value={status}
               onValueChange={(value: TaskStatus) => setStatus(value)}
             >
-              <SelectTrigger>
+              <SelectTrigger {...statusLock} disabled={statusLock.locked}>
                 <SelectValue placeholder='Status' />
               </SelectTrigger>
               <SelectContent>
@@ -201,6 +229,8 @@ export default function TaskFormModal({
               placeholder='Category'
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              {...categoryLock}
+              disabled={categoryLock.locked}
             />
             <Input
               placeholder='Tags (comma-separated)'
@@ -220,7 +250,7 @@ export default function TaskFormModal({
                     setAssignee(value === 'unassigned' ? undefined : value)
                   }
                 >
-                  <SelectTrigger className='flex-1'>
+                  <SelectTrigger className='flex-1' {...assigneeLock}>
                     <SelectValue placeholder='Select Assignee' />
                   </SelectTrigger>
                   <SelectContent>
@@ -245,8 +275,13 @@ export default function TaskFormModal({
             </div>
           )}
           <div>
-            <label className='text-sm font-medium'>Due Date</label>
-            <DatePicker date={dueDate} setDate={setDueDate} />
+            <div className='flex items-center'>
+              <label className='text-sm font-medium'>Due Date</label>
+              <LockBadge editor={dueDateLock.editor} />
+            </div>
+            <div {...dueDateLock}>
+              <DatePicker date={dueDate} setDate={setDueDate} />
+            </div>
           </div>
         </div>
         <DialogFooter>
@@ -259,5 +294,15 @@ export default function TaskFormModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function LockBadge({ editor }: { editor?: CloudPresenceUser }) {
+  if (!editor) return null;
+  return (
+    <span className='mt-1 inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400'>
+      <Lock className='h-3 w-3' />
+      {editor.displayName} is editing this field
+    </span>
   );
 }

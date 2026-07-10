@@ -56,9 +56,12 @@ const initialState = {
     cursors: {},
     realtimeConnected: false,
     onlinePresence: [],
+    pendingEdits: {},
   },
   _hasHydrated: false,
   _themeFromStorage: false,
+  /** Field-level sync conflicts awaiting user resolution (transient). */
+  syncConflicts: [],
 };
 
 export const useAppStore = create<AppState>()(

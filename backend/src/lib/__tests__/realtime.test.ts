@@ -6,6 +6,19 @@ import {
   type PresenceUser,
 } from '../realtime';
 
+const u1Tags = buildPresenceTags({
+  userId: 'u1',
+  displayName: 'Alice',
+  role: 'owner',
+  clientId: 'c1',
+});
+const u2Tags = buildPresenceTags({
+  userId: 'u2',
+  displayName: 'Bob',
+  role: 'viewer',
+  clientId: 'c2',
+});
+
 describe('realtime presence helpers', () => {
   describe('buildPresenceTags / parsePresenceFromTags round-trip', () => {
     it('round-trips a plain ASCII identity', () => {
@@ -49,66 +62,53 @@ describe('realtime presence helpers', () => {
 
   describe('presenceSnapshot', () => {
     it('builds a roster from per-socket tag arrays', () => {
-      const tags = [
-        buildPresenceTags({
-          userId: 'u1',
-          displayName: 'Alice',
-          role: 'owner',
-          clientId: 'c1',
-        }),
-        buildPresenceTags({
-          userId: 'u2',
-          displayName: 'Bob',
-          role: 'viewer',
-          clientId: 'c2',
-        }),
-      ];
-
-      expect(presenceSnapshot(tags)).toEqual<PresenceUser[]>([
+      expect(presenceSnapshot([u1Tags, u2Tags])).toEqual<PresenceUser[]>([
         { userId: 'u1', displayName: 'Alice', role: 'owner' },
         { userId: 'u2', displayName: 'Bob', role: 'viewer' },
       ]);
     });
 
     it('collapses a user connected from multiple sockets into one entry', () => {
-      const tags = [
-        buildPresenceTags({
-          userId: 'u1',
-          displayName: 'Alice',
-          role: 'owner',
-          clientId: 'c1',
-        }),
-        buildPresenceTags({
-          userId: 'u1',
-          displayName: 'Alice',
-          role: 'owner',
-          clientId: 'c2',
-        }),
-      ];
-
-      const snapshot = presenceSnapshot(tags);
+      const c1 = buildPresenceTags({
+        userId: 'u1',
+        displayName: 'Alice',
+        role: 'owner',
+        clientId: 'c1',
+      });
+      const c2 = buildPresenceTags({
+        userId: 'u1',
+        displayName: 'Alice',
+        role: 'owner',
+        clientId: 'c2',
+      });
+      const snapshot = presenceSnapshot([c1, c2]);
       expect(snapshot).toHaveLength(1);
       expect(snapshot[0].userId).toBe('u1');
     });
 
     it('skips sockets whose tags lack a user id', () => {
-      const tags = [
-        buildPresenceTags({
-          userId: 'u1',
-          displayName: 'Alice',
-          role: 'owner',
-          clientId: 'c1',
-        }),
-        ['role:viewer'], // malformed / no user tag
-      ];
-
-      expect(presenceSnapshot(tags)).toEqual<PresenceUser[]>([
-        { userId: 'u1', displayName: 'Alice', role: 'owner' },
-      ]);
+      expect(presenceSnapshot([u1Tags, ['role:viewer']])).toEqual<
+        PresenceUser[]
+      >([{ userId: 'u1', displayName: 'Alice', role: 'owner' }]);
     });
 
     it('returns an empty roster for an empty set', () => {
       expect(presenceSnapshot([])).toEqual([]);
+    });
+
+    it('attaches the editing field when provided', () => {
+      const snapshot = presenceSnapshot([u1Tags], {
+        u1: { entityId: 'task-1', field: 'title' },
+      });
+      expect(snapshot[0].editing).toEqual({
+        entityId: 'task-1',
+        field: 'title',
+      });
+    });
+
+    it('omits editing when the user is not editing anything', () => {
+      const snapshot = presenceSnapshot([u1Tags], {});
+      expect(snapshot[0].editing).toBeUndefined();
     });
   });
 });

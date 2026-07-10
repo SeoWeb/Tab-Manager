@@ -38,6 +38,12 @@ export interface CloudPresenceUser {
   userId: string;
   displayName: string;
   role: CloudRole;
+  /**
+   * The entity + field this member is currently editing, if any. Drives the
+   * soft-lock UI so collaborators can see (and avoid clobbering) each other's
+   * in-progress edits. Absent when the member is not editing a field.
+   */
+  editing?: { entityId: string; field: string } | null;
 }
 
 /** A local mutation waiting to be pushed to the server. */
@@ -78,6 +84,34 @@ export interface CloudSyncConflict {
   currentVersion: number;
   expectedVersion?: number;
 }
+
+/**
+ * A field-level conflict detected locally when a remote change arrives that
+ * would overwrite a field we have a *pending, not-yet-pushed* edit for. Instead
+ * of silently dropping the local edit (last-write-wins), we keep the local value
+ * and surface this so the user can pick local / remote / merge.
+ */
+export interface SyncConflictItem {
+  /** Stable id: `${entityId}:${field}:${changeId}`. */
+  id: string;
+  entityType: CloudEntityType;
+  entityId: string;
+  /** Entity field name (e.g. `title`, `description`, `status`, `content`). */
+  field: string;
+  localValue: unknown;
+  remoteValue: unknown;
+  projectId: string;
+  createdAt: string;
+}
+
+export type SyncConflictResolution = 'local' | 'remote' | 'merge';
+
+/**
+ * Field names a local client currently has pending (enqueued but not yet
+ * acknowledged by the server) edits for, keyed by entity id. Used to detect
+ * when an incoming remote change would clobber an unsynced local edit.
+ */
+export type DirtyFields = Record<string, string[]>;
 
 /** Response shape of `POST /projects/:projectId/sync`. */
 export interface CloudSyncResponse {
@@ -202,4 +236,10 @@ export interface CloudSyncState {
   realtimeConnected: boolean;
   /** Members currently connected to the active project's realtime room. */
   onlinePresence: CloudPresenceUser[];
+  /**
+   * Field names this client has pending (enqueued but not-yet-acknowledged)
+   * edits for, keyed by entity id. Drives conflict detection when remote
+   * changes arrive. Rebuilt from the mutation queue after every enqueue/sync.
+   */
+  pendingEdits: DirtyFields;
 }

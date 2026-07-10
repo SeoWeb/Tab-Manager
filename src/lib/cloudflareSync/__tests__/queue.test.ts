@@ -1,4 +1,10 @@
-import { getQueue, enqueueMutation, removeMutations } from '../queue';
+import {
+  getQueue,
+  enqueueMutation,
+  removeMutations,
+  dirtyFieldsFromPatch,
+  pendingEditsFromQueue,
+} from '../queue';
 import type { CloudMutation } from '../types';
 
 /** In-memory chrome.storage.local mock that keeps structured values as-is. */
@@ -90,5 +96,63 @@ describe('Cloud Mutation Queue Serialization', () => {
       'mut-3',
       'mut-4',
     ]);
+  });
+});
+
+describe('dirty-field tracking', () => {
+  it('derives written fields from a task patch, ignoring collectionId', () => {
+    expect(
+      dirtyFieldsFromPatch({
+        title: 'New',
+        collectionId: 'c-1',
+        payload: {
+          description: 'd',
+          priority: 'high',
+          isArchived: true,
+          dueDate: null,
+        },
+      })
+    ).toEqual(['title', 'description', 'priority', 'isArchived', 'dueDate']);
+    expect(
+      dirtyFieldsFromPatch({ payload: { content: 'x', isPinned: true } })
+    ).toEqual(['content', 'isPinned']);
+  });
+
+  it('unions pending update fields per entity and drops deletes', () => {
+    const queue: CloudMutation[] = [
+      {
+        clientMutationId: 'm1',
+        projectId: 'p1',
+        entityType: 'task',
+        entityId: 't-1',
+        operation: 'update',
+        patch: { title: 'A', payload: { description: 'd' } },
+        clientId: 'c1',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        clientMutationId: 'm2',
+        projectId: 'p1',
+        entityType: 'task',
+        entityId: 't-1',
+        operation: 'update',
+        patch: { payload: { status: 'todo', priority: 'low' } },
+        clientId: 'c1',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        clientMutationId: 'm3',
+        projectId: 'p1',
+        entityType: 'task',
+        entityId: 't-1',
+        operation: 'delete',
+        patch: {},
+        clientId: 'c1',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    expect(pendingEditsFromQueue(queue)).toEqual({
+      't-1': ['title', 'description', 'status', 'priority'],
+    });
   });
 });

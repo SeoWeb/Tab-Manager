@@ -11,7 +11,7 @@ import type {
   TaskReminder,
   RecurringPattern,
 } from '@/types/tasks';
-import type { CloudSyncChange } from './types';
+import type { CloudSyncChange, DirtyFields, SyncConflictItem } from './types';
 
 /**
  * Pure reducer that folds server change-log rows into the local store shape.
@@ -39,6 +39,17 @@ export interface ApplyChangesResult extends ApplyChangesInput {
   applied: number;
   /** Own echoes plus changes that referenced unknown entities. */
   skipped: number;
+  /** Field-level conflicts where a remote change would clobber a pending local edit. */
+  conflicts: SyncConflictItem[];
+}
+
+/**
+ * Context threaded through the applier so it can detect (and avoid) silently
+ * dropping local edits that have not yet been pushed to the server.
+ */
+interface ApplyContext {
+  dirtyFields: DirtyFields;
+  conflicts: SyncConflictItem[];
 }
 
 const TASK_PRIORITIES: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
@@ -54,12 +65,15 @@ const TASK_STATUSES: TaskStatus[] = [
 export function applyRemoteChanges(
   input: ApplyChangesInput,
   changes: CloudSyncChange[],
-  clientId: string
+  clientId: string,
+  dirtyFields: DirtyFields = {}
 ): ApplyChangesResult {
   // Deep-clone so we never mutate the live store arrays/dates.
   const state = structuredClone(input) as ApplyChangesInput;
   let applied = 0;
   let skipped = 0;
+  const conflicts: SyncConflictItem[] = [];
+  const ctx: ApplyContext = { dirtyFields, conflicts };
 
   for (const change of changes) {
     // Skip our own echoes for update/delete operations: local state already
@@ -81,19 +95,20 @@ export function applyRemoteChanges(
       continue;
     }
 
-    if (applyChange(state, change)) {
+    if (applyChange(state, change, ctx)) {
       applied += 1;
     } else {
       skipped += 1;
     }
   }
 
-  return { ...state, applied, skipped };
+  return { ...state, applied, skipped, conflicts };
 }
 
 function applyChange(
   state: ApplyChangesInput,
-  change: CloudSyncChange
+  change: CloudSyncChange,
+  ctx: ApplyContext
 ): boolean {
   switch (change.entity_type) {
     case 'project':
@@ -103,11 +118,11 @@ function applyChange(
     case 'link':
       return applyLink(state, change);
     case 'note':
-      return applyNote(state, change);
+      return applyNote(state, change, ctx);
     case 'todo':
-      return applyTodo(state, change);
+      return applyTodo(state, change, ctx);
     case 'task':
-      return applyTask(state, change);
+      return applyTask(state, change, ctx);
     default:
       return false;
   }
@@ -378,10 +393,85 @@ function sortLinksByOrder(collection: Collection): void {
 }
 
 // ---------------------------------------------------------------------------
+// Conflict detection (field-level, dirty-aware)
+//
+// When a remote change arrives for a field the local client has a *pending,
+// not-yet-pushed* edit for, applying it would silently drop the user's in-flight
+// work (last-write-wins). Instead we keep the local value and record a conflict
+// so the UI can offer local / remote / merge. Fields without a pending local
+// edit merge normally (true field-level merge), preserving unrelated edits.
+// ---------------------------------------------------------------------------
+
+/** Fields a remote change would write: top-level `title` plus every payload key. */
+function touchedFieldsOf(
+  patch: Record<string, unknown>,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if ('title' in patch) out.title = patch.title;
+  for (const k of Object.keys(payload)) out[k] = payload[k];
+  return out;
+}
+
+function valuesEqual(a: unknown, b: unknown): boolean {
+  const na = a instanceof Date ? a.toISOString() : a;
+  const nb = b instanceof Date ? b.toISOString() : b;
+  if (na === nb) return true;
+  try {
+    return JSON.stringify(na) === JSON.stringify(nb);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Compare a remote change's touched fields against the local entity + the local
+ * dirty set. Returns the set of fields to SKIP (keep local) and records a
+ * conflict for each, so the local in-flight edit is never silently overwritten.
+ */
+function detectConflicts(params: {
+  entityType: CloudSyncChange['entity_type'];
+  entityId: string;
+  projectId: string;
+  current: Record<string, unknown>;
+  touched: Record<string, unknown>;
+  ctx: ApplyContext;
+  changeId: number;
+}): Set<string> {
+  const { entityType, entityId, projectId, current, touched, ctx, changeId } =
+    params;
+  const dirty = ctx.dirtyFields[entityId];
+  const skip = new Set<string>();
+  if (!dirty || dirty.length === 0) return skip;
+
+  for (const [field, remoteValue] of Object.entries(touched)) {
+    if (!dirty.includes(field)) continue;
+    const localValue = current[field];
+    if (valuesEqual(localValue, remoteValue)) continue;
+    skip.add(field);
+    ctx.conflicts.push({
+      id: `${entityId}:${field}:${changeId}`,
+      entityType,
+      entityId,
+      field,
+      localValue,
+      remoteValue,
+      projectId,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  return skip;
+}
+
+// ---------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
 
-function applyNote(state: ApplyChangesInput, change: CloudSyncChange): boolean {
+function applyNote(
+  state: ApplyChangesInput,
+  change: CloudSyncChange,
+  ctx: ApplyContext
+): boolean {
   const patch = patchOf(change);
   const payload = payloadOf(patch);
   const id = change.entity_id;
@@ -399,13 +489,22 @@ function applyNote(state: ApplyChangesInput, change: CloudSyncChange): boolean {
     return true;
   }
 
-  let found = false;
-  state.notes = state.notes.map((n) => {
-    if (n.id !== id) return n;
-    found = true;
-    return mergeNote(n, patch, payload);
+  const existing = state.notes.find((n) => n.id === id);
+  if (!existing) return false;
+  const skip = detectConflicts({
+    entityType: 'note',
+    entityId: id,
+    projectId: change.project_id,
+    current: existing as unknown as Record<string, unknown>,
+    touched: touchedFieldsOf(patch, payload),
+    ctx,
+    changeId: change.id,
   });
-  return found;
+
+  state.notes = state.notes.map((n) =>
+    n.id === id ? mergeNote(n, patch, payload, skip) : n
+  );
+  return true;
 }
 
 function buildNote(
@@ -432,20 +531,29 @@ function buildNote(
 function mergeNote(
   note: Note,
   patch: Record<string, unknown>,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  skip?: Set<string>
 ): Note {
   return {
     ...note,
-    title: pickString([patch.title, payload.title]) ?? note.title,
-    content:
-      'content' in payload
+    title: skip?.has('title')
+      ? note.title
+      : (pickString([patch.title, payload.title]) ?? note.title),
+    content: skip?.has('content')
+      ? note.content
+      : 'content' in payload
         ? (pickString([payload.content]) ?? note.content)
         : note.content,
-    color:
-      'color' in payload
+    color: skip?.has('color')
+      ? note.color
+      : 'color' in payload
         ? (pickString([payload.color]) ?? note.color)
         : note.color,
-    isPinned: 'isPinned' in payload ? payload.isPinned === true : note.isPinned,
+    isPinned: skip?.has('isPinned')
+      ? note.isPinned
+      : 'isPinned' in payload
+        ? payload.isPinned === true
+        : note.isPinned,
     updatedAt: new Date(),
   };
 }
@@ -454,7 +562,11 @@ function mergeNote(
 // Todos (legacy)
 // ---------------------------------------------------------------------------
 
-function applyTodo(state: ApplyChangesInput, change: CloudSyncChange): boolean {
+function applyTodo(
+  state: ApplyChangesInput,
+  change: CloudSyncChange,
+  ctx: ApplyContext
+): boolean {
   const patch = patchOf(change);
   const payload = payloadOf(patch);
   const id = change.entity_id;
@@ -470,13 +582,22 @@ function applyTodo(state: ApplyChangesInput, change: CloudSyncChange): boolean {
     return true;
   }
 
-  let found = false;
-  state.todos = state.todos.map((t) => {
-    if (t.id !== id) return t;
-    found = true;
-    return mergeTodo(t, patch, payload);
+  const existing = state.todos.find((t) => t.id === id);
+  if (!existing) return false;
+  const skip = detectConflicts({
+    entityType: 'todo',
+    entityId: id,
+    projectId: change.project_id,
+    current: existing as unknown as Record<string, unknown>,
+    touched: touchedFieldsOf(patch, payload),
+    ctx,
+    changeId: change.id,
   });
-  return found;
+
+  state.todos = state.todos.map((t) =>
+    t.id === id ? mergeTodo(t, patch, payload, skip) : t
+  );
+  return true;
 }
 
 function buildTodo(
@@ -499,15 +620,22 @@ function buildTodo(
 function mergeTodo(
   todo: LegacyTask,
   patch: Record<string, unknown>,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  skip?: Set<string>
 ): LegacyTask {
   return {
     ...todo,
-    text: pickString([patch.title, payload.text]) ?? todo.text,
-    completed:
-      'completed' in payload ? payload.completed === true : todo.completed,
-    category:
-      'category' in payload
+    text: skip?.has('text')
+      ? todo.text
+      : (pickString([patch.title, payload.text]) ?? todo.text),
+    completed: skip?.has('completed')
+      ? todo.completed
+      : 'completed' in payload
+        ? payload.completed === true
+        : todo.completed,
+    category: skip?.has('category')
+      ? todo.category
+      : 'category' in payload
         ? (pickString([payload.category]) ?? todo.category)
         : todo.category,
   };
@@ -517,7 +645,11 @@ function mergeTodo(
 // Tasks
 // ---------------------------------------------------------------------------
 
-function applyTask(state: ApplyChangesInput, change: CloudSyncChange): boolean {
+function applyTask(
+  state: ApplyChangesInput,
+  change: CloudSyncChange,
+  ctx: ApplyContext
+): boolean {
   const patch = patchOf(change);
   const payload = payloadOf(patch);
   const id = change.entity_id;
@@ -535,13 +667,22 @@ function applyTask(state: ApplyChangesInput, change: CloudSyncChange): boolean {
     return true;
   }
 
-  let found = false;
-  state.tasks = state.tasks.map((t) => {
-    if (t.id !== id) return t;
-    found = true;
-    return mergeTask(t, patch, payload);
+  const existing = state.tasks.find((t) => t.id === id);
+  if (!existing) return false;
+  const skip = detectConflicts({
+    entityType: 'task',
+    entityId: id,
+    projectId: change.project_id,
+    current: existing as unknown as Record<string, unknown>,
+    touched: touchedFieldsOf(patch, payload),
+    ctx,
+    changeId: change.id,
   });
-  return found;
+
+  state.tasks = state.tasks.map((t) =>
+    t.id === id ? mergeTask(t, patch, payload, skip) : t
+  );
+  return true;
 }
 
 function buildTask(
@@ -603,71 +744,118 @@ function buildTask(
 function mergeTask(
   task: AdvancedTask,
   patch: Record<string, unknown>,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  skip?: Set<string>
 ): AdvancedTask {
   return {
     ...task,
-    title: pickString([patch.title, payload.title]) ?? task.title,
-    description:
-      pickString([patch.description, payload.description]) ?? task.description,
-    priority: pickTaskPriority(payload.priority) ?? task.priority,
-    status: pickTaskStatus(payload.status) ?? task.status,
-    dueDate: payloadHas(payload, 'dueDate')
-      ? parseDate(payload.dueDate)
-      : task.dueDate,
-    scheduledDate: payloadHas(payload, 'scheduledDate')
-      ? parseDate(payload.scheduledDate)
-      : task.scheduledDate,
-    estimatedDuration: payloadHas(payload, 'estimatedDuration')
-      ? pickNumber([payload.estimatedDuration])
-      : task.estimatedDuration,
-    actualDuration: payloadHas(payload, 'actualDuration')
-      ? pickNumber([payload.actualDuration])
-      : task.actualDuration,
-    category: pickString([payload.category]) ?? task.category,
-    tags:
-      'tags' in payload
+    title: skip?.has('title')
+      ? task.title
+      : (pickString([patch.title, payload.title]) ?? task.title),
+    description: skip?.has('description')
+      ? task.description
+      : (pickString([patch.description, payload.description]) ??
+        task.description),
+    priority: skip?.has('priority')
+      ? task.priority
+      : (pickTaskPriority(payload.priority) ?? task.priority),
+    status: skip?.has('status')
+      ? task.status
+      : (pickTaskStatus(payload.status) ?? task.status),
+    dueDate: skip?.has('dueDate')
+      ? task.dueDate
+      : payloadHas(payload, 'dueDate')
+        ? parseDate(payload.dueDate)
+        : task.dueDate,
+    scheduledDate: skip?.has('scheduledDate')
+      ? task.scheduledDate
+      : payloadHas(payload, 'scheduledDate')
+        ? parseDate(payload.scheduledDate)
+        : task.scheduledDate,
+    estimatedDuration: skip?.has('estimatedDuration')
+      ? task.estimatedDuration
+      : payloadHas(payload, 'estimatedDuration')
+        ? pickNumber([payload.estimatedDuration])
+        : task.estimatedDuration,
+    actualDuration: skip?.has('actualDuration')
+      ? task.actualDuration
+      : payloadHas(payload, 'actualDuration')
+        ? pickNumber([payload.actualDuration])
+        : task.actualDuration,
+    category: skip?.has('category')
+      ? task.category
+      : (pickString([payload.category]) ?? task.category),
+    tags: skip?.has('tags')
+      ? task.tags
+      : 'tags' in payload
         ? (pickStringArray([payload.tags]) ?? task.tags)
         : task.tags,
-    parentTaskId: payloadHas(payload, 'parentTaskId')
-      ? pickString([payload.parentTaskId])
-      : task.parentTaskId,
-    subtasks:
-      'subtasks' in payload
+    parentTaskId: skip?.has('parentTaskId')
+      ? task.parentTaskId
+      : payloadHas(payload, 'parentTaskId')
+        ? pickString([payload.parentTaskId])
+        : task.parentTaskId,
+    subtasks: skip?.has('subtasks')
+      ? task.subtasks
+      : 'subtasks' in payload
         ? (pickStringArray([payload.subtasks]) ?? task.subtasks)
         : task.subtasks,
-    attachments: payloadHas(payload, 'attachments')
-      ? reviveAttachments(payload.attachments)
-      : task.attachments,
-    notes: pickString([payload.notes]) ?? task.notes,
-    progress: pickNumber([payload.progress]) ?? task.progress,
-    comments: payloadHas(payload, 'comments')
-      ? reviveComments(payload.comments)
-      : task.comments,
-    activities: payloadHas(payload, 'activities')
-      ? reviveActivities(payload.activities)
-      : task.activities,
-    isArchived: payloadHas(payload, 'isArchived')
-      ? payload.isArchived === true
-      : task.isArchived,
-    isFavorite: payloadHas(payload, 'isFavorite')
-      ? payload.isFavorite === true
-      : task.isFavorite,
-    customFields: payloadHas(payload, 'customFields')
-      ? reviveCustomFields(payload.customFields)
-      : task.customFields,
-    reminders: payloadHas(payload, 'reminders')
-      ? reviveReminders(payload.reminders)
-      : task.reminders,
-    assignee: payloadHas(payload, 'assignee')
-      ? pickString([payload.assignee])
-      : task.assignee,
-    completedAt: payloadHas(payload, 'completedAt')
-      ? parseDate(payload.completedAt)
-      : task.completedAt,
-    recurringPattern: payloadHas(payload, 'recurringPattern')
-      ? reviveRecurringPattern(payload.recurringPattern)
-      : task.recurringPattern,
+    attachments: skip?.has('attachments')
+      ? task.attachments
+      : payloadHas(payload, 'attachments')
+        ? reviveAttachments(payload.attachments)
+        : task.attachments,
+    notes: skip?.has('notes')
+      ? task.notes
+      : (pickString([payload.notes]) ?? task.notes),
+    progress: skip?.has('progress')
+      ? task.progress
+      : (pickNumber([payload.progress]) ?? task.progress),
+    comments: skip?.has('comments')
+      ? task.comments
+      : payloadHas(payload, 'comments')
+        ? reviveComments(payload.comments)
+        : task.comments,
+    activities: skip?.has('activities')
+      ? task.activities
+      : payloadHas(payload, 'activities')
+        ? reviveActivities(payload.activities)
+        : task.activities,
+    isArchived: skip?.has('isArchived')
+      ? task.isArchived
+      : payloadHas(payload, 'isArchived')
+        ? payload.isArchived === true
+        : task.isArchived,
+    isFavorite: skip?.has('isFavorite')
+      ? task.isFavorite
+      : payloadHas(payload, 'isFavorite')
+        ? payload.isFavorite === true
+        : task.isFavorite,
+    customFields: skip?.has('customFields')
+      ? task.customFields
+      : payloadHas(payload, 'customFields')
+        ? reviveCustomFields(payload.customFields)
+        : task.customFields,
+    reminders: skip?.has('reminders')
+      ? task.reminders
+      : payloadHas(payload, 'reminders')
+        ? reviveReminders(payload.reminders)
+        : task.reminders,
+    assignee: skip?.has('assignee')
+      ? task.assignee
+      : payloadHas(payload, 'assignee')
+        ? pickString([payload.assignee])
+        : task.assignee,
+    completedAt: skip?.has('completedAt')
+      ? task.completedAt
+      : payloadHas(payload, 'completedAt')
+        ? parseDate(payload.completedAt)
+        : task.completedAt,
+    recurringPattern: skip?.has('recurringPattern')
+      ? task.recurringPattern
+      : payloadHas(payload, 'recurringPattern')
+        ? reviveRecurringPattern(payload.recurringPattern)
+        : task.recurringPattern,
     updatedAt: new Date(),
   };
 }

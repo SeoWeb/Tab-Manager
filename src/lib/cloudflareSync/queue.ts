@@ -3,7 +3,43 @@ import {
   writeJson,
   CLOUD_SYNC_STORAGE_KEYS,
 } from '@/lib/cloudflareSync/storage';
-import type { CloudMutation } from './types';
+import type { CloudMutation, DirtyFields } from './types';
+
+/**
+ * Derive the set of entity field names a mutation's patch would write. Used to
+ * track which fields have pending (un-pushed) local edits so incoming remote
+ * changes to those same fields can be flagged as conflicts. `collectionId` is a
+ * server-binding hint, not a mergeable entity field, so it is excluded.
+ */
+export function dirtyFieldsFromPatch(patch: Record<string, unknown>): string[] {
+  const payload = (patch.payload ?? {}) as Record<string, unknown>;
+  const fields = new Set<string>();
+  if ('title' in patch) fields.add('title');
+  for (const key of Object.keys(payload)) {
+    if (key === 'collectionId') continue;
+    fields.add(key);
+  }
+  return [...fields];
+}
+
+/**
+ * Rebuild the full dirty-field map from the current mutation queue. An entity's
+ * dirty fields are the union of every pending `update`/`create` mutation's
+ * written fields (a `delete` only clears nothing here; its fields drop out once
+ * the mutation is removed). Called after every enqueue and after a sync drains
+ * the queue, so `pendingEdits` always reflects what is still unsynced.
+ */
+export function pendingEditsFromQueue(queue: CloudMutation[]): DirtyFields {
+  const result: DirtyFields = {};
+  for (const mutation of queue) {
+    if (mutation.operation === 'delete') continue;
+    const fields = dirtyFieldsFromPatch(mutation.patch);
+    if (fields.length === 0) continue;
+    const existing = result[mutation.entityId] ?? [];
+    result[mutation.entityId] = [...new Set([...existing, ...fields])];
+  }
+  return result;
+}
 
 /**
  * The local-first mutation queue.

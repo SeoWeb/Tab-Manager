@@ -174,8 +174,11 @@ When connected, sync is a local-first mutation queue:
 2. **Push/pull** (`syncProjectNow`) sends queued mutations to
    `POST /projects/:id/sync` and pulls change-log rows since the last cursor.
 3. **Apply** (`applyRemoteChanges`) folds remote rows into the store, skipping
-   this client's own echoes. Conflicts surface as status/errors under
-   last-write-wins.
+   this client's own echoes. Unrelated fields merge independently (true
+   field-level merge). When a remote change would overwrite a field this client
+   has a *pending, not-yet-pushed* edit for, it is kept locally and surfaced as a
+   resolvable conflict (Keep mine / Take theirs / Merge) in the Cloud Sync panel
+   instead of being silently dropped.
 4. The **background service worker** runs the same flow on an alarm so cloud
    projects stay current while the popup is closed; an advisory lock prevents
    the popup and the worker from double-syncing.
@@ -219,8 +222,12 @@ Notes, todos, and tasks now push to the cloud just like collections and links:
   `create` mutations for every existing item, so the server mirrors local state
   on the next sync.
 
-> Scope note: pin toggles, note/task duplication, task archiving, and subtasks are
-> intentionally **not** cloud-synced in this phase (the core CRUD + toggle are).
+> Scope note: pin toggles, note/task duplication, task archiving, and subtasks
+> **are** cloud-synced (the patch builders carry `isPinned`, `isArchived`,
+> `subtasks`, `isFavorite`, etc., and every action enqueues a mutation). On a
+> shared project, concurrent edits to the *same field* are detected and surfaced
+> as resolvable conflicts rather than being lost to last-write-wins; live
+> co-editing presence soft-locks a field while a collaborator is editing it.
 > See [`PER_PROJECT_VIEWS_SYNC_PLAN.md`](./PER_PROJECT_VIEWS_SYNC_PLAN.md).
 
 ---

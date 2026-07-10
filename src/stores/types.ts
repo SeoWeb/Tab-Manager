@@ -21,6 +21,8 @@ import type {
   CloudRole,
   CloudSyncChange,
   CloudSyncState,
+  SyncConflictItem,
+  SyncConflictResolution,
 } from '@/lib/cloudflareSync/types';
 
 // Define ActiveViewType
@@ -149,6 +151,8 @@ export interface AppState {
   migrateProjectOrder: () => void;
 
   // Cloud sync actions
+  /** Field-level sync conflicts awaiting user resolution (transient, not persisted). */
+  syncConflicts: SyncConflictItem[];
   setCloudSyncState: (patch: Partial<Omit<CloudSyncState, 'cursors'>>) => void;
   setProjectCursor: (projectId: string, cursor: number) => void;
   clearProjectCursor: (projectId: string) => void;
@@ -158,7 +162,14 @@ export interface AppState {
   setRealtimeConnected: (connected: boolean) => void;
   /** Members currently connected to the active project's realtime room. */
   setOnlinePresence: (users: CloudPresenceUser[]) => void;
-  /** Toggle a project's cloud-synced flag (used by convert/disconnect). */
+  /** Merge newly detected field conflicts into the pending-resolution list. */
+  addSyncConflicts: (items: SyncConflictItem[]) => void;
+  /** Resolve a field conflict by keeping local, taking remote, or merging. */
+  resolveSyncConflict: (id: string, resolution: SyncConflictResolution) => void;
+  /** Dismiss a single conflict without applying either side. */
+  dismissSyncConflict: (id: string) => void;
+  /** Clear all pending conflicts (e.g. on sign-out). */
+  clearSyncConflicts: () => void;
   setProjectCloudEnabled: (projectId: string, enabled: boolean) => void;
   /** Set the current user's role on a cloud project (Phase 4 role refresh). */
   setProjectCloudRole: (projectId: string, role: CloudRole) => void;

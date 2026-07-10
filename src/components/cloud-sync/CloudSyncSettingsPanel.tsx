@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/stores/appStore';
 import { CloudSyncStatusBadge } from './CloudSyncStatusBadge';
+import { SyncConflictsPanel } from './SyncConflictsPanel';
 import {
   connectCloudAccount,
   disconnectCloudAccount,
@@ -99,6 +100,7 @@ export function CloudSyncSettingsPanel() {
         {/* Status / account */}
         {isConnected ? (
           <div className='space-y-3'>
+            <SyncConflictsPanel />
             <div className='rounded-md border p-3 text-sm'>
               <div className='flex items-center gap-2'>
                 <CheckCircle2 className='h-4 w-4 text-green-500' />
