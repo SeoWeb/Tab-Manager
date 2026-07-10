@@ -26,8 +26,8 @@
 
 ## 6. Loading skeletons & states
 
-- [ ] 6.1 Add `Skeleton` fallbacks to all new `<Suspense>` boundaries
-- [ ] 6.2 Add `Skeleton` placeholders for large/empty lists during initial store hydration (`_hasHydrated`)
+- [x] 6.1 Add `Skeleton` fallbacks to all new `<Suspense>` boundaries
+- [x] 6.2 Add `Skeleton` placeholders for large/empty lists during initial store hydration (`_hasHydrated`)
 
 ## 7. Verify & close out
 

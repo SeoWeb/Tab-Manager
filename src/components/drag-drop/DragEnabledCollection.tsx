@@ -32,6 +32,7 @@ import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { useVirtualScroll } from '@/lib/virtualScroll';
 import { useMainScroll } from '@/lib/scrollContext';
+import { useHasHydrated } from '@/hooks/useAppStoreWithDefaults';
 
 // Link grid layout constants — single source of truth for both the JS column
 // count math and the CSS grid template (kept in sync with `w-64` / `gap-2`).
@@ -62,6 +63,7 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   );
   const openAddLinkModal = useAppStore((state) => state.openAddLinkModal);
   const { linkDropPlaceholder } = useDragAndDropContext();
+  const _hasHydrated = useHasHydrated();
 
   const { setNodeRef, isOver, active } = useDroppable({
     id: `collection-${collection.id}`,
@@ -124,6 +126,26 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   }, [columnCount, virtualizer]);
 
   const virtualRows = virtualizer.getVirtualItems();
+
+  if (!_hasHydrated) {
+    return (
+      <div className='relative bg-secondary/50 rounded-lg border border-border p-4'>
+        <div className='flex items-center gap-2 mb-3'>
+          <Skeleton className='h-5 w-5 rounded' />
+          <Skeleton className='h-4 w-40' />
+          <div className='ml-auto flex gap-1'>
+            <Skeleton className='h-6 w-6 rounded' />
+            <Skeleton className='h-6 w-6 rounded' />
+          </div>
+        </div>
+        <div className='grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className='h-16 w-full rounded-md' />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

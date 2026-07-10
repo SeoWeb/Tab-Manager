@@ -69,7 +69,10 @@ async function countOwners(env: Env, projectId: string): Promise<number> {
   return row?.n ?? 0;
 }
 
-export async function countMembers(env: Env, projectId: string): Promise<number> {
+export async function countMembers(
+  env: Env,
+  projectId: string
+): Promise<number> {
   const row = await env.D1_DATABASE.prepare(
     'SELECT COUNT(*) AS n FROM project_members WHERE project_id = ?'
   )

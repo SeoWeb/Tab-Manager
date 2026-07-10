@@ -67,7 +67,9 @@ function isBrowser(): boolean {
 export function readJson<T>(key: CloudSyncStorageKey, fallback: T): Promise<T> {
   if (key === CLOUD_SYNC_STORAGE_KEYS.clientId) {
     const sessionValue = readClientId();
-    return Promise.resolve(sessionValue === null ? fallback : (sessionValue as T));
+    return Promise.resolve(
+      sessionValue === null ? fallback : (sessionValue as T)
+    );
   }
   if (!isBrowser()) return Promise.resolve(fallback);
   return get<T>(key)
