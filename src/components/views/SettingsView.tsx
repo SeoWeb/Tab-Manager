@@ -1,6 +1,7 @@
 'use client';
 
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,10 +14,12 @@ import { Menu } from 'lucide-react';
 import ThemeToggle from '@/components/main-content/ThemeToggle';
 
 export default function SettingsView() {
-  const { themeColor, setThemeColor } = useAppStore((state) => ({
-    themeColor: state.themeColor,
-    setThemeColor: state.setThemeColor,
-  }));
+  const { themeColor, setThemeColor } = useAppStore(
+    useShallow((state) => ({
+      themeColor: state.themeColor,
+      setThemeColor: state.setThemeColor,
+    }))
+  );
   const { toggleSidebar } = useSidebarState();
 
   return (

@@ -3,15 +3,18 @@
 import { useMemo } from 'react';
 import type { Link } from '@/types';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface FaviconDebugInfoProps {
   link: Link;
 }
 
 export default function FaviconDebugInfo({ link }: FaviconDebugInfoProps) {
-  const { projects } = useAppStore((state) => ({
-    projects: state.projects,
-  }));
+  const { projects } = useAppStore(
+    useShallow((state) => ({
+      projects: state.projects,
+    }))
+  );
 
   // Build a map of all links across all projects and collections
   // to avoid O(N) searching for each link on every render.

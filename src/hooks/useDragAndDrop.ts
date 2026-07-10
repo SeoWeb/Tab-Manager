@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { createLinkDataFromTab } from '@/lib/faviconUtils';
 
 export interface DragItem {
@@ -85,13 +86,15 @@ export function useDragAndDrop() {
     reorderLinks,
     addLink,
     reorderProjects,
-  } = useAppStore((state) => ({
-    moveLink: state.moveLink,
-    reorderCollections: state.reorderCollections,
-    reorderLinks: state.reorderLinks,
-    addLink: state.addLink,
-    reorderProjects: state.reorderProjects,
-  }));
+  } = useAppStore(
+    useShallow((state) => ({
+      moveLink: state.moveLink,
+      reorderCollections: state.reorderCollections,
+      reorderLinks: state.reorderLinks,
+      addLink: state.addLink,
+      reorderProjects: state.reorderProjects,
+    }))
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

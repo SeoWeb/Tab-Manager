@@ -5,6 +5,7 @@ import {
 } from '@/hooks/useAppStoreWithDefaults';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import ProjectHeader from './ProjectHeader';
 import DragEnabledCollectionsList from './DragEnabledCollectionsList';
 import { Collection, Project } from '@/types';
@@ -30,15 +31,17 @@ const MainContentArea: React.FC = () => {
     sortOption,
     setSearchQuery,
     toggleAllCollections,
-  } = useAppStore((state) => ({
-    searchQuery: state.searchQuery,
-    searchFilters: state.searchFilters,
-    sortOption: state.sortOption,
-    setSearchQuery: state.setSearchQuery,
-    toggleAllCollections: state.toggleAllCollections,
-    tasks: state.tasks,
-    setActiveTask: state.setActiveTask,
-  }));
+  } = useAppStore(
+    useShallow((state) => ({
+      searchQuery: state.searchQuery,
+      searchFilters: state.searchFilters,
+      sortOption: state.sortOption,
+      setSearchQuery: state.setSearchQuery,
+      toggleAllCollections: state.toggleAllCollections,
+      tasks: state.tasks,
+      setActiveTask: state.setActiveTask,
+    }))
+  );
 
   const handleSearch = useCallback(
     (query: string) => {

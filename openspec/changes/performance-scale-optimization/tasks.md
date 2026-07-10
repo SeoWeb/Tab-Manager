@@ -5,8 +5,8 @@
 
 ## 2. Fix Zustand selectors (memoization prerequisite)
 
-- [ ] 2.1 Replace the object-returning selector in `LinkItem.tsx:34` with `useShallow` (split `deleteLink`/`openEditLinkModal`/`searchQuery`)
-- [ ] 2.2 Grep `src` for other `useAppStore((state) => ({...}))` / `useAppStoreWithDefaults((state) => ({...}))` object selectors and convert them to `useShallow` or primitive selectors
+- [x] 2.1 Replace the object-returning selector in `LinkItem.tsx:34` with `useShallow` (split `deleteLink`/`openEditLinkModal`/`searchQuery`)
+- [x] 2.2 Grep `src` for other `useAppStore((state) => ({...}))` / `useAppStoreWithDefaults((state) => ({...}))` object selectors and convert them to `useShallow` or primitive selectors
 
 ## 3. Memoize list item components
 

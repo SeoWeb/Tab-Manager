@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Collection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import CollectionForm from './CollectionForm';
@@ -36,10 +37,12 @@ const EditCollectionModal: React.FC<EditCollectionModalProps> = ({
   const [collectionName, setCollectionName] = useState('');
   const [collectionDescription, setCollectionDescription] = useState('');
 
-  const { updateCollection, deleteCollection } = useAppStore((state) => ({
-    updateCollection: state.updateCollection,
-    deleteCollection: state.deleteCollection,
-  }));
+  const { updateCollection, deleteCollection } = useAppStore(
+    useShallow((state) => ({
+      updateCollection: state.updateCollection,
+      deleteCollection: state.deleteCollection,
+    }))
+  );
   const { toast } = useToast();
 
   useEffect(() => {

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import ProjectForm from './ProjectForm';
@@ -32,10 +33,12 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
   const [projectName, setProjectName] = useState('');
   const [projectColor, setProjectColor] = useState('');
 
-  const { updateProject, deleteProject } = useAppStore((state) => ({
-    updateProject: state.updateProject,
-    deleteProject: state.deleteProject,
-  }));
+  const { updateProject, deleteProject } = useAppStore(
+    useShallow((state) => ({
+      updateProject: state.updateProject,
+      deleteProject: state.deleteProject,
+    }))
+  );
   const { toast } = useToast();
 
   useEffect(() => {

@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { Link } from '@/types';
 import { convertChromeFaviconUrl } from '@/lib/faviconService';
 
 export default function DebugFaviconsPage() {
-  const { projects } = useAppStore((state) => ({
-    projects: state.projects,
-  }));
+  const { projects } = useAppStore(
+    useShallow((state) => ({
+      projects: state.projects,
+    }))
+  );
 
   const [sampleLinks, setSampleLinks] = useState<Link[]>([]);
 

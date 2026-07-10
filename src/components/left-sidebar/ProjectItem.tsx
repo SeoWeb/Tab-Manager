@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Project } from '@/types';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import EditProjectModal from '@/components/modals/EditProjectModal'; // Import the new modal
 import { PencilIcon, GripVertical } from 'lucide-react'; // Example icon
@@ -19,10 +20,12 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
   showDragHandle = false,
   dragHandleProps,
 }) => {
-  const { activeProjectId, setActiveProject } = useAppStore((state) => ({
-    activeProjectId: state.activeProjectId,
-    setActiveProject: state.setActiveProject,
-  }));
+  const { activeProjectId, setActiveProject } = useAppStore(
+    useShallow((state) => ({
+      activeProjectId: state.activeProjectId,
+      setActiveProject: state.setActiveProject,
+    }))
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { open: sidebarOpen, setOpen } = useSidebarState();
 

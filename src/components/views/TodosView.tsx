@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2 } from 'lucide-react';
@@ -7,13 +8,15 @@ import { Input } from '@/components/ui/input';
 
 const TodosView = () => {
   const { todos, activeProjectId, toggleTodo, removeTodo, addTodo } =
-    useAppStore((state) => ({
-      todos: state.todos,
-      activeProjectId: state.activeProjectId,
-      toggleTodo: state.toggleTodo,
-      removeTodo: state.removeTodo,
-      addTodo: state.addTodo,
-    }));
+    useAppStore(
+      useShallow((state) => ({
+        todos: state.todos,
+        activeProjectId: state.activeProjectId,
+        toggleTodo: state.toggleTodo,
+        removeTodo: state.removeTodo,
+        addTodo: state.addTodo,
+      }))
+    );
   const [newTodoText, setNewTodoText] = useState('');
 
   // Scope todos to the active project

@@ -2,6 +2,7 @@
 
 import type { Link } from '@/types';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Edit3, GripVertical } from 'lucide-react';
 import Image from 'next/image';
@@ -31,11 +32,12 @@ export default function LinkItem({
   dragHandleProps,
 }: LinkItemProps) {
   const { active } = useDndContext();
-  const { openEditLinkModal, searchQuery } = useAppStore((state) => ({
-    deleteLink: state.deleteLink,
-    openEditLinkModal: state.openEditLinkModal,
-    searchQuery: state.searchQuery,
-  }));
+  const { openEditLinkModal, searchQuery } = useAppStore(
+    useShallow((state) => ({
+      openEditLinkModal: state.openEditLinkModal,
+      searchQuery: state.searchQuery,
+    }))
+  );
   // Known viewer role on a shared cloud project → disable edits. Local-only
   // projects (no role) are fully editable; the backend still guards writes.
   const readOnly = useAppStore((state) => {

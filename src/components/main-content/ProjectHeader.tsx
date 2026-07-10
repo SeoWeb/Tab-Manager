@@ -5,6 +5,7 @@ import ThemeToggle from './ThemeToggle';
 import ProjectActionsMenu from './ProjectActionsMenu';
 import { BookmarkSyncStatus } from '@/components/sync/BookmarkSyncStatus';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { highlightText } from '@/lib/highlight';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,13 +36,15 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
       sortOption,
       setSearchFilters,
       setSortOption,
-    } = useAppStore((state) => ({
-      searchQuery: state.searchQuery,
-      searchFilters: state.searchFilters,
-      sortOption: state.sortOption,
-      setSearchFilters: state.setSearchFilters,
-      setSortOption: state.setSortOption,
-    }));
+    } = useAppStore(
+      useShallow((state) => ({
+        searchQuery: state.searchQuery,
+        searchFilters: state.searchFilters,
+        sortOption: state.sortOption,
+        setSearchFilters: state.setSearchFilters,
+        setSortOption: state.setSortOption,
+      }))
+    );
     const { toggleSidebar } = useSidebarState();
 
     if (!project) {

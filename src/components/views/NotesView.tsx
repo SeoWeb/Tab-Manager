@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Note } from '@/stores/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -221,15 +222,17 @@ export default function NotesView() {
     deleteNote,
     togglePinNote,
     duplicateNote,
-  } = useAppStore((state) => ({
-    notes: state.notes,
-    activeProjectId: state.activeProjectId,
-    addNote: state.addNote,
-    updateNote: state.updateNote,
-    deleteNote: state.deleteNote,
-    togglePinNote: state.togglePinNote,
-    duplicateNote: state.duplicateNote,
-  }));
+  } = useAppStore(
+    useShallow((state) => ({
+      notes: state.notes,
+      activeProjectId: state.activeProjectId,
+      addNote: state.addNote,
+      updateNote: state.updateNote,
+      deleteNote: state.deleteNote,
+      togglePinNote: state.togglePinNote,
+      duplicateNote: state.duplicateNote,
+    }))
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
