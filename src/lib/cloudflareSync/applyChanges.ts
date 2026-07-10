@@ -239,13 +239,20 @@ function buildCollection(
   patch: Record<string, unknown>,
   createdAt: string
 ): Collection {
+  // Reconcile pulls carry the server's `updated_at` so the local collection keeps
+  // it for last-write-wins comparison; the incremental sync path leaves it absent
+  // and falls back to the change's created_at.
+  const updatedAt =
+    parseDate(patch.updated_at ?? patch.updatedAt) ??
+    parseDate(createdAt) ??
+    new Date();
   return {
     id,
     name: pickString([patch.name]) ?? 'Untitled',
     description: pickString([patch.description]),
     links: [],
     createdAt: parseDate(createdAt) ?? new Date(),
-    updatedAt: new Date(),
+    updatedAt,
     color: pickString([patch.color]),
     minimized: patch.minimized === true,
     order: pickNumber([patch.order, patch.orderIndex]),
@@ -271,7 +278,9 @@ function mergeCollection(
       pickString([patch.bookmarkFolderId]) ??
       collection.bookmarkFolderId ??
       null,
-    updatedAt: new Date(),
+    // Reconcile pulls preserve the server `updated_at`; local updates leave it.
+    updatedAt:
+      parseDate(patch.updated_at ?? patch.updatedAt) ?? collection.updatedAt,
   };
 }
 
@@ -346,6 +355,13 @@ function buildLink(
   patch: Record<string, unknown>,
   createdAt: string
 ): Link {
+  // Reconcile pulls carry the server's `updated_at` in the patch so the local
+  // link preserves it for last-write-wins comparison; the incremental sync path
+  // leaves it absent and falls back to "now" (the link was just touched).
+  const updatedAt =
+    parseDate(patch.updated_at ?? patch.updatedAt) ??
+    parseDate(createdAt) ??
+    new Date();
   return {
     id,
     url: pickString([patch.url]) ?? '',
@@ -356,10 +372,13 @@ function buildLink(
     order: pickNumber([patch.order, patch.orderIndex]),
     bookmarkId: pickString([patch.bookmarkId]) ?? null,
     createdAt: parseDate(createdAt) ?? new Date(),
+    updatedAt,
   };
 }
 
 function mergeLink(link: Link, patch: Record<string, unknown>): Link {
+  const updatedAt =
+    parseDate(patch.updated_at ?? patch.updatedAt) ?? link.updatedAt;
   return {
     ...link,
     url: pickString([patch.url]) ?? link.url,
@@ -375,6 +394,9 @@ function mergeLink(link: Link, patch: Record<string, unknown>): Link {
     notes: 'notes' in patch ? pickString([patch.notes]) : link.notes,
     order: pickNumber([patch.order, patch.orderIndex]) ?? link.order,
     bookmarkId: pickString([patch.bookmarkId]) ?? link.bookmarkId ?? null,
+    // Reconcile pulls preserve the server `updated_at`; local updates leave the
+    // existing value untouched.
+    updatedAt,
   };
 }
 
@@ -524,7 +546,9 @@ function buildNote(
     // patch-supplied value for older payloads. projectId is immutable once set.
     projectId: pickString([projectId, patch.projectId]),
     createdAt: parseDate(createdAt) ?? new Date(),
-    updatedAt: new Date(),
+    // Reconcile pulls carry the server `updated_at` so the local note keeps it;
+    // the incremental sync path leaves it absent and falls back to "now".
+    updatedAt: parseDate(patch.updated_at ?? patch.updatedAt) ?? new Date(),
   };
 }
 
@@ -554,7 +578,8 @@ function mergeNote(
       : 'isPinned' in payload
         ? payload.isPinned === true
         : note.isPinned,
-    updatedAt: new Date(),
+    // Reconcile pulls preserve the server `updated_at`; local updates leave it.
+    updatedAt: parseDate(patch.updated_at ?? patch.updatedAt) ?? note.updatedAt,
   };
 }
 
@@ -737,7 +762,9 @@ function buildTask(
     completedAt: parseDate(payload.completedAt),
     recurringPattern: reviveRecurringPattern(payload.recurringPattern),
     createdAt: parseDate(createdAt) ?? now,
-    updatedAt: now,
+    // Reconcile pulls carry the server `updated_at` so the local task keeps it;
+    // the incremental sync path leaves it absent and falls back to "now".
+    updatedAt: parseDate(patch.updated_at ?? patch.updatedAt) ?? now,
   };
 }
 
@@ -856,7 +883,8 @@ function mergeTask(
       : payloadHas(payload, 'recurringPattern')
         ? reviveRecurringPattern(payload.recurringPattern)
         : task.recurringPattern,
-    updatedAt: new Date(),
+    // Reconcile pulls preserve the server `updated_at`; local updates leave it.
+    updatedAt: parseDate(patch.updated_at ?? patch.updatedAt) ?? task.updatedAt,
   };
 }
 

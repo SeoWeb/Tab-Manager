@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AppState } from './types';
+import type { Project } from '@/types';
 import { chromeStorageApi } from '@/stores/storage';
 import { initialProjects } from './mockData';
 import { createProjectActions } from './actions/projectActions';
@@ -49,6 +50,7 @@ const initialState = {
     enabled: false,
     status: 'idle' as const,
     lastSyncedAt: null,
+    lastReconciledAt: null,
     lastError: null,
     pendingMutationCount: 0,
     account: null,
@@ -250,13 +252,28 @@ export const useAppStore = create<AppState>()(
             return { ...item, projectId: ownerProjectId };
           };
 
+          // Links predating the `updatedAt` field lack it; default to their
+          // `createdAt` so last-write-wins comparison (reconcile) treats them as
+          // authored at creation rather than as `undefined` (which always loses).
+          const backfillLinkUpdatedAt = (project: Project): Project => ({
+            ...project,
+            collections: project.collections.map((c) => ({
+              ...c,
+              links: c.links.map((l) =>
+                l.updatedAt ? l : { ...l, updatedAt: l.createdAt }
+              ),
+            })),
+          });
+
           const mergedState = {
             ...currentState,
             ...persistedState,
             // Mark whether theme was loaded from storage
             _themeFromStorage: hasStoredTheme,
             // Ensure critical properties are never undefined
-            projects: persistedStateTyped.projects || currentState.projects,
+            projects: Array.isArray(persistedStateTyped.projects)
+              ? persistedStateTyped.projects.map(backfillLinkUpdatedAt)
+              : currentState.projects,
             isDarkMode: hasStoredTheme
               ? (persistedStateTyped.isDarkMode ?? currentState.isDarkMode)
               : currentState.isDarkMode,

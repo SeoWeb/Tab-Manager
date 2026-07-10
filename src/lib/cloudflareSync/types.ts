@@ -187,6 +187,56 @@ export interface CloudActivityResponse {
   changes: CloudSyncChange[];
 }
 
+/**
+ * A single entity row in a project snapshot from `GET /projects/:id/snapshot`.
+ * Every entity carries `updated_at`, `deleted_at`, and `version` so the client
+ * can run last-write-wins comparison and detect server-side soft deletes.
+ */
+export interface SnapshotEntity {
+  id: string;
+  project_id: string;
+  collection_id: string | null;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+}
+
+/** A collection row in a project snapshot. */
+export interface SnapshotCollection extends SnapshotEntity {
+  name: string;
+  description: string | null;
+  color: string | null;
+  minimized: number;
+  order_index: number | null;
+  bookmark_folder_id: string | null;
+}
+
+/** A link row in a project snapshot. */
+export interface SnapshotLink extends SnapshotEntity {
+  url: string;
+  title: string | null;
+  fav_icon_url: string | null;
+  notes: string | null;
+  tags_json: string | null;
+  order_index: number | null;
+  bookmark_id: string | null;
+}
+
+/** A note/todo/task row in a project snapshot (stored as title + payload_json). */
+export interface SnapshotJsonEntity extends SnapshotEntity {
+  title: string | null;
+  payload_json: string;
+}
+
+/** Response shape of `GET /projects/:id/snapshot`. */
+export interface SnapshotResponse {
+  collections: SnapshotCollection[];
+  links: SnapshotLink[];
+  tasks: SnapshotJsonEntity[];
+  notes: SnapshotJsonEntity[];
+  todos: SnapshotJsonEntity[];
+}
+
 /** Non-secret account info mirrored into the Zustand store for the UI. */
 export interface CloudAccount {
   id: string;
@@ -226,6 +276,8 @@ export interface CloudSyncState {
   enabled: boolean;
   status: CloudSyncStatus;
   lastSyncedAt: string | null;
+  /** Last time a full reconciliation completed for any project (30-min cadence). */
+  lastReconciledAt: string | null;
   lastError: string | null;
   pendingMutationCount: number;
   account: CloudAccount | null;

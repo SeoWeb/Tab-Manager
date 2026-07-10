@@ -6,6 +6,7 @@ import {
   deleteProject,
   getProject,
   getProjectMembers,
+  getProjectSnapshot,
   listProjects,
   removeMember,
   requireProjectAccess,
@@ -99,6 +100,7 @@ async function route(
         'POST /projects/:id/invitations',
         'POST /invitations/:code/accept',
         'GET /projects/:id/activity',
+        'GET /projects/:id/snapshot',
         'GET /projects/:id/realtime (WebSocket)',
       ],
     });
@@ -255,6 +257,25 @@ async function route(
     if (user instanceof Response) return user;
     const limit = parsePositiveInt(url.searchParams.get('limit'), 100);
     return getActivity(env, user, segments[1], limit);
+  }
+
+  if (
+    segments[0] === 'projects' &&
+    segments.length === 3 &&
+    segments[2] === 'snapshot'
+  ) {
+    if (request.method !== 'GET') return methodNotAllowed(['GET']);
+    const user = await requireUser(request, env);
+    if (user instanceof Response) return user;
+    const access = await requireProjectAccess(
+      env,
+      user.id,
+      segments[1],
+      'viewer'
+    );
+    if (access instanceof Response) return access;
+    const snapshot = await getProjectSnapshot(env, segments[1]);
+    return jsonResponse(snapshot);
   }
 
   return notFound('Route not found');

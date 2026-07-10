@@ -66,6 +66,7 @@ export default function TaskFormModal({
     enabled: false,
     status: 'idle' as const,
     lastSyncedAt: null,
+    lastReconciledAt: null,
     lastError: null,
     pendingMutationCount: 0,
     account: null as CloudAccount | null,

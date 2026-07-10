@@ -50,6 +50,7 @@ export const createLinkActions = (
       tags: linkData.tags || [],
       notes: linkData.notes || '',
       createdAt: new Date(),
+      updatedAt: new Date(),
       order: collection.links.length,
       bookmarkId: null,
     };
@@ -172,7 +173,9 @@ export const createLinkActions = (
                 return {
                   ...c,
                   links: c.links.map((l: Link) =>
-                    l.id === linkId ? { ...l, ...updates } : l
+                    l.id === linkId
+                      ? { ...l, ...updates, updatedAt: new Date() }
+                      : l
                   ),
                   updatedAt: new Date(),
                 };

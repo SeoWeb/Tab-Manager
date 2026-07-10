@@ -8,6 +8,7 @@ export interface Link {
   title?: string; // Was `name` in old, `title` in new. Represents webpage title.
   favIconUrl?: string; // Was `favicon` in old, `favIconUrl` in new. URL to the favicon.
   createdAt: Date; // Date of creation
+  updatedAt: Date; // Date of last update (drives last-write-wins reconciliation)
   tags?: string[]; // Optional tags for categorization
   notes?: string; // Optional user notes for the link
   order?: number; // Optional field for explicit ordering within a collection

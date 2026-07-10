@@ -1,3 +1,4 @@
+import type { Collection, Link } from '@/types';
 import type { Note } from '@/stores/types';
 import type { AdvancedTask, LegacyTask } from '@/types/tasks';
 
@@ -23,6 +24,42 @@ import type { AdvancedTask, LegacyTask } from '@/types/tasks';
  * from the change row's `project_id` (Phase B2). `collectionId` is included for
  * tasks (the backend binds it to a column; notes/todos leave it unset).
  */
+
+/**
+ * Patch builder for a collection create/update mutation. Bookmark ids are
+ * excluded — they are device-local and meaningless on another browser/device.
+ */
+export function buildCollectionPatch(
+  collection: Collection
+): Record<string, unknown> {
+  return {
+    name: collection.name,
+    description: collection.description ?? null,
+    color: collection.color ?? null,
+    minimized: collection.minimized ?? false,
+    order: collection.order ?? 0,
+  };
+}
+
+/**
+ * Patch builder for a link create/update mutation. Bookmark ids are excluded
+ * (device-local). `collectionId` places the link in its collection on the
+ * server; `favIconUrl`/`notes`/`tags`/`order` are the Worker-stored fields.
+ */
+export function buildLinkPatch(
+  collectionId: string,
+  link: Link
+): Record<string, unknown> {
+  return {
+    collectionId,
+    url: link.url,
+    title: link.title ?? null,
+    favIconUrl: link.favIconUrl ?? null,
+    notes: link.notes ?? null,
+    tags: link.tags ?? [],
+    order: link.order ?? 0,
+  };
+}
 
 export function buildNotePatch(note: Note): Record<string, unknown> {
   return {

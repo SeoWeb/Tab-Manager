@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { useVirtualizer, Virtualizer } from '@tanstack/react-virtual';
 import {
   MeasuringConfiguration,
@@ -98,6 +98,27 @@ export function useVirtualScroll<T extends Element = HTMLDivElement>({
         }
       : undefined,
   });
+
+  /**
+   * Re-measure whenever the scroll container changes size (including its very
+   * first layout). The virtualizer is created before the shared external scroll
+   * element (`mainScrollRef`) has dimensions, so its initial rect can be 0 and
+   * `getVirtualItems()` returns nothing — collections/links render blank even
+   * though the data is present. A resize fixes it because the ResizeObserver
+   * then re-measures. Mirroring that with our own observer (plus a first-frame
+   * measure) clears the stuck-empty state without waiting for a resize.
+   */
+  useEffect(() => {
+    const el = (scrollRef?.current ?? parentRef.current) as Element | null;
+    if (!el) return;
+    const ro = new ResizeObserver(() => virtualizer.measure());
+    ro.observe(el);
+    const raf = requestAnimationFrame(() => virtualizer.measure());
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [scrollRef, parentRef, virtualizer]);
 
   return { parentRef, virtualizer };
 }

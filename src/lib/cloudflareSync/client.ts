@@ -15,6 +15,7 @@ import type {
   CloudProjectDetail,
   CloudRole,
   CloudSyncResponse,
+  SnapshotResponse,
 } from './types';
 
 /** Error thrown for any non-2xx API response (or a local pre-flight failure). */
@@ -226,6 +227,17 @@ export async function removeProjectMember(
     `/projects/${projectId}/members/${userId}`,
     { method: 'DELETE' }
   );
+}
+
+/**
+ * `GET /projects/:projectId/snapshot` — the project's current entities
+ * (collections, links, tasks, notes, todos) including soft-deleted rows, for
+ * reconciliation against local state. Requires project membership (viewer+).
+ */
+export async function getProjectSnapshot(
+  projectId: string
+): Promise<SnapshotResponse> {
+  return request<SnapshotResponse>(`/projects/${projectId}/snapshot`);
 }
 
 /** `GET /projects/:projectId/activity` — recent change-log rows (read-only). */

@@ -129,11 +129,22 @@ export const createDragDropActions = (
                 } else {
                   newLinks.push(newLink);
                 }
-                // Update order for all links in the target collection
-                const reorderedLinks = newLinks.map((link, index) => ({
-                  ...link,
-                  order: index,
-                }));
+                // Update order for all links in the target collection.
+                // Bump `updatedAt` on any link whose order actually changes
+                // (and the moved link, whose collection changed) so
+                // last-write-wins reconciliation treats the reorder as a fresh
+                // local edit rather than a stale row.
+                const reorderedLinks = newLinks.map((link, index) => {
+                  const orderChanged = (link.order ?? index) !== index;
+                  const isMovedLink = link.id === linkId;
+                  return {
+                    ...link,
+                    order: index,
+                    ...(orderChanged || isMovedLink
+                      ? { updatedAt: new Date() }
+                      : {}),
+                  };
+                });
                 return {
                   ...c,
                   links: reorderedLinks,
@@ -229,11 +240,17 @@ export const createDragDropActions = (
                 const [splicedLink] = newLinks.splice(activeIndex, 1);
                 newLinks.splice(overIndex, 0, splicedLink);
 
-                // Update order values
+                // Update order values. Bump `updatedAt` on any link whose
+                // order actually changes so last-write-wins reconciliation
+                // treats the reorder as a fresh local edit rather than a stale
+                // row.
                 const reorderedLinks = newLinks.map(
                   (link: Link, index: number) => ({
                     ...link,
                     order: index,
+                    ...((link.order ?? index) !== index
+                      ? { updatedAt: new Date() }
+                      : {}),
                   })
                 );
 

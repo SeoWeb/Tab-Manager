@@ -21,7 +21,10 @@ import AddLinkModal from '@/components/modals/AddLinkModal';
 import EditLinkModal from '@/components/modals/EditLinkModal';
 import { cn } from '@/lib/utils';
 import { preloadCriticalResources } from '@/lib/performanceUtils';
-import { syncAllCloudProjects } from '@/lib/cloudflareSync/orchestrator';
+import {
+  syncAllCloudProjects,
+  reconcileAllCloudProjects,
+} from '@/lib/cloudflareSync/orchestrator';
 
 /**
  * Web AppClient.
@@ -62,6 +65,48 @@ export default function AppClient() {
       void syncAllCloudProjects();
     }, intervalMs);
     return () => clearInterval(id);
+  }, []);
+
+  // On mount, repair divergences once (cloud-reconcile-snapshot). The interval
+  // above is gated by the 30-min cadence, which would leave a refreshed tab
+  // showing stale/missing data until the next tick; kick one off immediately.
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    if (sessionStorage.getItem('tabManagerReconciled')) return;
+    sessionStorage.setItem('tabManagerReconciled', 'true');
+    const { cloudSync } = useAppStore.getState();
+    if (cloudSync.enabled) void reconcileAllCloudProjects();
+  }, [_hasHydrated]);
+
+  // In-app full-snapshot reconciliation cadence (D7): repair divergences the
+  // incremental cursor path can't self-heal. Runs every 30 minutes, plus on
+  // offline→online and tab-visibility, but is gated to at most once per cadence.
+  useEffect(() => {
+    const RECONCILE_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+
+    const maybeReconcile = (): void => {
+      const { cloudSync } = useAppStore.getState();
+      if (!cloudSync.enabled) return;
+      const last = cloudSync.lastReconciledAt;
+      if (last) {
+        const elapsed = Date.now() - new Date(last).getTime();
+        if (elapsed < RECONCILE_INTERVAL_MS) return;
+      }
+      void reconcileAllCloudProjects();
+    };
+
+    const id = setInterval(maybeReconcile, RECONCILE_INTERVAL_MS);
+    const onOnline = (): void => maybeReconcile();
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') maybeReconcile();
+    };
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const activeView = useAppStoreWithDefaults(

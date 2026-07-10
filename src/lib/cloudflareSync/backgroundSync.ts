@@ -2,8 +2,20 @@ import * as client from './client';
 import * as config from './config';
 import * as queue from './queue';
 import { applyRemoteChanges, type ApplyChangesInput } from './applyChanges';
+import { diffSnapshot } from './reconcile';
+import { canEdit } from './roles';
+import type { CloudRole } from './types';
 import { acquireSyncLock, releaseSyncLock } from './syncLock';
-import type { CloudSyncChange, CloudSyncState, CloudSyncStatus } from './types';
+import type { AdvancedTask, LegacyTask } from '@/types/tasks';
+import type { Collection } from '@/types';
+import type { Note } from '@/stores/types';
+import type {
+  CloudEntityType,
+  CloudOperation,
+  CloudSyncChange,
+  CloudSyncState,
+  CloudSyncStatus,
+} from './types';
 
 /**
  * Phase 5 background sync.
@@ -167,6 +179,149 @@ export async function backgroundSyncAll(): Promise<{
   return { projects: syncedProjects, status };
 }
 
+/**
+ * Run one background reconciliation pass across every cloud-enabled (or queued)
+ * project. Mirror of `backgroundSyncAll` but uses the full snapshot diff instead
+ * of the incremental cursor pull: it fetches `GET /projects/:id/snapshot`, runs
+ * `diffSnapshot`, applies the pull (create/update/delete-locally) changes through
+ * the same `applyRemoteChanges` reducer the popup uses, and enqueues the push
+ * (local-newer / local-only) items via `queue.enqueueMutation` for the next
+ * incremental sync to send. Safe to call from the service worker. Advances only
+ * `lastReconciledAt`, never the incremental `lastSyncedAt` cursor heartbeat.
+ */
+export async function backgroundReconcileAll(): Promise<{
+  projects: number;
+  status: CloudSyncStatus;
+}> {
+  if (!(await acquireSyncLock('background'))) {
+    return { projects: 0, status: 'idle' };
+  }
+
+  let status: CloudSyncStatus = 'synced';
+  let lastError: string | null = null;
+  let reconciledProjects = 0;
+
+  // pullsByProject: reconcile pulls to fold into the store at write time.
+  const pullsByProject = new Map<string, CloudSyncChange[]>();
+  // pushes: local-newer / local-only entities to enqueue as mutations.
+  const pushes: Array<{
+    projectId: string;
+    entityType: CloudEntityType;
+    entityId: string;
+    operation: CloudOperation;
+    patch: Record<string, unknown>;
+    baseVersion?: number;
+  }> = [];
+
+  try {
+    const wrapper = await readPersistedState();
+    if (!wrapper?.state?.cloudSync?.enabled) {
+      return { projects: 0, status: 'idle' };
+    }
+
+    const projects = (wrapper.state.projects ?? []) as Array<{
+      id: string;
+      cloudEnabled?: boolean;
+      cloudRole?: CloudRole;
+      collections?: Collection[];
+    }>;
+    const allNotes = (wrapper.state.notes ?? []) as Note[];
+    const allTodos = (wrapper.state.todos ?? []) as LegacyTask[];
+    const allTasks = (wrapper.state.tasks ?? []) as AdvancedTask[];
+
+    const queueSnapshot = await queue.getQueue();
+    const targetIds = new Set<string>([
+      ...projects.filter((p) => p.cloudEnabled).map((p) => p.id),
+      ...queueSnapshot.map((m) => m.projectId),
+    ]);
+
+    if (targetIds.size === 0) {
+      return { projects: 0, status: 'idle' };
+    }
+
+    for (const projectId of targetIds) {
+      const project = projects.find((p) => p.id === projectId);
+      const role = project?.cloudRole;
+      const queuedIds = new Set(
+        queueSnapshot
+          .filter((m) => m.projectId === projectId)
+          .map((m) => m.entityId)
+      );
+      try {
+        const server = await client.getProjectSnapshot(projectId);
+        const diff = diffSnapshot({
+          collections: project?.collections ?? [],
+          tasks: allTasks.filter((t) => t.projectId === projectId),
+          notes: allNotes.filter((n) => n.projectId === projectId),
+          todos: allTodos.filter((t) => t.projectId === projectId),
+          server,
+          queuedEntityIds: queuedIds,
+        });
+
+        if (diff.pulls.length) {
+          pullsByProject.set(projectId, diff.pulls);
+        }
+
+        // Viewers (role < editor) are pull-only; skip pushes (server enforces
+        // this too). Pushes are enqueued as normal mutations and sent by the
+        // next incremental sync.
+        if (canEdit(role)) {
+          for (const push of diff.pushes) {
+            pushes.push({
+              projectId,
+              entityType: push.entityType,
+              entityId: push.entityId,
+              operation: push.operation,
+              patch: push.patch,
+              ...(push.baseVersion !== undefined
+                ? { baseVersion: push.baseVersion }
+                : {}),
+            });
+          }
+        }
+        reconciledProjects += 1;
+      } catch (error) {
+        status = isOnline() ? 'error' : 'offline';
+        lastError = errorMessage(error);
+      }
+    }
+  } finally {
+    await releaseSyncLock('background');
+  }
+
+  // Enqueue pushes (local-newer / local-only) as normal mutations. The next
+  // incremental sync pushes them; the queue is locked internally so this is
+  // safe alongside a concurrent popup enqueue.
+  for (const push of pushes) {
+    // eslint-disable-next-line no-await-in-loop -- low-volume enqueue
+    await queue.enqueueMutation({
+      clientMutationId: crypto.randomUUID(),
+      clientId: await config.getClientId(),
+      createdAt: nowIso(),
+      projectId: push.projectId,
+      entityType: push.entityType,
+      entityId: push.entityId,
+      operation: push.operation,
+      patch: push.patch,
+      ...(push.baseVersion !== undefined
+        ? { baseVersion: push.baseVersion }
+        : {}),
+    });
+  }
+
+  // Fold pulled changes into the freshest persisted state and write back,
+  // advancing `lastReconciledAt` only (never `lastSyncedAt`).
+  await applyReconcileToStore({ pullsByProject, status, lastError });
+
+  return { projects: reconciledProjects, status };
+}
+
+/** Read the last reconciliation timestamp from the persisted cloud-sync state. */
+export async function getLastReconciledAt(): Promise<string | null> {
+  const wrapper = await readPersistedState();
+  return wrapper?.state?.cloudSync?.lastReconciledAt ?? null;
+}
+
 async function readPersistedState(): Promise<PersistedWrapper | null> {
   const raw = await readStoreRaw();
   if (!raw) return null;
@@ -262,6 +417,62 @@ async function applyToStore(input: {
     status: input.status,
     lastError: input.lastError,
     ...(input.lastSyncedAt ? { lastSyncedAt: input.lastSyncedAt } : {}),
+  };
+
+  await writeStoreRaw(JSON.stringify(wrapper));
+}
+
+/**
+ * Read-modify-write for reconciliation: re-read the freshest persisted state,
+ * apply the (already conflict-free) pull changes each project is missing, and
+ * write back — reusing the same `applyRemoteChanges` reducer so apply semantics
+ * match the popup exactly. Advances only `lastReconciledAt`; the incremental
+ * `lastSyncedAt` cursor heartbeat is left untouched so sync-staleness detection
+ * keeps working independently of reconcile.
+ */
+async function applyReconcileToStore(input: {
+  pullsByProject: Map<string, CloudSyncChange[]>;
+  status: CloudSyncStatus;
+  lastError: string | null;
+}): Promise<void> {
+  const raw = await readStoreRaw();
+  if (!raw) return;
+
+  let wrapper: PersistedWrapper;
+  try {
+    wrapper = JSON.parse(raw) as PersistedWrapper;
+  } catch {
+    return;
+  }
+  const state = wrapper.state ?? (wrapper as unknown as PartialState);
+  if (!state) return;
+
+  // The persisted state is loosely typed; cast into the reducer's input shape.
+  const mutable: ApplyChangesInput = {
+    projects: (state.projects ?? []) as ApplyChangesInput['projects'],
+    notes: (state.notes ?? []) as ApplyChangesInput['notes'],
+    todos: (state.todos ?? []) as ApplyChangesInput['todos'],
+    tasks: (state.tasks ?? []) as ApplyChangesInput['tasks'],
+  };
+
+  const clientId = await config.getClientId();
+  for (const changes of input.pullsByProject.values()) {
+    const result = applyRemoteChanges(mutable, changes, clientId);
+    mutable.projects = result.projects;
+    mutable.notes = result.notes;
+    mutable.todos = result.todos;
+    mutable.tasks = result.tasks;
+  }
+
+  state.projects = mutable.projects;
+  state.notes = mutable.notes;
+  state.todos = mutable.todos;
+  state.tasks = mutable.tasks;
+  state.cloudSync = {
+    ...(state.cloudSync as CloudSyncState),
+    status: input.status,
+    lastError: input.lastError,
+    lastReconciledAt: nowIso(),
   };
 
   await writeStoreRaw(JSON.stringify(wrapper));

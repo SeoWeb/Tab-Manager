@@ -23,6 +23,7 @@ import {
   lazyImport,
   preloadCriticalResources,
 } from '@/lib/performanceUtils';
+import { reconcileAllCloudProjects } from '@/lib/cloudflareSync/orchestrator';
 
 const SettingsView = lazy(() => import('@/components/views/SettingsView'));
 const TasksView = lazy(() => import('@/components/views/TasksView'));
@@ -45,6 +46,19 @@ export default function AppClient() {
   useEffect(() => {
     preloadCriticalResources();
   }, []);
+
+  // Repair divergences on open/refresh (cloud-reconcile-snapshot). The background
+  // service worker only reconciles on install/startup/alarm, which a plain page
+  // refresh never triggers — so the open tab must kick one off itself. Run once
+  // per page session after hydration; reconcile is a no-op when cloud is off.
+  useEffect(() => {
+    if (!_hasHydrated) return;
+    if (sessionStorage.getItem('tabManagerReconciled')) return;
+    sessionStorage.setItem('tabManagerReconciled', 'true');
+    if (useAppStore.getState().cloudSync.enabled) {
+      void reconcileAllCloudProjects();
+    }
+  }, [_hasHydrated]);
 
   const isRightContentPanelOpen = useAppStoreWithDefaults(
     (state) => state.isRightContentPanelOpen,

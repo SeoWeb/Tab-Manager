@@ -31,6 +31,8 @@ export {
   disconnectProjectFromCloud,
   syncProjectNow,
   syncAllCloudProjects,
+  reconcileProject,
+  reconcileAllCloudProjects,
   refreshProjectRole,
   fetchProjectMembers,
   createProjectInviteCode,
@@ -51,7 +53,7 @@ export {
   CLOUD_ROLE_RANK,
 } from './roles';
 // Phase 5: background sync, coordination lock, realtime presence.
-export { backgroundSyncAll } from './backgroundSync';
+export { backgroundSyncAll, backgroundReconcileAll } from './backgroundSync';
 export {
   acquireSyncLock,
   releaseSyncLock,

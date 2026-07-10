@@ -1,15 +1,19 @@
 import { useAppStore } from '@/stores/appStore';
-import type { Collection, Link, Project } from '@/types';
+import type { Project } from '@/types';
 import * as client from './client';
 import * as config from './config';
 import * as authStorage from './authStorage';
 import * as queue from './queue';
 import { acquireSyncLock, releaseSyncLock } from './syncLock';
 import {
+  buildCollectionPatch,
+  buildLinkPatch,
   buildNotePatch,
   buildTodoPatch,
   buildTaskPatch,
 } from './entityPatches';
+import { diffSnapshot } from './reconcile';
+import { canEdit } from './roles';
 import type {
   CloudAccount,
   CloudEntityType,
@@ -22,6 +26,7 @@ import type {
   CloudSyncChange,
   CloudSyncStatus,
   DirtyFields,
+  SnapshotResponse,
 } from './types';
 
 /**
@@ -37,6 +42,7 @@ function setCloudState(
     enabled: boolean;
     status: CloudSyncStatus;
     lastSyncedAt: string | null;
+    lastReconciledAt: string | null;
     lastError: string | null;
     pendingMutationCount: number;
     pendingEdits: DirtyFields;
@@ -94,32 +100,9 @@ export async function enqueueCloudChange(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Patch builders — map local entity shapes onto the backend's patch contract.
-// Bookmark ids are intentionally excluded: they are device-local Chrome concepts
-// with no meaning on another browser/device.
+// Patch builders (collection/link) live in `entityPatches.ts` alongside the
+// note/todo/task builders so every entity type uses one centralized contract.
 // ---------------------------------------------------------------------------
-
-function collectionCreatePatch(collection: Collection) {
-  return {
-    name: collection.name,
-    description: collection.description ?? null,
-    color: collection.color ?? null,
-    minimized: collection.minimized ?? false,
-    order: collection.order ?? 0,
-  };
-}
-
-function linkCreatePatch(collectionId: string, link: Link) {
-  return {
-    collectionId,
-    url: link.url,
-    title: link.title ?? null,
-    favIconUrl: link.favIconUrl ?? null,
-    notes: link.notes ?? null,
-    tags: link.tags ?? [],
-    order: link.order ?? 0,
-  };
-}
 
 /**
  * Load persisted credentials, API URL, and queue length into the store so the UI
@@ -357,6 +340,132 @@ export async function syncAllCloudProjects(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Reconciliation (full snapshot diff, last-write-wins repair)
+//
+// Reconcile fetches the server's *current* entity set (not the change log) and
+// diffs it against local state, repairing divergences that the incremental
+// cursor-based path can never self-heal (e.g. a missed create/delete that scrolled
+// past the cursor). Pulls reuse `applyRemoteChanges`; pushes reuse the mutation
+// queue. It MUST NOT advance `lastSyncedAt` — that timestamp is the incremental
+// cursor's heartbeat and is used to detect sync staleness.
+// ---------------------------------------------------------------------------
+
+/**
+ * Run a full reconciliation for a single cloud project. Guards on cloud-enabled +
+ * online + the advisory sync lock, fetches the snapshot, runs `diffSnapshot`,
+ * applies pulls via `applyRemoteChanges`, enqueues pushes via `enqueueCloudChange`
+ * (role/queue gated), and records `lastReconciledAt`.
+ */
+export async function reconcileProject(projectId: string): Promise<void> {
+  const state = useAppStore.getState();
+  const { cloudSync } = state;
+  if (!cloudSync.enabled) return;
+
+  const project = state.projects.find((p) => p.id === projectId);
+  if (!project?.cloudEnabled) return;
+
+  if (!isOnline()) {
+    setCloudState({ status: 'offline' });
+    return;
+  }
+
+  // Avoid racing the incremental sync / background worker on the same lock owner.
+  if (!(await acquireSyncLock('popup'))) return;
+
+  setCloudState({ status: 'syncing', lastError: null });
+  try {
+    const server: SnapshotResponse = await client.getProjectSnapshot(projectId);
+    const clientId = await config.getClientId();
+    const role = project.cloudRole;
+    const queued = await queue.getQueueForProject(projectId);
+    const queuedIds = new Set(queued.map((m) => m.entityId));
+
+    const diff = diffSnapshot({
+      collections: project.collections,
+      tasks: state.tasks.filter((t) => t.projectId === projectId),
+      notes: state.notes.filter((n) => n.projectId === projectId),
+      todos: state.todos.filter((t) => t.projectId === projectId),
+      server,
+      queuedEntityIds: queuedIds,
+    });
+
+    // Apply pulls (create/update/delete-locally) through the existing reducer so
+    // nesting + field-level conflict detection are preserved. `mergeRemoteChanges`
+    // reuses `applyRemoteChanges` and records any field-level conflicts into
+    // `syncConflicts`, which the `SyncConflictsPanel` surfaces.
+    const conflictsBefore = useAppStore.getState().syncConflicts.length;
+    if (diff.pulls.length) {
+      useAppStore.getState().mergeRemoteChanges(diff.pulls, clientId);
+    }
+    const hasConflicts =
+      useAppStore.getState().syncConflicts.length > conflictsBefore;
+
+    // Pushes (local-newer / local-only) are enqueued as normal mutations. Viewers
+    // (role < editor) are pull-only and skip pushes (the server enforces this too).
+    if (canEdit(role)) {
+      for (const push of diff.pushes) {
+        // eslint-disable-next-line no-await-in-loop -- low-volume enqueue
+        await enqueueCloudChange({
+          projectId,
+          entityType: push.entityType,
+          entityId: push.entityId,
+          operation: push.operation,
+          patch: push.patch,
+          ...(push.baseVersion !== undefined
+            ? { baseVersion: push.baseVersion }
+            : {}),
+        });
+      }
+    }
+
+    // Reconcile advances only `lastReconciledAt`, never the incremental
+    // `lastSyncedAt` cursor heartbeat. Conflicts (if any) are surfaced via the
+    // existing `SyncConflictsPanel`, so the status reflects them.
+    setCloudState({
+      status: hasConflicts ? 'conflict' : 'synced',
+      lastReconciledAt: nowIso(),
+      lastError: hasConflicts
+        ? `${useAppStore.getState().syncConflicts.length} reconcile conflict(s)`
+        : null,
+    });
+  } catch (error) {
+    setCloudState({
+      status: isOnline() ? 'error' : 'offline',
+      lastError: errorMessage(error),
+    });
+  } finally {
+    await releaseSyncLock('popup');
+  }
+}
+
+/**
+ * Reconcile every cloud-enabled (or queued) project in turn. Mirrors
+ * `syncAllCloudProjects` but runs the snapshot diff instead of the cursor pull.
+ */
+export async function reconcileAllCloudProjects(): Promise<void> {
+  const state = useAppStore.getState();
+  const cloudProjectIds = new Set(
+    state.projects.filter((p) => p.cloudEnabled).map((p) => p.id)
+  );
+  const queuedProjectIds = new Set(
+    (await queue.getQueue()).map((m) => m.projectId)
+  );
+  const targetProjectIds = [
+    ...new Set([...cloudProjectIds, ...queuedProjectIds]),
+  ];
+
+  if (targetProjectIds.length === 0) {
+    setCloudState({ status: 'idle', lastError: null });
+    return;
+  }
+
+  for (const projectId of targetProjectIds) {
+    // eslint-disable-next-line no-await-in-loop -- sequential reconcile keeps status coherent
+    await reconcileProject(projectId);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Cloud project lifecycle
 //
 // Project ids are server-authoritative: the Worker generates them via
@@ -481,7 +590,7 @@ export async function convertProjectToCloud(
         entityType: 'collection',
         entityId: collection.id,
         operation: 'create',
-        patch: collectionCreatePatch(collection),
+        patch: buildCollectionPatch(collection),
       });
       for (const link of collection.links) {
         // eslint-disable-next-line no-await-in-loop
@@ -490,7 +599,7 @@ export async function convertProjectToCloud(
           entityType: 'link',
           entityId: link.id,
           operation: 'create',
-          patch: linkCreatePatch(collection.id, link),
+          patch: buildLinkPatch(collection.id, link),
         });
       }
     }

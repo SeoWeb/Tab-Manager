@@ -149,3 +149,53 @@ export interface SyncResponse {
   changes: SyncChange[];
   conflicts: SyncConflict[];
 }
+
+export interface SnapshotCollection {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  minimized: number;
+  order_index: number | null;
+  bookmark_folder_id: string | null;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+}
+
+export interface SnapshotLink {
+  id: string;
+  project_id: string;
+  collection_id: string | null;
+  url: string;
+  title: string | null;
+  fav_icon_url: string | null;
+  notes: string | null;
+  tags_json: string | null;
+  order_index: number | null;
+  bookmark_id: string | null;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+}
+
+export interface SnapshotJsonEntity {
+  id: string;
+  project_id: string;
+  collection_id: string | null;
+  title: string | null;
+  payload_json: string;
+  order_index: number | null;
+  updated_at: string;
+  deleted_at: string | null;
+  version: number;
+}
+
+export interface SnapshotResponse {
+  collections: SnapshotCollection[];
+  links: SnapshotLink[];
+  tasks: SnapshotJsonEntity[];
+  notes: SnapshotJsonEntity[];
+  todos: SnapshotJsonEntity[];
+}
