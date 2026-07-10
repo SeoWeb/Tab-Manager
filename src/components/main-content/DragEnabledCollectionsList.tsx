@@ -34,33 +34,6 @@ export function DragEnabledCollectionsList({
   const { collectionDropPlaceholder } = useDragAndDropContext();
   const _hasHydrated = useHasHydrated();
 
-  if (!_hasHydrated) {
-    return (
-      <div className='space-y-4'>
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className='relative bg-secondary/50 rounded-lg border border-border p-4'
-          >
-            <div className='flex items-center gap-2 mb-3'>
-              <Skeleton className='h-5 w-5 rounded' />
-              <Skeleton className='h-4 w-40' />
-              <div className='ml-auto flex gap-1'>
-                <Skeleton className='h-6 w-6 rounded' />
-                <Skeleton className='h-6 w-6 rounded' />
-              </div>
-            </div>
-            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2'>
-              {Array.from({ length: 4 }).map((_, j) => (
-                <Skeleton key={j} className='h-16 w-full rounded-md' />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   // Ensure collections have proper order values for drag and drop
   useEffect(() => {
     if (project.collections.length > 0) {
@@ -101,6 +74,33 @@ export function DragEnabledCollectionsList({
   });
 
   const virtualItems = virtualizer.getVirtualItems();
+
+  if (!_hasHydrated) {
+    return (
+      <div className='space-y-4'>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className='relative bg-secondary/50 rounded-lg border border-border p-4'
+          >
+            <div className='flex items-center gap-2 mb-3'>
+              <Skeleton className='h-5 w-5 rounded' />
+              <Skeleton className='h-4 w-40' />
+              <div className='ml-auto flex gap-1'>
+                <Skeleton className='h-6 w-6 rounded' />
+                <Skeleton className='h-6 w-6 rounded' />
+              </div>
+            </div>
+            <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2'>
+              {Array.from({ length: 4 }).map((_, j) => (
+                <Skeleton key={j} className='h-16 w-full rounded-md' />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (project.collections.length === 0) {
     return (
