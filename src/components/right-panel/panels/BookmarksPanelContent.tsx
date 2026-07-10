@@ -232,8 +232,7 @@ export default function BookmarksPanelContent() {
           await bookmarkService.searchBookmarks(searchQuery);
         setBookmarks(searchResults);
       } else {
-        // '1' is typically the Bookmarks Bar
-        const topLevelBookmarks = await bookmarkService.getChildren('1');
+        const topLevelBookmarks = await bookmarkService.getTopLevelBookmarks();
         setBookmarks(topLevelBookmarks);
       }
     };

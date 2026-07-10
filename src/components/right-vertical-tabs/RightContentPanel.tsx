@@ -2,10 +2,8 @@
 
 import { useActiveVerticalTabId } from '@/hooks/useAppStoreWithDefaults';
 import BookmarksPanelContent from '@/components/right-panel/panels/BookmarksPanelContent';
-import NotesPanelContent from '@/components/right-panel/panels/NotesPanelContent';
 import ChromeOpenTabsPanel from './panels/ChromeOpenTabsPanel'; // New panel
 import { TabSessionsPanel } from './panels/TabSessionsPanel';
-import SimpleTodoPanelContent from './panels/SimpleTodoPanelContent';
 
 export default function RightContentPanel() {
   const activeVerticalTabId = useActiveVerticalTabId();
@@ -16,10 +14,6 @@ export default function RightContentPanel() {
         return <ChromeOpenTabsPanel />;
       case 'bookmarks':
         return <BookmarksPanelContent />;
-      case 'notes':
-        return <NotesPanelContent />;
-      case 'simple-todo':
-        return <SimpleTodoPanelContent />;
       case 'sessions':
         return <TabSessionsPanel />;
       default:

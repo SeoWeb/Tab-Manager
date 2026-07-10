@@ -8,13 +8,11 @@ import {
 } from '@/hooks/useAppStoreWithDefaults';
 import type { VerticalTabId } from '@/types';
 import { cn } from '@/lib/utils';
-import { PanelRight, Bookmark, FileText, ListChecks } from 'lucide-react'; // Using PanelRight for Open Tabs
+import { PanelRight, Bookmark } from 'lucide-react'; // Using PanelRight for Open Tabs
 
 const TABS: { id: VerticalTabId; label: string; icon: React.ElementType }[] = [
   { id: 'openTabs', label: 'Open Tabs', icon: PanelRight },
   { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
-  { id: 'notes', label: 'Notes', icon: FileText },
-  { id: 'simple-todo', label: 'Todo', icon: ListChecks },
 ];
 
 export default function VerticalRightTabsBar() {

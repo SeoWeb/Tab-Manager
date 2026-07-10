@@ -211,20 +211,60 @@ export const bookmarkService = {
   async getChildren(
     folderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+    if (!folderId) {
+      return [];
+    }
+    if (typeof chrome === 'undefined' || !chrome.bookmarks) {
+      console.error(
+        'chrome.bookmarks API is not available. The bookmarks panel must run inside the extension context (side panel / popup), not a regular browser tab.'
+      );
+      return [];
+    }
     try {
-      if (!folderId) {
-        // console.warn('getChildren: folderId is required.'); // Or throw error
-        return [];
-      }
       const children = await chrome.bookmarks.getChildren(folderId);
       return children;
     } catch (error) {
+      // A non-folder node (e.g. a bookmark separator) cannot have children.
+      // Chrome rejects getChildren in that case; treat it as an empty folder
+      // rather than showing a misleading error toast.
+      const message = error instanceof Error ? error.message : String(error);
+      if (/folder|not a (bookmark )?node/i.test(message)) {
+        console.warn(`Node "${folderId}" is not a folder, skipping children.`);
+        return [];
+      }
       console.error(
         `Error retrieving children for folder ID "${folderId}":`,
         error
       );
       showErrorToast('Error retrieving bookmark folder contents.');
-      // This error can occur if folderId does not exist or is not a folder.
+      return [];
+    }
+  },
+
+  /**
+   * Retrieves the contents of the top-level "Bookmarks bar" folder without
+   * relying on the hardcoded '"1"' ID, which is not reliable across all
+   * Chrome profiles/locales. Falls back to the whole tree if needed.
+   */
+  async getTopLevelBookmarks(): Promise<chrome.bookmarks.BookmarkTreeNode[]> {
+    if (typeof chrome === 'undefined' || !chrome.bookmarks) {
+      console.error(
+        'chrome.bookmarks API is not available. The bookmarks panel must run inside the extension context (side panel / popup).'
+      );
+      return [];
+    }
+    try {
+      const tree = await chrome.bookmarks.getTree();
+      const root = tree[0];
+      if (!root || !root.children || root.children.length === 0) {
+        return [];
+      }
+      // root.children order is guaranteed: [Bookmarks bar, Other bookmarks, Mobile].
+      const bookmarksBar = root.children[0];
+      return bookmarksBar.children ?? [];
+    } catch (error) {
+      console.error('Error retrieving top-level bookmarks:', error);
+      showErrorToast('Error retrieving bookmarks.');
       return [];
     }
   },
