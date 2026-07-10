@@ -106,4 +106,4 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
   );
 };
 
-export default ProjectItem;
+export default React.memo(ProjectItem);

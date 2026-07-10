@@ -9,7 +9,7 @@ import ProjectItem from './ProjectItem';
 import { SortableProjectItem } from '../drag-drop/SortableProjectItem';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useHotkeys } from '@/hooks/useHotkeys';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -30,8 +30,9 @@ export default function ProjectList() {
   }, [migrateProjectOrder]);
 
   // Sort projects by order
-  const sortedProjects = [...projects].sort(
-    (a, b) => (a.order || 0) - (b.order || 0)
+  const sortedProjects = useMemo(
+    () => [...projects].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    [projects]
   );
 
   const handleNavigation = useCallback(

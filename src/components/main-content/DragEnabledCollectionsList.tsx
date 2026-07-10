@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import {
   SortableContext,
@@ -34,19 +34,23 @@ export function DragEnabledCollectionsList({
     }
   }, [project.id, project.collections.length, migrateCollectionOrder]);
 
+  // Sort collections by order if needed, default to array order for now
+  const sortedCollections = useMemo(
+    () =>
+      [...project.collections].sort((a, b) => (a.order || 0) - (b.order || 0)),
+    [project.collections]
+  );
+
   const handleNavigation = useCallback(
     (direction: 'left' | 'right') => {
-      if (project.collections.length === 0) return;
+      if (sortedCollections.length === 0) return;
       const newIndex =
         direction === 'left'
           ? Math.max(0, focusedCollectionIndex - 1)
-          : Math.min(
-              project.collections.length - 1,
-              focusedCollectionIndex + 1
-            );
+          : Math.min(sortedCollections.length - 1, focusedCollectionIndex + 1);
       setFocusedCollectionIndex(newIndex);
     },
-    [focusedCollectionIndex, project.collections.length]
+    [focusedCollectionIndex, sortedCollections.length]
   );
 
   useHotkeys('left', () => handleNavigation('left'));
@@ -70,11 +74,6 @@ export function DragEnabledCollectionsList({
       </div>
     );
   }
-
-  // Sort collections by order if needed, default to array order for now
-  const sortedCollections = [...project.collections].sort(
-    (a, b) => (a.order || 0) - (b.order || 0)
-  );
 
   const collectionIds = sortedCollections.map((collection) => collection.id);
 

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Link } from '@/types';
+import { memo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,9 @@ interface LinkItemProps {
   };
 }
 
-export default function LinkItem({
+export default memo(LinkItem);
+
+function LinkItem({
   link,
   projectId,
   collectionId,

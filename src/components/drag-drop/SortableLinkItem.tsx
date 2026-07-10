@@ -11,7 +11,7 @@ interface SortableLinkItemProps {
   collectionId: string;
 }
 
-export function SortableLinkItem({
+export const SortableLinkItem = React.memo(function SortableLinkItem({
   link,
   projectId,
   collectionId,
@@ -71,4 +71,4 @@ export function SortableLinkItem({
       />
     </div>
   );
-}
+});

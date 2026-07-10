@@ -244,4 +244,4 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
   );
 };
 
-export default DragEnabledCollection;
+export default React.memo(DragEnabledCollection);

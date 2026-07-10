@@ -10,8 +10,8 @@
 
 ## 3. Memoize list item components
 
-- [ ] 3.1 Wrap `ProjectItem`, `SortableProjectItem`, `SortableCollectionItem`, `DragEnabledCollection`, `SortableLinkItem`, `LinkItem` in `React.memo`
-- [ ] 3.2 `useMemo` the `sortedProjects` (ProjectList) and `sortedCollections` (DragEnabledCollectionsList) arrays so internal `handleNavigation` stays referentially stable
+- [x] 3.1 Wrap `ProjectItem`, `SortableProjectItem`, `SortableCollectionItem`, `DragEnabledCollection`, `SortableLinkItem`, `LinkItem` in `React.memo`
+- [x] 3.2 `useMemo` the `sortedProjects` (ProjectList) and `sortedCollections` (DragEnabledCollectionsList) arrays so internal `handleNavigation` stays referentially stable
 
 ## 4. Virtualize lists
 

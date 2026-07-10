@@ -9,7 +9,9 @@ interface SortableProjectItemProps {
   project: Project;
 }
 
-export function SortableProjectItem({ project }: SortableProjectItemProps) {
+export const SortableProjectItem = React.memo(function SortableProjectItem({
+  project,
+}: SortableProjectItemProps) {
   const { activeItem } = useDragAndDropContext();
   const {
     attributes,
@@ -57,4 +59,4 @@ export function SortableProjectItem({ project }: SortableProjectItemProps) {
       />
     </div>
   );
-}
+});
