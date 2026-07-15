@@ -85,4 +85,5 @@ export type VerticalTabId =
   | 'bookmarks'
   | 'notes'
   | 'sessions'
-  | 'simple-todo';
+  | 'simple-todo'
+  | 'quickClips';

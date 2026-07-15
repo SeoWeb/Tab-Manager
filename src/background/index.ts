@@ -15,6 +15,7 @@ import {
   backgroundReconcileAll,
   getLastReconciledAt,
 } from '@/lib/cloudflareSync/backgroundSync';
+import { registerQuickClipMenu, onQuickClipClicked } from './quickClip';
 
 const SYNC_ALARM_NAME = 'cloud-sync';
 /** MV3 alarm period, in minutes. Kept conservative to limit Worker load. */
@@ -80,15 +81,27 @@ async function runReconcileIfStale(reason: string): Promise<void> {
 // restarts, and run an immediate pass to catch up after being closed.
 chrome.runtime.onInstalled.addListener(() => {
   ensureAlarms();
+  registerQuickClipMenu();
   void runSync('onInstalled');
   void runReconcile('onInstalled');
 });
 
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarms();
+  registerQuickClipMenu();
   void runSync('onStartup');
   void runReconcile('onStartup');
 });
+
+// Right-click "Save to TabSpace": clip the page/link into Quick Clips storage
+// without opening a tab. Handled entirely in the service worker.
+if (typeof chrome !== 'undefined' && chrome.contextMenus) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === 'save-to-tabspace') {
+      void onQuickClipClicked(info, tab);
+    }
+  });
+}
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm?.name === SYNC_ALARM_NAME) {
@@ -112,3 +125,4 @@ if (
 // The service worker may be spawned directly by an alarm with no onStartup;
 // make sure the alarms are always armed when the worker boots.
 ensureAlarms();
+registerQuickClipMenu();

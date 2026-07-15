@@ -85,22 +85,22 @@ export function ProjectCollaborationModal({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue='members' className='w-full'>
+        <Tabs defaultValue='activity' className='w-full'>
           <TabsList className='grid w-full grid-cols-2'>
-            <TabsTrigger value='members' className='gap-1.5'>
-              <Users className='h-4 w-4' />
-              Members
-            </TabsTrigger>
             <TabsTrigger value='activity' className='gap-1.5'>
               <History className='h-4 w-4' />
               Activity
             </TabsTrigger>
+            <TabsTrigger value='members' className='gap-1.5'>
+              <Users className='h-4 w-4' />
+              Members
+            </TabsTrigger>
           </TabsList>
-          <TabsContent value='members'>
-            <MembersTab project={project} />
-          </TabsContent>
           <TabsContent value='activity'>
             <ActivityTab project={project} isActive={isOpen} />
+          </TabsContent>
+          <TabsContent value='members'>
+            <MembersTab project={project} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -458,36 +458,37 @@ function ActivityTab({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setChanges(await fetchProjectActivity(project.id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load activity.');
+    } finally {
+      setLoading(false);
+    }
+  }, [project.id]);
+
   useEffect(() => {
     if (!isActive) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchProjectActivity(project.id)
-      .then((rows) => {
-        if (!cancelled) setChanges(rows);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load activity.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    void load().finally(() => {
+      if (cancelled) return;
+    });
     return () => {
       cancelled = true;
     };
-  }, [project.id, isActive]);
+  }, [isActive, load]);
 
-  if (loading) {
+  if (error) return <ErrorRow message={error} />;
+  if (loading && changes.length === 0) {
     return (
       <div className='flex items-center justify-center py-6 text-muted-foreground'>
         <Loader2 className='mr-2 h-4 w-4 animate-spin' /> Loading activity…
       </div>
     );
   }
-  if (error) return <ErrorRow message={error} />;
   if (changes.length === 0) {
     return (
       <p className='py-6 text-center text-sm text-muted-foreground'>
@@ -497,33 +498,50 @@ function ActivityTab({
   }
 
   return (
-    <ScrollArea className='max-h-[320px]'>
-      <ol className='space-y-1'>
-        {changes.map((change) => (
-          <li
-            key={change.id}
-            className='flex items-start gap-2 rounded-md px-2 py-1.5 text-sm'
-          >
-            <span className='mt-0.5'>
-              <OperationIcon operation={change.operation} />
-            </span>
-            <div className='min-w-0 flex-1'>
-              <p className='text-foreground'>
-                <span className='font-medium'>
-                  {describeOperation(change.operation)}
-                </span>{' '}
-                a {change.entity_type}
-                {change.client_mutation_id ? '' : ' (server-side)'}
-              </p>
-              <p className='text-xs text-muted-foreground'>
-                by {shortId(change.actor_id)} ·{' '}
-                {formatRelative(change.created_at)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </ScrollArea>
+    <div className='flex flex-col'>
+      <div className='mb-2 flex items-center justify-end'>
+        <Button
+          variant='ghost'
+          size='sm'
+          className='h-7 gap-1.5 text-xs'
+          onClick={() => void load()}
+          disabled={loading}
+        >
+          <Loader2 className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      <ScrollArea className='max-h-[320px]'>
+        <ol className='space-y-1'>
+          {changes.map((change) => (
+            <li
+              key={change.id}
+              className='flex items-start gap-2 rounded-md px-2 py-1.5 text-sm'
+            >
+              <span className='mt-0.5'>
+                <OperationIcon operation={change.operation} />
+              </span>
+              <div className='min-w-0 flex-1'>
+                <p className='text-foreground'>
+                  <span className='font-medium'>
+                    {describeOperation(change.operation)}
+                  </span>{' '}
+                  a {change.entity_type}
+                  {change.client_mutation_id ? '' : ' (server-side)'}
+                </p>
+                <p
+                  className='text-xs text-muted-foreground'
+                  title={formatAbsolute(change.created_at)}
+                >
+                  by {describeActor(change)} ·{' '}
+                  {formatRelative(change.created_at)}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </ScrollArea>
+    </div>
   );
 }
 
@@ -581,6 +599,14 @@ function shortId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}…` : id;
 }
 
+/** Human-readable actor label, preferring display name then email. */
+function describeActor(change: CloudSyncChange): string {
+  const name = change.actor_display_name?.trim();
+  if (name) return name;
+  if (change.actor_email) return change.actor_email;
+  return shortId(change.actor_id);
+}
+
 function formatRelative(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   if (Number.isNaN(ms)) return '';
@@ -589,4 +615,10 @@ function formatRelative(iso: string): string {
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function formatAbsolute(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString();
 }

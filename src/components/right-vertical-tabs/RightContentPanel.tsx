@@ -15,6 +15,7 @@ const LazyTabSessionsPanel = lazy(() =>
     default: m.TabSessionsPanel,
   }))
 );
+const LazyQuickClipsPanel = lazy(() => import('./panels/QuickClipsPanel'));
 
 export default function RightContentPanel() {
   const activeVerticalTabId = useActiveVerticalTabId();
@@ -37,6 +38,12 @@ export default function RightContentPanel() {
         return (
           <Suspense fallback={<Skeleton className='h-full w-full' />}>
             <LazyTabSessionsPanel />
+          </Suspense>
+        );
+      case 'quickClips':
+        return (
+          <Suspense fallback={<Skeleton className='h-full w-full' />}>
+            <LazyQuickClipsPanel />
           </Suspense>
         );
       default:

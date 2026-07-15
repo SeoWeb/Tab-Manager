@@ -73,6 +73,9 @@ export interface CloudSyncChange {
   client_mutation_id: string | null;
   client_id: string | null;
   created_at: string;
+  /** Actor identity, joined from the users table by `getActivity`. */
+  actor_email?: string | null;
+  actor_display_name?: string | null;
 }
 
 /** A server-reported conflict for one of our mutations. */

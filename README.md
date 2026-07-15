@@ -21,6 +21,7 @@ and [Zustand](https://github.com/pmndrs/zustand).
 - [Loading the extension in Chrome](#loading-the-extension-in-chrome)
 - [How it works](#how-it-works)
 - [Per-project data & cloud sync](#per-project-data--cloud-sync)
+- [Import & export (JSON / CSV / HTML)](#import--export-json--csv--html)
 - [Setting up cloud sync](#setting-up-cloud-sync)
 - [Testing](#testing)
 - [Project structure](#project-structure)
@@ -37,6 +38,11 @@ and [Zustand](https://github.com/pmndrs/zustand).
 - **Tab & bookmark management.** Save open windows/tabs as collections, mirror
   projects into the Chrome bookmark tree, and import bookmark folders back as
   projects/collections.
+- **Quick Clips (right-click "Save to TabSpace").** Clip any page, tab, or link
+  straight from the browser context menu **without opening a new tab**. Clips
+  land in a top-level **Quick Clips** panel in the right sidebar, where you can
+  open, remove, or **drag a clip onto any collection** to file it — the clip is
+  removed from Quick Clips once the drop succeeds.
 - **Advanced tasks.** Priorities, statuses, categories, tags, due dates, progress,
   subtasks, comments, activity history, templates, Kanban/list/calendar views,
   Pomodoro sessions, and bulk operations. A **Calendar** view renders tasks by
@@ -46,9 +52,16 @@ and [Zustand](https://github.com/pmndrs/zustand).
 - **Cloud sync & collaboration (optional).** Connect a Cloudflare Worker backend
   to sync a project's links, collections, tasks, notes, and todos. Invite
   teammates with **owner / admin / editor / viewer** roles, see realtime presence,
-  and resolve conflicts under last-write-wins.
+  resolve conflicts under last-write-wins, and review a **readable activity feed**
+  of who changed what (the **Share & members** dialog opens to an **Activity** tab
+  showing each change with the actor's name/email and when it happened).
 - **Local-first.** Without a backend the extension is fully functional; sync is an
   opt-in layer on top. Data persists in `chrome.storage`.
+- **Import & export (per project).** Back up or move a project's data from the
+  **Project menu → Export / Import**. Export **Collections & Links**, **Tasks**,
+  **Todos**, and **Notes** (you pick which) as **JSON**, **CSV**, or **HTML**;
+  re-import a JSON file with a smart merge that never duplicates or deletes
+  existing data (see [below](#import--export-json--csv--html)).
 - **Drag & drop**, **dark mode**, **global search**, **quick links**, and a
   background service worker that keeps cloud projects synced even when the popup
   is closed.
@@ -162,7 +175,24 @@ hook runs a one-time migration to assign legacy items to the active project (see
 `public/manifest.json` declares an MV3 extension: a **service worker**
 (`background.js`, built from `src/background/index.ts`) and a **popup / new-tab**
 page (`index.html`, the Next.js export). The worker owns the periodic cloud-sync
-alarm and coordination lock; the popup owns the UI and interactive sync.
+alarm, the coordination lock, **and the "Save to TabSpace" context menu**; the
+popup owns the UI and interactive sync.
+
+#### Quick Clips & the "Save to TabSpace" context menu
+
+Right-clicking a page or link shows **Save to TabSpace**. The click is handled
+entirely in the service worker (`src/background/quickClip.ts`): it resolves the
+target URL/title, skips internal URLs (`chrome://`, `about:`, `data:`, …), and
+appends a `QuickClip` to a **top-level** `chrome.storage.local` key
+(`tabspace-quick-clips`) — deliberately **outside** the project/collection model.
+No tab or popup is opened.
+
+The right-sidebar **Quick Clips** panel (`src/components/right-vertical-tabs`)
+subscribes to that key and lists the clips. Each clip is draggable via
+`@dnd-kit`; dropping one onto any collection calls `addLink` to file it into the
+project and then `removeQuickClip` so it disappears from Quick Clips. The shared
+logic lives in `src/lib/quickClips.ts` so the worker and the UI use one source of
+truth.
 
 ### Cloud sync pipeline (optional)
 
@@ -232,6 +262,57 @@ Notes, todos, and tasks now push to the cloud just like collections and links:
 
 ---
 
+## Import & export (JSON / CSV / HTML)
+
+Each project can be backed up or moved via the **Project menu → Export / Import**
+(gear icon on a project). This is fully local-first — no backend required.
+
+### Export
+
+The export modal lets you **pick which sections** to include — any combination of
+**Collections & Links**, **Tasks**, **Todos**, and **Notes** — and choose a
+**format**:
+
+- **JSON** — a single structured file (`{ version, exportedAt, project,
+  tasks, todos, notes }`). This is the only format that round-trips back through
+  Import.
+- **CSV** — one flat spreadsheet per selected section (e.g. `Project_links.csv`,
+  `Project_tasks.csv`); handy for spreadsheets or other tools. Links are flattened
+  with their collection name, tasks/todos/notes with their key fields.
+- **HTML** — a self-contained, read-only report for printing or sharing.
+
+### Import (smart merge)
+
+Only **JSON** files can be imported. After picking a file it is validated and
+shown as a **preview** with the target and how many items would be **added**,
+**updated**, or **skipped**. You then choose where the data goes:
+
+- **New project** — imports into a freshly created project. If a project with the
+  same id already exists (e.g. re-importing the same file), it **merges** into
+  that one instead of creating a duplicate.
+- **Existing project** — imports into a project you pick from a dropdown.
+
+The merge is **safe and idempotent**:
+
+- Entities are matched by `id` first → the existing item is **updated**.
+- Otherwise they are matched by **content** (same link URL, note title + content,
+  todo text, or task title within the target project) → the duplicate is
+  **skipped**.
+- Anything genuinely new is **added**.
+- Nothing already in the store and absent from the file is ever **removed**.
+
+### Implementation
+
+- `src/lib/importExport/exportProject.ts` — builds the bundle from the store and
+  serializes it to JSON / CSV / HTML, then triggers the download.
+- `src/lib/importExport/importProject.ts` — parses/validates the file, computes
+  the add/update/skip preview, and applies the merge (mirroring the cloud-sync
+  `applyRemoteChanges` upsert-by-id pattern).
+- `src/lib/importExport/schema.ts` — zod validation + task sanitization.
+- `ExportProjectModal` / `ImportProjectModal` wire the flow into the project menu.
+
+---
+
 ## Setting up cloud sync
 
 Cloud sync is optional. To enable it:
@@ -243,6 +324,12 @@ Cloud sync is optional. To enable it:
    sign in (demo auth by default; swap in a real provider for production).
 4. Create a cloud project, or convert an existing local project to cloud, then
    invite teammates via a share code.
+5. Open **Project menu → Share & members** on a cloud project to manage members,
+   roles, and invites, and to review the **Activity** tab — a readable history of
+   every change. Each row shows the operation, the entity type, the actor
+   (display name or email, joined server-side so it's visible to all roles), and a
+   relative timestamp (hover for the absolute time). Use **Refresh** to pull the
+   latest changes.
 
 ---
 
@@ -273,6 +360,7 @@ jsdom environment.
 │   │   └── views/          # NotesView, TodosView, TasksView, TaskCalendarView, …
 │   ├── lib/
 │   │   ├── cloudflareSync/ # client: queue, API, applier, orchestrator, realtime
+│   │   ├── importExport/   # per-project export (JSON/CSV/HTML) + smart import
 │   │   ├── bookmarkStorage.ts, bookmarkSyncService.ts  # bookmark tree bridge
 │   │   └── tabService.ts   # chrome.tabs / chrome.windows helpers
 │   ├── stores/             # Zustand store + action slices

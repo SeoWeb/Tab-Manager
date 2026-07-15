@@ -15,10 +15,18 @@ import {
   CloudUpload,
   CloudOff,
   Users,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 const EditProjectModal = React.lazy(
   () => import('@/components/modals/EditProjectModal')
+);
+const ExportProjectModal = React.lazy(
+  () => import('@/components/modals/ExportProjectModal')
+);
+const ImportProjectModal = React.lazy(
+  () => import('@/components/modals/ImportProjectModal')
 );
 import { ProjectCollaborationModal } from '@/components/cloud-sync/ProjectCollaborationModal';
 import { useAppStore } from '@/stores/appStore';
@@ -37,6 +45,8 @@ interface ProjectActionsMenuProps {
 const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [cloudBusy, setCloudBusy] = useState(false);
   const cloudSyncEnabled = useAppStore((state) => state.cloudSync.enabled);
   const { toast } = useToast();
@@ -118,6 +128,16 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
             Edit Project
           </DropdownMenuItem>
 
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setIsExportModalOpen(true)}>
+            <Download className='mr-2 h-4 w-4' />
+            Export
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsImportModalOpen(true)}>
+            <Upload className='mr-2 h-4 w-4' />
+            Import
+          </DropdownMenuItem>
+
           {/* Cloud sync actions. Only relevant when cloud sync is connected. */}
           {cloudSyncEnabled && (
             <>
@@ -186,6 +206,21 @@ const ProjectActionsMenu: React.FC<ProjectActionsMenuProps> = ({ project }) => {
           onOpenChange={setIsShareModalOpen}
         />
       )}
+
+      {/* Export / Import — per-project data portability. */}
+      <React.Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <ExportProjectModal
+          project={project}
+          isOpen={isExportModalOpen}
+          onOpenChange={setIsExportModalOpen}
+        />
+      </React.Suspense>
+      <React.Suspense fallback={<Skeleton className='h-8 w-8' />}>
+        <ImportProjectModal
+          isOpen={isImportModalOpen}
+          onOpenChange={setIsImportModalOpen}
+        />
+      </React.Suspense>
     </>
   );
 };

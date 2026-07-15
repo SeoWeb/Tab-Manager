@@ -128,6 +128,8 @@ export interface SyncChange {
   client_mutation_id: string | null;
   client_id: string | null;
   created_at: string;
+  actor_email?: string | null;
+  actor_display_name?: string | null;
 }
 
 export interface SyncConflict {

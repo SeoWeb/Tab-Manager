@@ -19,13 +19,15 @@ import {
 import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
 import { createLinkDataFromTab } from '@/lib/faviconUtils';
+import { removeQuickClip } from '@/lib/quickClips';
 
 export interface DragItem {
   id: string;
-  type: 'link' | 'collection' | 'tab' | 'bookmark' | 'project';
+  type: 'link' | 'collection' | 'tab' | 'bookmark' | 'project' | 'quickClip';
   data: {
     projectId: string;
     collectionId?: string;
+    clipId?: string;
     link?: {
       id: string;
       title: string;
@@ -56,6 +58,12 @@ export interface DragItem {
       windowId: number;
     };
     bookmark?: {
+      id: string;
+      title: string;
+      url: string;
+      favIconUrl?: string;
+    };
+    quickClip?: {
       id: string;
       title: string;
       url: string;
@@ -118,7 +126,12 @@ export function useDragAndDrop() {
     const { id, data } = active;
     const current = data.current;
 
-    if (current && current.type && typeof current.projectId === 'string') {
+    if (
+      current &&
+      current.type &&
+      (typeof current.projectId === 'string' ||
+        typeof current.clipId === 'string')
+    ) {
       const { type, projectId, ...restData } = current;
       setActiveItem({
         id: id.toString(),
@@ -397,6 +410,36 @@ export function useDragAndDrop() {
                 tags: [],
                 notes: '',
               });
+            }
+          }
+        }
+      } else if (activeItem.type === 'quickClip') {
+        if (overData?.type === 'collection') {
+          // Filing a Quick Clips item into a collection, then removing it.
+          const clip = activeItem.data.quickClip;
+          const projectId = overData.projectId;
+          const collectionId = overData.collectionId || overData.collection?.id;
+
+          if (clip && projectId && collectionId) {
+            const collection = overData.collection;
+            const urlExists =
+              collection?.links?.some(
+                (link: { url: string }) => link.url === clip.url
+              ) || false;
+
+            if (!urlExists) {
+              addLink(projectId, collectionId, {
+                title: clip.title,
+                url: clip.url,
+                favIconUrl: clip.favIconUrl || '',
+                tags: [],
+                notes: '',
+              });
+              // Remove the clip from Quick Clips on a successful drop.
+              const clipId = activeItem.data.clipId;
+              if (clipId) {
+                await removeQuickClip(clipId);
+              }
             }
           }
         }

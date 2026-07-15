@@ -75,12 +75,17 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
     },
   });
 
-  // Check if we're dragging a tab/bookmark and if URL already exists
+  // Check if we're dragging a tab/bookmark/quickClip and if URL already exists
+  const activeType = active?.data?.current?.type;
   const isDraggingExternalItem =
-    active?.data?.current?.type === 'tab' ||
-    active?.data?.current?.type === 'bookmark';
-  const draggedUrl =
-    active?.data?.current?.tab?.url || active?.data?.current?.bookmark?.url;
+    activeType === 'tab' ||
+    activeType === 'bookmark' ||
+    activeType === 'quickClip';
+  const draggedItem =
+    active?.data?.current?.tab ||
+    active?.data?.current?.bookmark ||
+    active?.data?.current?.quickClip;
+  const draggedUrl = draggedItem?.url;
   const urlExists = draggedUrl && links.some((link) => link.url === draggedUrl);
 
   const linkIds = links.map((link) => link.id);
@@ -329,7 +334,8 @@ const DragEnabledCollection: React.FC<DragEnabledCollectionProps> = ({
                 <div className='text-sm mt-1'>
                   Add &quot;
                   {active?.data?.current?.tab?.title ||
-                    active?.data?.current?.bookmark?.title}
+                    active?.data?.current?.bookmark?.title ||
+                    active?.data?.current?.quickClip?.title}
                   &quot; to {name}
                 </div>
               </div>

@@ -649,8 +649,11 @@ export async function getActivity(
       sc.base_version,
       sc.client_mutation_id,
       sc.client_id,
-      sc.created_at
+      sc.created_at,
+      u.email AS actor_email,
+      u.display_name AS actor_display_name
     FROM sync_changes sc
+    LEFT JOIN users u ON u.id = sc.actor_id
     WHERE sc.project_id = ?
     ORDER BY sc.id DESC
     LIMIT ?
@@ -672,6 +675,8 @@ export async function getActivity(
     client_mutation_id: row.client_mutation_id,
     client_id: row.client_id,
     created_at: row.created_at,
+    actor_email: (row.actor_email as string | null) ?? null,
+    actor_display_name: (row.actor_display_name as string | null) ?? null,
   }));
 
   return Response.json({ changes });
