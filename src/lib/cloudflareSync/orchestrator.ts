@@ -137,27 +137,44 @@ export async function setCloudApiBaseUrl(url: string): Promise<void> {
 }
 
 /**
- * Sign in via the demo auth endpoint. Requires the Worker to have
- * `ENABLE_DEMO_AUTH=true` (see backend/deployment.md). Real auth providers will
- * replace this in a later phase.
+ * Step 1 of the email sign-in flow. Persists the API URL, then asks the backend
+ * to email an 8-digit login code to the address. The backend always responds
+ * 202 (even for unknown addresses) to avoid account enumeration, so this never
+ * rejects on "no account" — callers simply advance to the code-entry step.
  */
-export async function connectCloudAccount(input: {
+export async function requestLoginCode(input: {
   apiBaseUrl: string;
   email: string;
   displayName?: string;
-}): Promise<CloudAccount> {
+}): Promise<void> {
   await config.setApiBaseUrl(input.apiBaseUrl);
-  const { token, account } = await client.loginDemo({
+  await client.requestLoginCode({
     email: input.email,
     displayName: input.displayName,
+  });
+}
+
+/**
+ * Step 2 of the email sign-in flow. Submits the 8-digit code; on success the
+ * backend returns a JWT which we persist, and the account becomes "connected".
+ */
+export async function verifyAndConnect(input: {
+  email: string;
+  code: string;
+}): Promise<CloudAccount> {
+  const { token, account } = await client.verifyLoginCode({
+    email: input.email,
+    code: input.code,
   });
 
   await authStorage.setToken(token);
   await authStorage.setAccount(account);
 
+  const apiBaseUrl = await config.getApiBaseUrl();
+
   setCloudState({
     account,
-    apiBaseUrl: input.apiBaseUrl.trim(),
+    apiBaseUrl,
     enabled: true,
     status: 'idle',
     lastError: null,

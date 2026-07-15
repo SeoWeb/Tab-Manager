@@ -4,7 +4,6 @@ import type {
   CloudAccount,
   CloudAcceptedInvitation,
   CloudActivityResponse,
-  CloudDemoAuthResponse,
   CloudInvitation,
   CloudMember,
   CloudMemberRemoval,
@@ -15,6 +14,7 @@ import type {
   CloudProjectDetail,
   CloudRole,
   CloudSyncResponse,
+  CloudVerifyResponse,
   SnapshotResponse,
 } from './types';
 
@@ -57,7 +57,7 @@ function extractErrorMessage(body: unknown, status: number): string {
 interface RequestOptions {
   method?: string;
   body?: unknown;
-  /** Send the bearer token. Defaults to true; set false for `/auth/demo`. */
+  /** Send the bearer token. Defaults to true; set false for `/auth/*`. */
   auth?: boolean;
 }
 
@@ -105,15 +105,34 @@ async function request<T>(
   return body as T;
 }
 
-/** `POST /auth/demo` — exchanges an email for a demo JWT (dev only). */
-export async function loginDemo(input: {
+/**
+ * `POST /auth/request-code` — begins the sign-in flow by emailing an 8-digit
+ * login code to the address. The backend always responds 202 (even for unknown
+ * addresses) to avoid account enumeration, so this never rejects on "no account".
+ */
+export async function requestLoginCode(input: {
   email: string;
   displayName?: string;
-}): Promise<{ token: string; account: CloudAccount }> {
-  const result = await request<CloudDemoAuthResponse>('/auth/demo', {
+}): Promise<void> {
+  await request<unknown>('/auth/request-code', {
     method: 'POST',
     auth: false,
     body: { email: input.email, display_name: input.displayName ?? null },
+  });
+}
+
+/**
+ * `POST /auth/verify` — submits the 8-digit code. On success returns the JWT and
+ * the resolved account (creating the user server-side if needed).
+ */
+export async function verifyLoginCode(input: {
+  email: string;
+  code: string;
+}): Promise<{ token: string; account: CloudAccount }> {
+  const result = await request<CloudVerifyResponse>('/auth/verify', {
+    method: 'POST',
+    auth: false,
+    body: { email: input.email, code: input.code },
   });
 
   return {

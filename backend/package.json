@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "migrate:local": "wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0001_init.sql",
-    "migrate:remote": "wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0001_init.sql"
+    "migrate:local": "wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0001_init.sql && wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0002_login_codes.sql",
+    "migrate:remote": "wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0001_init.sql && wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0002_login_codes.sql"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250815.0",

@@ -1,5 +1,10 @@
 import { withCors, preflightHeaders } from './lib/cors';
-import { authenticateToken, createDemoToken, requireUser } from './lib/auth';
+import {
+  authenticateToken,
+  requireUser,
+  requestLoginCode,
+  verifyLoginCode,
+} from './lib/auth';
 import {
   createInvitation,
   createProject,
@@ -86,7 +91,8 @@ async function route(
       name: 'TabSpace Cloudflare Backend',
       status: 'ok',
       endpoints: [
-        'POST /auth/demo',
+        'POST /auth/request-code',
+        'POST /auth/verify',
         'GET /me',
         'POST /projects',
         'GET /projects',
@@ -110,9 +116,14 @@ async function route(
     return jsonResponse({ status: 'ok' });
   }
 
-  if (segments[0] === 'auth' && segments[1] === 'demo') {
+  if (segments[0] === 'auth' && segments[1] === 'request-code') {
     if (request.method !== 'POST') return methodNotAllowed(['POST']);
-    return createDemoToken(request, env);
+    return requestLoginCode(request, env);
+  }
+
+  if (segments[0] === 'auth' && segments[1] === 'verify') {
+    if (request.method !== 'POST') return methodNotAllowed(['POST']);
+    return verifyLoginCode(request, env);
   }
 
   if (segments[0] === 'me') {

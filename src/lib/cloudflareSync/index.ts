@@ -3,9 +3,8 @@
 // Phase 4 adds collaboration (members, invitations, activity) + role helpers.
 // Phase 5 adds background sync, a coordination lock, and realtime presence.
 
-export { CloudSyncApiError } from './client';
 export {
-  loginDemo,
+  CloudSyncApiError,
   getCurrentUser,
   listProjects,
   createProject,
@@ -21,7 +20,8 @@ export {
 export {
   initCloudSync,
   setCloudApiBaseUrl,
-  connectCloudAccount,
+  requestLoginCode,
+  verifyAndConnect,
   verifyCloudAccount,
   disconnectCloudAccount,
   enqueueCloudMutation,
@@ -89,4 +89,5 @@ export type {
   CloudSyncResponse,
   CloudSyncState,
   CloudSyncStatus,
+  CloudVerifyResponse,
 } from './types';

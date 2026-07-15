@@ -43,31 +43,33 @@ export default function SettingsView() {
           <ThemeToggle />
         </div>
       </header>
-      <div className='flex-grow p-4 md:p-8 overflow-y-auto space-y-6'>
-        <div>
-          <Label htmlFor='theme-color'>Theme Color</Label>
-          <Input
-            id='theme-color'
-            type='color'
-            value={themeColor}
-            onChange={(e) => setThemeColor(e.target.value)}
-            className='w-24'
-          />
-        </div>
+      <div className='flex-grow p-4 md:p-8 overflow-y-auto'>
+        <div className='mx-auto w-full max-w-3xl space-y-6'>
+          <div>
+            <Label htmlFor='theme-color'>Theme Color</Label>
+            <Input
+              id='theme-color'
+              type='color'
+              value={themeColor}
+              onChange={(e) => setThemeColor(e.target.value)}
+              className='w-24'
+            />
+          </div>
 
-        <div>
-          <Label className='text-base font-medium'>Favicon Management</Label>
-          <p className='text-sm text-muted-foreground mb-2'>
-            Update all existing favicons with improved quality and caching.
-          </p>
-          <Button asChild variant='outline'>
-            <Link href='/favicon-migration'>Update Favicons</Link>
-          </Button>
-        </div>
+          <div>
+            <Label className='text-base font-medium'>Favicon Management</Label>
+            <p className='text-sm text-muted-foreground mb-2'>
+              Update all existing favicons with improved quality and caching.
+            </p>
+            <Button asChild variant='outline'>
+              <Link href='/favicon-migration'>Update Favicons</Link>
+            </Button>
+          </div>
 
-        <CloudSyncSettingsPanel />
-        <CloudSyncMyProjectsCard />
-        <CloudSyncInvitesCard />
+          <CloudSyncSettingsPanel />
+          <CloudSyncMyProjectsCard />
+          <CloudSyncInvitesCard />
+        </div>
       </div>
     </div>
   );

@@ -55,6 +55,9 @@ and [Zustand](https://github.com/pmndrs/zustand).
   resolve conflicts under last-write-wins, and review a **readable activity feed**
   of who changed what (the **Share & members** dialog opens to an **Activity** tab
   showing each change with the actor's name/email and when it happened).
+  Turn a local project into a cloud project from **Project menu → Edit Project →
+  "Sync this project to cloud"**; if you aren't signed in yet, a dialog prompts
+  you to create an account first, then converts the project once connected.
 - **Local-first.** Without a backend the extension is fully functional; sync is an
   opt-in layer on top. Data persists in `chrome.storage`.
 - **Import & export (per project).** Back up or move a project's data from the
@@ -250,7 +253,14 @@ Notes, todos, and tasks now push to the cloud just like collections and links:
 - **Convert to cloud.** Turning a local project into a cloud project re-keys the
   project (and its flat notes/todos/tasks) to the server id and backfills
   `create` mutations for every existing item, so the server mirrors local state
-  on the next sync.
+  on the next sync. The entry point is **Project menu → Edit Project → "Sync this
+  project to cloud"**, which is always shown for local (non-cloud) projects. If
+  cloud sync isn't connected yet, the button opens a **Connect to Cloud Sync**
+  dialog (email + display name) so you can sign in / create an account; the
+  project is converted automatically once the connection succeeds. The same
+  connect dialog also appears after creating a **new** project with "Sync this
+  project to cloud" checked while not signed in — the project is created locally
+  first, then converted once you connect.
 
 > Scope note: pin toggles, note/task duplication, task archiving, and subtasks
 > **are** cloud-synced (the patch builders carry `isPinned`, `isArchived`,
@@ -322,7 +332,10 @@ Cloud sync is optional. To enable it:
 2. Add the Worker URL to `public/manifest.json` → `host_permissions` and rebuild.
 3. In the extension, open **Settings → Cloud Sync**, enter the Worker URL, and
    sign in (demo auth by default; swap in a real provider for production).
-4. Create a cloud project, or convert an existing local project to cloud, then
+4. Create a cloud project (tick **"Sync this project to cloud"** when adding one —
+   if you aren't signed in yet, you'll be prompted to connect first, then the
+   project converts automatically), or convert an existing local project to cloud
+   from **Project menu → Edit Project → "Sync this project to cloud"**, then
    invite teammates via a share code.
 5. Open **Project menu → Share & members** on a cloud project to manage members,
    roles, and invites, and to review the **Activity** tab — a readable history of

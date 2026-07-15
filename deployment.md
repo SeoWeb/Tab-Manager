@@ -167,30 +167,74 @@ cd backend
 npm run dev
 ```
 
-Demo auth signs JWTs with `JWT_SECRET`, so that secret must be set locally too.
-The easiest way is to copy the example env file (gitignored once copied):
+## Email-based sign-in (magic PIN)
+
+Authentication is passwordless: the extension/frontend sends the user's email +
+(display) name to `POST /auth/request-code`, the Worker generates an 8-digit
+code, stores it (one active code per email, valid for 10 minutes), and emails it
+via the Cloudflare `send_email` binding (`EMAIL`). The user pastes the code into
+the 8-box input and submits it to `POST /auth/verify`, which — on a match —
+issues a JWT, deletes the single-use code, and returns the account. Wrong or
+expired codes increment an attempt counter; after 5 failures the code is
+invalidated and a new one must be requested.
+
+### Configure the email binding
+
+`backend/wrangler.toml` already declares the binding:
+
+```toml
+[[send_email]]
+name = "EMAIL"
+remote = true
+```
+
+`remote = true` routes sends through Cloudflare's live email infrastructure, so
+the `from` address (`welcome@support.tabspace.ww0.dev`, set in
+`backend/src/lib/email.ts`) must be a verified subdomain of the Worker. Verify
+the domain in the Cloudflare dashboard (Email → Addresses / sending) before
+deploying.
+
+### Run the migration
+
+The login codes live in a new table. Apply it locally **and** remotely:
+
+```bash
+cd backend
+npm run migrate:local
+npm run migrate:remote
+```
+
+### Local development
+
+`JWT_SECRET` is required for the issued tokens to verify. The easiest way is to
+copy the example env file (gitignored once copied):
 
 ```bash
 cd backend
 cp .dev.vars.example .dev.vars
-# then edit .dev.vars to set a real JWT_SECRET and ENABLE_DEMO_AUTH=true
+# then edit .dev.vars to set a real JWT_SECRET
 npm run dev
 ```
 
-To enable demo auth on a single run instead, pass the vars explicitly (note that
-`JWT_SECRET` is required for tokens to verify):
+To run on a single invocation instead:
 
 ```bash
 cd backend
-npx wrangler dev --var ENABLE_DEMO_AUTH:true --var JWT_SECRET:$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+npx wrangler dev --var JWT_SECRET:$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 ```
 
-Demo auth endpoint:
+The sign-in flow has two endpoints:
 
 ```bash
-curl -X POST http://localhost:8787/auth/demo \
+# 1) request a code (always 202, even for unknown addresses)
+curl -X POST http://localhost:8787/auth/request-code \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@example.com","display_name":"Test User"}'
+
+# 2) verify the code from the email
+curl -X POST http://localhost:8787/auth/verify \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"test@example.com","code":"12345678"}'
 ```
 
 Use the returned `token` as:
@@ -315,11 +359,12 @@ The response returns the next `cursor`, the `changes` log since `lastCursor`
 
 ## Production hardening checklist
 
-- Set `ENABLE_DEMO_AUTH=false`.
 - Set `ALLOWED_ORIGINS` to your extension origin and dashboard domain only.
 - Rotate `JWT_SECRET` if it is ever exposed.
-- Replace demo auth with your chosen auth provider for production.
-- Add rate limiting if the Worker becomes public.
+- Verify the email sending domain (the `EMAIL` binding `from` address) before
+  going live; login codes can't be delivered until it is verified.
+- The login flow already rate-limits code requests per email; consider Cloudflare
+  rate limiting at the edge if the Worker becomes heavily public.
 - Consider end-to-end encryption for project payloads.
 - Run the test suites (`pnpm test` for the extension, `pnpm test:backend` for
   the Worker) in CI; the sync applier, action enqueue shapes, roles, and

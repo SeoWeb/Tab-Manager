@@ -10,6 +10,27 @@ export type EntityType =
 
 export type SyncOperation = 'create' | 'update' | 'delete';
 
+/**
+ * Minimal shape of the `send_email` binding so the Worker compiles without
+ * pulling in the full `@cloudflare/workers-types` package. `send` returns the
+ * message id Cloudflare assigned (used only for logging/debugging).
+ */
+export interface EmailSendResult {
+  messageId?: string;
+}
+
+export interface EmailMessage {
+  to: string;
+  from: string;
+  subject: string;
+  html?: string;
+  text?: string;
+}
+
+export interface EmailBinding {
+  send(message: EmailMessage): Promise<EmailSendResult>;
+}
+
 export interface Env {
   D1_DATABASE: D1Database;
   /**
@@ -18,8 +39,11 @@ export interface Env {
    */
   PROJECT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string;
-  ENABLE_DEMO_AUTH?: string;
   ALLOWED_ORIGINS?: string;
+  /**
+   * Cloudflare `send_email` binding used to deliver the magic-PIN login email.
+   */
+  EMAIL: EmailBinding;
 }
 
 export interface JwtPayload {

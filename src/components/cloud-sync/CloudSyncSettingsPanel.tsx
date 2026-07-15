@@ -10,13 +10,11 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/stores/appStore';
 import { CloudSyncStatusBadge } from './CloudSyncStatusBadge';
 import { SyncConflictsPanel } from './SyncConflictsPanel';
+import { CloudSyncLoginForm } from './CloudSyncLoginForm';
 import {
-  connectCloudAccount,
   disconnectCloudAccount,
   syncAllCloudProjects,
 } from '@/lib/cloudflareSync/orchestrator';
@@ -35,31 +33,11 @@ function formatLastSynced(iso: string | null): string {
 export function CloudSyncSettingsPanel() {
   const cloudSync = useAppStore((state) => state.cloudSync);
 
-  const [email, setEmail] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isConnected = !!cloudSync.account;
   const isSyncing = cloudSync.status === 'syncing';
-
-  const handleConnect = async () => {
-    setBusy(true);
-    setFormError(null);
-    try {
-      await connectCloudAccount({
-        apiBaseUrl: cloudSync.apiBaseUrl,
-        email,
-        displayName: displayName.trim() || undefined,
-      });
-    } catch (error) {
-      setFormError(
-        error instanceof Error ? error.message : 'Failed to connect'
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const handleDisconnect = async () => {
     setBusy(true);
@@ -150,37 +128,7 @@ export function CloudSyncSettingsPanel() {
             </div>
           </div>
         ) : (
-          <div className='space-y-3'>
-            <div className='grid gap-2'>
-              <div className='space-y-1'>
-                <Label htmlFor='cloud-email'>Email</Label>
-                <Input
-                  id='cloud-email'
-                  type='email'
-                  placeholder='you@example.com'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={busy}
-                />
-              </div>
-              <div className='space-y-1'>
-                <Label htmlFor='cloud-name'>Display name (optional)</Label>
-                <Input
-                  id='cloud-name'
-                  placeholder='Your name'
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  disabled={busy}
-                />
-              </div>
-            </div>
-            <Button
-              onClick={handleConnect}
-              disabled={busy || !cloudSync.apiBaseUrl?.trim() || !email.trim()}
-            >
-              {busy ? 'Connecting…' : 'Connect'}
-            </Button>
-          </div>
+          <CloudSyncLoginForm compact />
         )}
 
         {formError && (

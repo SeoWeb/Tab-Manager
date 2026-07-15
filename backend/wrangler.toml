@@ -11,8 +11,15 @@ custom_domain = true
 local_protocol = "http"
 
 [vars]
-ENABLE_DEMO_AUTH = "true"
 ALLOWED_ORIGINS = "*"
+
+# Email sending for the magic-PIN login flow. `remote = true` routes sends
+# through Cloudflare's live email infrastructure, so the sending domain
+# (`EMAIL_FROM` in src/lib/email.ts) must be a verified subdomain of the
+# worker. See deployment.md.
+[[send_email]]
+name = "EMAIL"
+remote = true
 
 [[d1_databases]]
 # Any non-empty UUID works for local development (`wrangler dev`, `migrate:local`).

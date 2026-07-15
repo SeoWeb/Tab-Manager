@@ -264,8 +264,8 @@ export interface CloudProject {
   role?: CloudRole;
 }
 
-/** Response of `POST /auth/demo`. */
-export interface CloudDemoAuthResponse {
+/** Response of `POST /auth/verify` (successful PIN verification). */
+export interface CloudVerifyResponse {
   token: string;
   user: {
     id: string;
