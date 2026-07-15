@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { nanoid } from 'nanoid';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,11 @@ import { Label } from '@/components/ui/label';
 import { useAddProject } from '@/hooks/useAppStoreWithDefaults';
 import { useAppStore } from '@/stores/appStore';
 import { useToast } from '@/hooks/use-toast';
-import { addCloudProject } from '@/lib/cloudflareSync/orchestrator';
+import {
+  addCloudProject,
+  convertProjectToCloud,
+} from '@/lib/cloudflareSync/orchestrator';
+import { CloudSyncConnectModal } from '@/components/cloud-sync/CloudSyncConnectModal';
 import ProjectForm from './ProjectForm';
 
 interface AddProjectModalProps {
@@ -33,6 +38,8 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
   const [projectColor, setProjectColor] = useState('#FFFFFF');
   const [syncToCloud, setSyncToCloud] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [pendingProjectId, setPendingProjectId] = useState<string | null>(null);
   const addProject = useAddProject();
   const cloudEnabled = useAppStore((state) => state.cloudSync.enabled);
   const { toast } = useToast();
@@ -69,6 +76,17 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
       } finally {
         setSaving(false);
       }
+    } else if (syncToCloud && !cloudEnabled) {
+      // Create the project locally first, then prompt the user to connect so it
+      // can be converted to a cloud project once they sign in.
+      const newId = nanoid();
+      addProject(projectInput, { id: newId });
+      setPendingProjectId(newId);
+      setIsConnectModalOpen(true);
+      toast({
+        title: 'Project Added',
+        description: `'${projectInput.name}' was created locally. Connect to sync it to the cloud.`,
+      });
     } else {
       addProject(projectInput);
       toast({
@@ -82,6 +100,28 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
     setSyncToCloud(false);
     if (onOpenChange) {
       onOpenChange(false);
+    }
+  };
+
+  const handleConnected = async () => {
+    if (!pendingProjectId) return;
+    try {
+      await convertProjectToCloud(pendingProjectId);
+      toast({
+        title: 'Synced to cloud',
+        description: 'Your new project is now syncing to the cloud.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Sync failed',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Could not sync the project.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPendingProjectId(null);
     }
   };
 
@@ -110,7 +150,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
             id='sync-to-cloud'
             checked={syncToCloud}
             onCheckedChange={(checked) => setSyncToCloud(checked === true)}
-            disabled={!cloudEnabled || saving}
+            disabled={saving}
             className='mt-0.5'
           />
           <div className='space-y-0.5'>
@@ -120,7 +160,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
             <p className='text-xs text-muted-foreground'>
               {cloudEnabled
                 ? 'Creates the project on your Cloudflare Worker and keeps it synced.'
-                : 'Connect cloud sync in Settings first to enable this option.'}
+                : 'You will be prompted to connect a cloud account after creating the project.'}
             </p>
           </div>
         </div>
@@ -135,6 +175,14 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({
             {saving ? 'Saving…' : 'Save Project'}
           </Button>
         </DialogFooter>
+
+        <CloudSyncConnectModal
+          isOpen={isConnectModalOpen}
+          onOpenChange={setIsConnectModalOpen}
+          onConnected={handleConnected}
+          title='Connect to sync this project'
+          description='Sign in or create an account to sync this project with the cloud. Your data stays on the Cloudflare Worker you configured.'
+        />
       </DialogContent>
     </Dialog>
   );
