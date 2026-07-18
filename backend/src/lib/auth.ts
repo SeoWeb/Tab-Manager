@@ -19,6 +19,22 @@ const MIN_REQUEST_INTERVAL_MS = 30 * 1000;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+/** Minimum JWT secret length (32 chars ≈ 256-bit) to prevent forgeable tokens. */
+export const MIN_JWT_SECRET_LENGTH = 32;
+
+/**
+ * Fail fast if the signing secret is missing or too weak. `crypto.subtle`
+ * happily imports an empty/short key, which yields HMAC tokens an attacker can
+ * forge, so we assert strength before any token is signed or verified.
+ */
+export function assertJwtSecret(secret: string | undefined): void {
+  if (!secret || secret.trim().length < MIN_JWT_SECRET_LENGTH) {
+    throw new Error(
+      `JWT_SECRET is not configured or too short (min ${MIN_JWT_SECRET_LENGTH} characters). Refusing to start with a forgeable signing key.`
+    );
+  }
+}
+
 function base64UrlEncode(input: ArrayBuffer | Uint8Array): string {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   let binary = '';

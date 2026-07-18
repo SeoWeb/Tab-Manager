@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { signJwt, verifyJwt } from '../auth';
+import { signJwt, verifyJwt, assertJwtSecret } from '../auth';
 
-const SECRET = 'test-secret-do-not-use-in-prod';
+const SECRET = 'test-secret-do-not-use-in-prod-123456';
 
 describe('auth JWT (signJwt / verifyJwt)', () => {
   it('verifies a token it signed and returns the payload', async () => {
@@ -39,5 +39,26 @@ describe('auth JWT (signJwt / verifyJwt)', () => {
     const payload = await verifyJwt(token, SECRET);
 
     expect(payload).toBeNull();
+  });
+});
+
+describe('assertJwtSecret (boot validation)', () => {
+  it('passes for a sufficiently long secret', () => {
+    expect(() => assertJwtSecret(SECRET)).not.toThrow();
+    expect(() => assertJwtSecret('a'.repeat(32))).not.toThrow();
+  });
+
+  it('throws when the secret is missing', () => {
+    expect(() => assertJwtSecret(undefined)).toThrow(/JWT_SECRET/);
+    expect(() => assertJwtSecret('')).toThrow(/JWT_SECRET/);
+  });
+
+  it('throws when the secret is only whitespace', () => {
+    expect(() => assertJwtSecret('   ')).toThrow(/JWT_SECRET/);
+  });
+
+  it('throws when the secret is too short', () => {
+    expect(() => assertJwtSecret('short')).toThrow(/JWT_SECRET/);
+    expect(() => assertJwtSecret('a'.repeat(31))).toThrow(/JWT_SECRET/);
   });
 });

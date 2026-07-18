@@ -35,7 +35,7 @@ import {
   getRateLimitConfig,
   type RateDecision,
 } from './lib/ratelimit';
-import { verifyJwt } from './lib/auth';
+import { verifyJwt, assertJwtSecret } from './lib/auth';
 import type { Env } from './types';
 
 // Re-exported so Wrangler can find the Durable Object classes in the entry module.
@@ -48,6 +48,15 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<Response> {
+    // Boot-time guard (runs once per isolate cold start): refuse to serve with a
+    // missing or too-short JWT secret, which would yield forgeable tokens.
+    try {
+      assertJwtSecret(env.JWT_SECRET);
+    } catch (error) {
+      console.error('[auth] startup configuration error', error);
+      return errorResponse(500, 'Server misconfiguration: JWT_SECRET is invalid');
+    }
+
     if (request.method === 'OPTIONS') {
       return withCors(
         new Response(null, {
@@ -410,6 +419,12 @@ async function handleRealtimeUpgrade(
   env: Env,
   url: URL
 ): Promise<Response> {
+  try {
+    assertJwtSecret(env.JWT_SECRET);
+  } catch (error) {
+    console.error('[auth] startup configuration error', error);
+    return errorResponse(500, 'Server misconfiguration: JWT_SECRET is invalid');
+  }
   if (!env.PROJECT_ROOM) {
     return errorResponse(503, 'Realtime is not configured on this deployment');
   }

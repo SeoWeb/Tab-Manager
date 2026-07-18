@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "lint:eslint": "eslint .",
-    "lint:src": "eslint src frontend eslint.config.js jest.config.js post-build.js postcss.config.mjs",
+    "lint:src": "eslint src frontend eslint.config.mjs jest.config.js post-build.js postcss.config.mjs",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
