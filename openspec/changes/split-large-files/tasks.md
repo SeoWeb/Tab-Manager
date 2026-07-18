@@ -7,9 +7,9 @@
 
 ## 2. Frontend store action splits
 
-- [ ] 2.1 Split `src/stores/actions/taskActions.ts` (1262): extract `utils.ts` (generateId/timestamp/defaults/activity/author), `stats.ts` (`calculateTaskStats`); keep factory + `initializeTaskState` as barrel
-- [ ] 2.2 Split `src/stores/actions/collectionActions.ts` (428): extract `buildCollectionUpdatePatch`, `syncCollectionOrders` into `collectionActions/` helpers
-- [ ] 2.3 Split `src/stores/appStore.ts` (401): extract `mergeAppState` into `stores/mergeAppState.ts`, re-export
+- [x] 2.1 Split `src/stores/actions/taskActions.ts` (1262): extract `utils.ts` (generateId/timestamp/defaults/activity/author), `stats.ts` (`calculateTaskStats`); keep factory + `initializeTaskState` as barrel
+- [x] 2.2 Split `src/stores/actions/collectionActions.ts` (428): extract `buildCollectionUpdatePatch`, `syncCollectionOrders` into `collectionActions/` helpers
+- [x] 2.3 Split `src/stores/appStore.ts` (401): extract `mergeAppState` into `stores/mergeAppState.ts`, re-export
 
 ## 3. cloudflareSync module split
 
