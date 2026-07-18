@@ -107,8 +107,11 @@ export class RateLimiter implements DurableObject {
   async alarm(): Promise<void> {
     const now = Date.now();
     this.timestamps = this.timestamps.filter((t) => t > now - this.windowMs);
+    // When the window has fully drained there are no in-window timestamps, so
+    // delete the stored state and let the Durable Object be reclaimed instead of
+    // lingering with empty state.
     if (this.timestamps.length === 0) {
-      this.timestamps = [];
+      await this.ctx.storage.deleteAll();
     }
   }
 }

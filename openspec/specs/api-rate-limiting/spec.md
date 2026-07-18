@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Rate limiter Durable Object
-The system SHALL provide a `RateLimiter` Durable Object that maintains a precise sliding-window counter per rate-limit key, returning a decision of `{ allowed, limit, remaining, resetAt, retryAfter }` for each check.
+The system SHALL provide a `RateLimiter` Durable Object that maintains a precise sliding-window counter per rate-limit key, returning a decision of `{ allowed, limit, remaining, resetAt, retryAfter }` for each check. When the instance's window has fully drained (no in-window timestamps remain after pruning), the instance SHALL delete its stored state so the Durable Object is reclaimed rather than persisting indefinitely with empty state.
 
 #### Scenario: Within-window allowance
 - **WHEN** a key has fewer than `limit` requests recorded within the preceding `windowMs`
@@ -14,6 +14,10 @@ The system SHALL provide a `RateLimiter` Durable Object that maintains a precise
 #### Scenario: Expired entries are pruned
 - **WHEN** a request timestamp is older than `windowMs`
 - **THEN** it is excluded from the count and does not block new requests
+
+#### Scenario: Idle instance storage is reclaimed
+- **WHEN** the `alarm()` fires after all in-window timestamps have expired
+- **THEN** the instance's stored state is deleted and the Durable Object is freed for garbage collection
 
 ### Requirement: Tiered rate limits at the edge
 The system SHALL enforce, at the `fetch` entrypoint and before routing, a global per-IP limit plus endpoint-specific limits for authenticated API, sync, and the auth request-code / verify routes. Limits SHALL be configurable via env vars with the stated defaults (per 60s window).

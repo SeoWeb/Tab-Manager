@@ -13,9 +13,9 @@
     "migrate:remote": "wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0001_init.sql && wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0002_login_codes.sql && wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0003_drop_e2e.sql"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250815.0",
+    "@cloudflare/workers-types": "^5.20260718.1",
     "typescript": "^5.9.2",
     "vitest": "^4.1.9",
-    "wrangler": "^4.13.0"
+    "wrangler": "^4.112.0"
   }
 }

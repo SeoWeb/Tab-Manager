@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Maximum projects per user
 The system SHALL enforce a maximum number of active (non-deleted) projects owned by a user. The default maximum is 10 and SHALL be overridable via `QUOTA_MAX_PROJECTS_PER_USER`. The count check and the project creation SHALL occur within a single transaction so that concurrent requests cannot both observe available capacity and overshoot the maximum.
@@ -44,25 +44,3 @@ The system SHALL enforce a maximum total number of entities (collections, links,
 #### Scenario: Concurrent syncs cannot overshoot
 - **WHEN** concurrent syncs for the same project each carry creates that, combined, would exceed the remaining entity capacity
 - **THEN** at most the available capacity is created and the overflow requests return `403` with a quota-exceeded error
-
-### Requirement: Maximum sync mutations per request
-The system SHALL reject a sync request carrying more than the configured maximum number of mutations. The default maximum is 200 and SHALL be overridable via `QUOTA_MAX_SYNC_MUTATIONS_PER_REQUEST`.
-
-#### Scenario: Sync within mutation cap
-- **WHEN** a sync request carries at most the maximum number of mutations
-- **THEN** the sync proceeds normally
-
-#### Scenario: Sync over mutation cap
-- **WHEN** a sync request carries more than the maximum number of mutations
-- **THEN** the system returns `400` (bad request) and applies no mutations
-
-### Requirement: Configurable quota limits
-Every usage-quota limit SHALL be overridable via an optional environment variable, falling back to the documented default when unset or invalid.
-
-#### Scenario: Default used when unset
-- **WHEN** no override env var is provided
-- **THEN** the system uses the documented default for each quota
-
-#### Scenario: Override applied
-- **WHEN** a valid numeric override env var is provided
-- **THEN** the system uses that value instead of the default

@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   evaluateWindow,
   getRateLimitConfig,
+  RateLimiter,
   type RateDecision,
 } from '../ratelimit';
 import { rateLimited } from '../response';
@@ -83,6 +84,49 @@ describe('getRateLimitConfig', () => {
     );
     expect(config.apiPerUser.limit).toBe(300);
     expect(config.authRequest.limit).toBe(10);
+  });
+});
+
+describe('RateLimiter.alarm storage reclamation', () => {
+  function makeRateLimiter(
+    timestamps: number[],
+    now: number
+  ): { limiter: RateLimiter; deleted: { value: boolean } } {
+    const deleted = { value: false };
+    const storage = {
+      deleteAll: async () => {
+        deleted.value = true;
+      },
+    };
+    const ctx = {
+      storage: {
+        deleteAll: storage.deleteAll,
+        setAlarm: async () => {},
+        getAlarm: async () => null,
+      },
+    };
+    const env = {} as Env;
+    const limiter = new RateLimiter(ctx as unknown as DurableObjectState, env);
+    // Seed the in-memory timestamps (private) for the test clock.
+    (limiter as unknown as { timestamps: number[] }).timestamps = timestamps;
+    (limiter as unknown as { windowMs: number }).windowMs = 60_000;
+    // Freeze Date.now() to a fixed instant.
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    return { limiter, deleted };
+  }
+
+  it('deletes stored state when the window has fully drained', async () => {
+    const now = 1_000_000;
+    const { limiter, deleted } = makeRateLimiter([now - 70_000], now);
+    await limiter.alarm();
+    expect(deleted.value).toBe(true);
+  });
+
+  it('keeps stored state when in-window timestamps remain', async () => {
+    const now = 1_000_000;
+    const { limiter, deleted } = makeRateLimiter([now - 10_000], now);
+    await limiter.alarm();
+    expect(deleted.value).toBe(false);
   });
 });
 

@@ -22,6 +22,15 @@ import type {
   SyncResponse,
 } from '../types';
 
+/**
+ * Number of `?` placeholders inside the entity-count guard subquery. The guard
+ * tallies one `SELECT COUNT(*) FROM <table> WHERE project_id = ?` per entity
+ * table (collections, links, tasks, notes, todos), so each guarded insert must
+ * bind the project id that many times before the `createCount`/`maxEntities`
+ * args. Mismatched bindings make D1 throw at runtime.
+ */
+const TABLE_COUNT_PLACEHOLDERS = 5;
+
 type TableKey =
   | 'projects'
   | 'collections'
@@ -132,9 +141,27 @@ export async function syncProject(
 
   const lastCursor = parseCursor(request.lastCursor);
   const mutations = parseMutations(request.mutations);
-  const createCount = mutations.filter(
-    (m) => m.operation === 'create'
-  ).length;
+  const createMutations = mutations.filter((m) => m.operation === 'create');
+  const createCount = createMutations.length;
+
+  // Build the shared guard used by every create insert: the project's current
+  // entity total plus the incoming creates must stay at or under the cap. The
+  // guard is embedded in each create's INSERT so the count check and the writes
+  // run inside a single D1 batch (one transaction) and concurrent syncs cannot
+  // both observe capacity and overshoot it.
+  const maxEntities = getQuotaConfig(env).maxEntitiesPerProject;
+  const entityTotalSql = `
+    (SELECT COUNT(*) FROM collections WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM links WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM tasks WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM notes WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM todos WHERE project_id = ? AND deleted_at IS NULL)
+  `;
+  const guardSql = `(${entityTotalSql}) + ? <= ?`;
+
+  // Pre-flight read decision (unchanged error shape). When there are creates we
+  // also run the atomic guarded batch below; the read here rejects the obvious
+  // over-capacity case up front.
   const entityQuota = await checkEntityQuotaForMutations(
     env,
     projectId,
@@ -148,7 +175,12 @@ export async function syncProject(
   // only the rows this request inserts (Phase 5 realtime).
   const beforeCursor = await getMaxChangeId(env, projectId);
 
-  for (const mutation of mutations) {
+  // Apply the quota-consuming create mutations in a single guarded batch so the
+  // count check and the writes are serialized; at most the available capacity
+  // is created. Other mutations run through the normal per-mutation path.
+  const now = nowIso();
+  const createStatements: D1PreparedStatement[] = [];
+  for (const mutation of createMutations) {
     if (mutation.projectId !== projectId) {
       conflicts.push({
         entityType: mutation.entityType,
@@ -160,6 +192,39 @@ export async function syncProject(
       });
       continue;
     }
+    const built = await buildCreateStatements(
+      env,
+      user.id,
+      mutation,
+      now,
+      guardSql,
+      [createCount, maxEntities]
+    );
+    if ('conflict' in built) {
+      conflicts.push(built.conflict);
+      continue;
+    }
+    createStatements.push(...built.statements);
+  }
+
+  if (createStatements.length > 0) {
+    const primary = createStatements[0];
+    const dependents = createStatements.slice(1);
+    const breach = await checkEntityQuotaForMutations(
+      env,
+      projectId,
+      createCount,
+      {
+        primary,
+        dependents,
+      }
+    );
+    if (breach) return breach;
+  }
+
+  for (const mutation of mutations) {
+    if (mutation.operation === 'create') continue; // handled above
+    if (mutation.projectId !== projectId) continue;
 
     const result = await applyMutation(env, user.id, mutation);
     if (result.conflict) {
@@ -438,6 +503,104 @@ async function applyMutation(
 }
 
 /**
+ * Build the statements that apply a single `create` mutation: the entity insert
+ * (guarded so it only commits when the project is still under its entity cap)
+ * plus the per-entity version bump and the sync_changes row. Returns a conflict
+ * when the entity already exists. Pure reads happen here; nothing is committed
+ * until the caller runs the statements in a batch.
+ */
+async function buildCreateStatements(
+  env: Env,
+  actorId: string,
+  mutation: SyncMutation,
+  now: string,
+  guardSql: string,
+  guardArgs: unknown[]
+): Promise<
+  | { statements: D1PreparedStatement[] }
+  | { conflict: SyncConflict }
+> {
+  const table = tableFor(mutation.entityType);
+  if (!table) {
+    return {
+      conflict: {
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        clientMutationId: mutation.clientMutationId,
+        message: 'Unsupported entity type',
+        currentVersion: 0,
+        expectedVersion: mutation.baseVersion,
+      },
+    };
+  }
+
+  if (await entityExists(env, table, mutation.entityId)) {
+    return {
+      conflict: {
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        clientMutationId: mutation.clientMutationId,
+        message: 'Entity already exists',
+        currentVersion: 0,
+        expectedVersion: mutation.baseVersion,
+      },
+    };
+  }
+
+  const currentVersion = await getEntityVersion(
+    env,
+    mutation.projectId,
+    mutation.entityType,
+    mutation.entityId
+  );
+
+  let entityStmt: D1PreparedStatement;
+  try {
+    const built = await buildEntityStatement(
+      env,
+      table,
+      mutation,
+      now,
+      currentVersion,
+      guardSql,
+      guardArgs
+    );
+    if ('conflict' in built) return { conflict: built.conflict };
+    entityStmt = built.stmt;
+  } catch (error) {
+    return {
+      conflict: {
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        clientMutationId: mutation.clientMutationId,
+        message:
+          error instanceof Error ? error.message : 'Invalid mutation patch',
+        currentVersion,
+        expectedVersion: mutation.baseVersion,
+      },
+    };
+  }
+
+  // `entityStmt` is already guarded by `guardSql` (the live entity count), so it
+  // only commits when capacity remains. The version bump and sync_changes row
+  // follow it in the same batch, so at most the available capacity is created
+  // and the quota cannot be overshot by concurrent syncs.
+  return {
+    statements: [
+      entityStmt,
+      prepareIncrementVersion(
+        env,
+        mutation.projectId,
+        mutation.entityType,
+        mutation.entityId,
+        now
+      ),
+      prepareInsertSyncChange(env, actorId, mutation, now),
+    ],
+  };
+}
+
+/**
  * Build the prepared statement that performs the entity write for a mutation.
  * Pure reads (existence checks, current-row merge) happen here; nothing is
  * committed until the caller runs the returned statement in a batch.
@@ -447,7 +610,9 @@ async function buildEntityStatement(
   table: TableKey,
   mutation: SyncMutation,
   now: string,
-  currentVersion: number
+  currentVersion: number,
+  guardSql?: string,
+  guardArgs?: unknown[]
 ): Promise<{ stmt: D1PreparedStatement } | { conflict: SyncConflict }> {
   switch (mutation.operation) {
     case 'delete': {
@@ -473,7 +638,9 @@ async function buildEntityStatement(
           },
         };
       }
-      return { stmt: prepareInsert(env, mutation, now) };
+      return {
+        stmt: prepareInsert(env, mutation, now, guardSql, guardArgs),
+      };
     }
     case 'update':
     default: {
@@ -621,17 +788,19 @@ async function applyProjectMutation(
 function prepareInsert(
   env: Env,
   mutation: SyncMutation,
-  now: string
+  now: string,
+  guardSql?: string,
+  guardArgs?: unknown[]
 ): D1PreparedStatement {
   switch (mutation.entityType) {
     case 'collection':
-      return prepareInsertCollection(env, mutation, now);
+      return prepareInsertCollection(env, mutation, now, guardSql, guardArgs);
     case 'link':
-      return prepareInsertLink(env, mutation, now);
+      return prepareInsertLink(env, mutation, now, guardSql, guardArgs);
     case 'task':
     case 'note':
     case 'todo':
-      return prepareInsertJsonEntity(env, mutation, now);
+      return prepareInsertJsonEntity(env, mutation, now, guardSql, guardArgs);
     default:
       throw new Error('Unsupported entity type');
   }
@@ -659,7 +828,9 @@ async function prepareUpdate(
 function prepareInsertCollection(
   env: Env,
   mutation: SyncMutation,
-  now: string
+  now: string,
+  guardSql?: string,
+  guardArgs?: unknown[]
 ): D1PreparedStatement {
   const name = requireString(mutation.patch, 'name');
   const description = optionalString(mutation.patch.description);
@@ -675,14 +846,19 @@ function prepareInsertCollection(
   );
   const bookmarkFolderId = optionalString(mutation.patch.bookmarkFolderId);
 
-  return env.D1_DATABASE.prepare(
-    `
-    INSERT INTO collections (
-      id, project_id, name, description, color, minimized, order_index,
-      bookmark_folder_id, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
-  ).bind(
+  const cols = [
+    'id',
+    'project_id',
+    'name',
+    'description',
+    'color',
+    'minimized',
+    'order_index',
+    'bookmark_folder_id',
+    'created_at',
+    'updated_at',
+  ];
+  const values = [
     mutation.entityId,
     mutation.projectId,
     name,
@@ -692,8 +868,27 @@ function prepareInsertCollection(
     orderIndex,
     bookmarkFolderId,
     now,
-    now
-  );
+    now,
+  ];
+
+  // When a guard is supplied the insert only commits when the project is still
+  // under its entity cap, making the create atomic with the quota check.
+  const sql = guardSql
+    ? `INSERT INTO collections (${cols.join(', ')}) SELECT ${cols
+        .map(() => '?')
+        .join(', ')} WHERE (${guardSql})`
+    : `INSERT INTO collections (${cols.join(', ')}) VALUES (${cols
+        .map(() => '?')
+        .join(', ')})`;
+
+  // The guard subquery references the project id once per table (collections,
+  // links, tasks, notes, todos); bind it for each placeholder plus the
+  // `createCount`/`maxEntities` args, otherwise D1 throws a binding mismatch.
+  const bound =
+    guardSql && guardArgs
+      ? [...values, ...Array(TABLE_COUNT_PLACEHOLDERS).fill(mutation.projectId), ...guardArgs]
+      : [...values, ...(guardArgs ?? [])];
+  return env.D1_DATABASE.prepare(sql).bind(...bound);
 }
 
 async function prepareUpdateCollection(
@@ -766,7 +961,9 @@ async function prepareUpdateCollection(
 function prepareInsertLink(
   env: Env,
   mutation: SyncMutation,
-  now: string
+  now: string,
+  guardSql?: string,
+  guardArgs?: unknown[]
 ): D1PreparedStatement {
   const url = requireString(mutation.patch, 'url');
   const title = optionalString(mutation.patch.title);
@@ -782,14 +979,21 @@ function prepareInsertLink(
   );
   const bookmarkId = optionalString(mutation.patch.bookmarkId);
 
-  return env.D1_DATABASE.prepare(
-    `
-    INSERT INTO links (
-      id, project_id, collection_id, url, title, fav_icon_url, notes,
-      tags_json, order_index, bookmark_id, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `
-  ).bind(
+  const cols = [
+    'id',
+    'project_id',
+    'collection_id',
+    'url',
+    'title',
+    'fav_icon_url',
+    'notes',
+    'tags_json',
+    'order_index',
+    'bookmark_id',
+    'created_at',
+    'updated_at',
+  ];
+  const values = [
     mutation.entityId,
     mutation.projectId,
     optionalString(mutation.patch.collectionId),
@@ -801,8 +1005,25 @@ function prepareInsertLink(
     orderIndex,
     bookmarkId,
     now,
-    now
-  );
+    now,
+  ];
+
+  const sql = guardSql
+    ? `INSERT INTO links (${cols.join(', ')}) SELECT ${cols
+        .map(() => '?')
+        .join(', ')} WHERE (${guardSql})`
+    : `INSERT INTO links (${cols.join(', ')}) VALUES (${cols
+        .map(() => '?')
+        .join(', ')})`;
+
+  // The guard subquery references the project id once per table (collections,
+  // links, tasks, notes, todos); bind it for each placeholder plus the
+  // `createCount`/`maxEntities` args, otherwise D1 throws a binding mismatch.
+  const bound =
+    guardSql && guardArgs
+      ? [...values, ...Array(TABLE_COUNT_PLACEHOLDERS).fill(mutation.projectId), ...guardArgs]
+      : [...values, ...(guardArgs ?? [])];
+  return env.D1_DATABASE.prepare(sql).bind(...bound);
 }
 
 async function prepareUpdateLink(
@@ -886,7 +1107,9 @@ async function prepareUpdateLink(
 function prepareInsertJsonEntity(
   env: Env,
   mutation: SyncMutation,
-  now: string
+  now: string,
+  guardSql?: string,
+  guardArgs?: unknown[]
 ): D1PreparedStatement {
   const title = optionalString(mutation.patch.title);
   const payloadJson = mutation.patch.payload
@@ -900,13 +1123,17 @@ function prepareInsertJsonEntity(
   const table = jsonTableFor(mutation.entityType);
   if (!table) throw new Error('Unsupported entity type');
 
-  return env.D1_DATABASE.prepare(
-    `
-    INSERT INTO ${table} (
-      id, project_id, collection_id, title, payload_json, order_index, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `
-  ).bind(
+  const cols = [
+    'id',
+    'project_id',
+    'collection_id',
+    'title',
+    'payload_json',
+    'order_index',
+    'created_at',
+    'updated_at',
+  ];
+  const values = [
     mutation.entityId,
     mutation.projectId,
     collectionId,
@@ -914,8 +1141,25 @@ function prepareInsertJsonEntity(
     payloadJson,
     orderIndex,
     now,
-    now
-  );
+    now,
+  ];
+
+  const sql = guardSql
+    ? `INSERT INTO ${table} (${cols.join(', ')}) SELECT ${cols
+        .map(() => '?')
+        .join(', ')} WHERE (${guardSql})`
+    : `INSERT INTO ${table} (${cols.join(
+        ', '
+      )}) VALUES (${cols.map(() => '?').join(', ')})`;
+
+  // The guard subquery references the project id once per table (collections,
+  // links, tasks, notes, todos); bind it for each placeholder plus the
+  // `createCount`/`maxEntities` args, otherwise D1 throws a binding mismatch.
+  const bound =
+    guardSql && guardArgs
+      ? [...values, ...Array(TABLE_COUNT_PLACEHOLDERS).fill(mutation.projectId), ...guardArgs]
+      : [...values, ...(guardArgs ?? [])];
+  return env.D1_DATABASE.prepare(sql).bind(...bound);
 }
 
 async function prepareUpdateJsonEntity(

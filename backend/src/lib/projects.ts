@@ -1,5 +1,5 @@
 import { badRequest, forbidden, notFound } from './response';
-import { checkMemberQuota, checkProjectQuota } from './quotas';
+import { checkMemberQuota, checkProjectQuota, getQuotaConfig } from './quotas';
 import { getLatestChange } from './sync';
 import { notifyRealtime } from './realtime';
 import type {
@@ -187,9 +187,6 @@ export async function createProject(
     return badRequest('Project name is required');
   }
 
-  const quota = await checkProjectQuota(env, owner.id);
-  if (quota) return quota;
-
   const now = nowIso();
   const id = crypto.randomUUID();
   const description = parseOptionalString(input.description);
@@ -197,34 +194,58 @@ export async function createProject(
   const icon = parseOptionalString(input.icon);
   const patch = { id, name, description, color, icon, owner_id: owner.id };
 
-  // Project, owner membership, version seed, and change log are written as one
-  // atomic D1 batch so a partial failure can never leave a half-created project.
-  await env.D1_DATABASE.batch([
-    env.D1_DATABASE.prepare(
-      `
-      INSERT INTO projects (id, name, description, color, icon, owner_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `
-    ).bind(id, name, description, color, icon, owner.id, now, now),
-    env.D1_DATABASE.prepare(
-      `
-      INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-      `
-    ).bind(id, id, owner.id, 'owner', now, now),
-    prepareIncrementVersion(env, id, 'project', id, now),
-    prepareInsertSyncChange(env, {
-      projectId: id,
-      actorId: owner.id,
-      entityType: 'project',
-      entityId: id,
-      operation: 'create',
-      patch,
-      clientMutationId: null,
-      clientId: null,
-      createdAt: now,
-    }),
-  ]);
+  // The project row is the quota-consuming write. It is inserted via an
+  // `INSERT ... SELECT ... WHERE (count) < limit` guard so the count check and
+  // the insert run inside a single D1 batch (one transaction). Concurrent
+  // creates therefore cannot both observe capacity and overshoot the cap — at
+  // most one wins the final slot. The owner membership, version seed, and
+  // change log only run once the project insert succeeds.
+  const maxProjects = getQuotaConfig(env).maxProjectsPerUser;
+  const primary = env.D1_DATABASE.prepare(
+    `
+    INSERT INTO projects (id, name, description, color, icon, owner_id, created_at, updated_at)
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?
+    WHERE (
+      SELECT COUNT(*) FROM projects WHERE owner_id = ? AND deleted_at IS NULL
+    ) < ?
+    `
+  ).bind(
+    id,
+    name,
+    description,
+    color,
+    icon,
+    owner.id,
+    now,
+    now,
+    owner.id,
+    maxProjects
+  );
+
+  const quota = await checkProjectQuota(env, owner.id, {
+    primary,
+    dependents: [
+      env.D1_DATABASE.prepare(
+        `
+        INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        `
+      ).bind(id, id, owner.id, 'owner', now, now),
+      prepareIncrementVersion(env, id, 'project', id, now),
+      prepareInsertSyncChange(env, {
+        projectId: id,
+        actorId: owner.id,
+        entityType: 'project',
+        entityId: id,
+        operation: 'create',
+        patch,
+        clientMutationId: null,
+        clientId: null,
+        createdAt: now,
+      }),
+    ],
+  });
+  if (quota) return quota;
 
   const project = await getProject(env, id);
   return Response.json(project, { status: 201 });
@@ -271,7 +292,7 @@ export async function updateProject(
       ? existing.color
       : parseOptionalString(input.color);
   const icon =
-    input.icon === undefined       ? existing.icon : parseOptionalString(input.icon);
+    input.icon === undefined ? existing.icon : parseOptionalString(input.icon);
   const now = nowIso();
 
   await env.D1_DATABASE.batch([
@@ -379,9 +400,7 @@ export async function getProjectMembers(
     `
   )
     .bind(projectId)
-    .all<
-      ProjectMember
-    >();
+    .all<ProjectMember>();
 
   const members = (rows.results ?? []).map((m) => ({
     id: m.id,
@@ -406,9 +425,6 @@ export async function createInvitation(
   const access = await requireProjectAccess(env, user.id, projectId, 'admin');
   if (access instanceof Response) return access;
 
-  const memberQuota = await checkMemberQuota(env, projectId);
-  if (memberQuota) return memberQuota;
-
   const input = body as {
     email?: unknown;
     role?: unknown;
@@ -432,14 +448,34 @@ export async function createInvitation(
   const id = crypto.randomUUID();
   const code = crypto.randomUUID();
 
-  await env.D1_DATABASE.prepare(
+  // The invitation is the quota-consuming write. It is inserted via an
+  // `INSERT ... SELECT ... WHERE (member count) < limit` guard so the count
+  // check and the insert run in a single D1 batch. Concurrent invites therefore
+  // cannot both observe capacity and overshoot the member cap.
+  const maxMembers = getQuotaConfig(env).maxMembersPerProject;
+  const primary = env.D1_DATABASE.prepare(
     `
     INSERT INTO invitations (id, project_id, code, email, role, created_by, expires_at, accepted_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)
+    SELECT ?, ?, ?, ?, ?, ?, ?, NULL, ?
+    WHERE (
+      SELECT COUNT(*) FROM project_members WHERE project_id = ?
+    ) < ?
     `
-  )
-    .bind(id, projectId, code, email, role, user.id, expiresAt, now)
-    .run();
+  ).bind(
+    id,
+    projectId,
+    code,
+    email,
+    role,
+    user.id,
+    expiresAt,
+    now,
+    projectId,
+    maxMembers
+  );
+
+  const memberQuota = await checkMemberQuota(env, projectId, { primary });
+  if (memberQuota) return memberQuota;
 
   return Response.json(
     {
@@ -507,9 +543,6 @@ export async function acceptInvitation(
     return forbidden('Invitation is for a different email address');
   }
 
-  const memberQuota = await checkMemberQuota(env, invite.project_id);
-  if (memberQuota) return memberQuota;
-
   const existingMember = await getProjectMember(
     env,
     user.id,
@@ -529,27 +562,40 @@ export async function acceptInvitation(
     });
   }
 
-  await env.D1_DATABASE.prepare(
+  // The membership insert is the quota-consuming write. It is inserted via an
+  // `INSERT ... SELECT ... WHERE (member count) < limit` guard so the count
+  // check and the insert run in a single D1 batch. Concurrent accepts therefore
+  // cannot both observe capacity and overshoot the member cap. The invitation's
+  // accepted_at is updated only after the membership insert succeeds.
+  const maxMembers = getQuotaConfig(env).maxMembersPerProject;
+  const primary = env.D1_DATABASE.prepare(
     `
     INSERT INTO project_members (id, project_id, user_id, role, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    SELECT ?, ?, ?, ?, ?, ?
+    WHERE (
+      SELECT COUNT(*) FROM project_members WHERE project_id = ?
+    ) < ?
     `
-  )
-    .bind(
-      crypto.randomUUID(),
-      invite.project_id,
-      user.id,
-      invite.role,
-      now,
-      now
-    )
-    .run();
+  ).bind(
+    crypto.randomUUID(),
+    invite.project_id,
+    user.id,
+    invite.role,
+    now,
+    now,
+    invite.project_id,
+    maxMembers
+  );
 
-  await env.D1_DATABASE.prepare(
-    'UPDATE invitations SET accepted_at = ? WHERE id = ?'
-  )
-    .bind(now, invite.id)
-    .run();
+  const memberQuota = await checkMemberQuota(env, invite.project_id, {
+    primary,
+    dependents: [
+      env.D1_DATABASE.prepare(
+        'UPDATE invitations SET accepted_at = ? WHERE id = ?'
+      ).bind(now, invite.id),
+    ],
+  });
+  if (memberQuota) return memberQuota;
 
   return Response.json({
     project_id: invite.project_id,
