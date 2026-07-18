@@ -179,7 +179,12 @@ export async function syncProject(
   // count check and the writes are serialized; at most the available capacity
   // is created. Other mutations run through the normal per-mutation path.
   const now = nowIso();
-  const createStatements: D1PreparedStatement[] = [];
+
+  // Split the create mutations into project-mismatched (immediate conflict) and
+  // actionable ones. The existence + version reads for the actionable creates
+  // are independent, so fan them out concurrently with Promise.all instead of
+  // serializing one read pair per create (avoids the N+1 read latency).
+  const actionable: SyncMutation[] = [];
   for (const mutation of createMutations) {
     if (mutation.projectId !== projectId) {
       conflicts.push({
@@ -192,13 +197,37 @@ export async function syncProject(
       });
       continue;
     }
+    actionable.push(mutation);
+  }
+
+  const existsResults = await entityExistsBatch(
+    env,
+    actionable.map((m) => ({
+      table: tableFor(m.entityType) as TableKey,
+      entityId: m.entityId,
+    }))
+  );
+  const versionResults = await getEntityVersionBatch(
+    env,
+    actionable.map((m) => ({
+      projectId: m.projectId,
+      entityType: m.entityType,
+      entityId: m.entityId,
+    }))
+  );
+
+  const createStatements: D1PreparedStatement[] = [];
+  for (let i = 0; i < actionable.length; i++) {
+    const mutation = actionable[i];
     const built = await buildCreateStatements(
       env,
       user.id,
       mutation,
       now,
       guardSql,
-      [createCount, maxEntities]
+      [createCount, maxEntities],
+      existsResults[i],
+      versionResults[i]
     );
     if ('conflict' in built) {
       conflicts.push(built.conflict);
@@ -515,7 +544,9 @@ async function buildCreateStatements(
   mutation: SyncMutation,
   now: string,
   guardSql: string,
-  guardArgs: unknown[]
+  guardArgs: unknown[],
+  exists: boolean,
+  currentVersion: number
 ): Promise<
   | { statements: D1PreparedStatement[] }
   | { conflict: SyncConflict }
@@ -534,7 +565,7 @@ async function buildCreateStatements(
     };
   }
 
-  if (await entityExists(env, table, mutation.entityId)) {
+  if (exists) {
     return {
       conflict: {
         entityType: mutation.entityType,
@@ -546,13 +577,6 @@ async function buildCreateStatements(
       },
     };
   }
-
-  const currentVersion = await getEntityVersion(
-    env,
-    mutation.projectId,
-    mutation.entityType,
-    mutation.entityId
-  );
 
   let entityStmt: D1PreparedStatement;
   try {
@@ -1245,6 +1269,36 @@ async function getEntityVersion(
     .first<{ version: number }>();
 
   return row?.version ?? 0;
+}
+
+/**
+ * Concurrently check existence for a set of (table, entityId) pairs. Each entry
+ * hits a different table, so we fan out individual `first()` calls with
+ * `Promise.all` instead of serializing them; this removes the N+1 read latency
+ * from the create batching loop.
+ */
+async function entityExistsBatch(
+  env: Env,
+  entries: { table: TableKey; entityId: string }[]
+): Promise<boolean[]> {
+  return Promise.all(
+    entries.map(({ table, entityId }) => entityExists(env, table, entityId))
+  );
+}
+
+/**
+ * Concurrently fetch versions for a set of (projectId, entityType, entityId)
+ * triples. Fanned out with `Promise.all` to avoid serializing the reads.
+ */
+async function getEntityVersionBatch(
+  env: Env,
+  entries: { projectId: string; entityType: EntityType; entityId: string }[]
+): Promise<number[]> {
+  return Promise.all(
+    entries.map(({ projectId, entityType, entityId }) =>
+      getEntityVersion(env, projectId, entityType, entityId)
+    )
+  );
 }
 
 function prepareIncrementVersion(
