@@ -385,7 +385,7 @@ export async function getChangesSince(
  * one D1 batch so a failure can never leave the change log out of sync with the
  * entity state.
  */
-async function applyMutation(
+export async function applyMutation(
   env: Env,
   actorId: string,
   mutation: SyncMutation
@@ -420,6 +420,21 @@ async function applyMutation(
     mutation.entityType,
     mutation.entityId
   );
+
+  // Reconcile the soft-delete basis: a soft-deleted entity is "not present" for
+  // mutation purposes, matching the live-only entity-write and quota layers. We
+  // resolve presence on the live basis BEFORE the version guard so an
+  // update/delete targeting a tombstone always yields a clean "not found /
+  // already deleted" conflict, instead of leaking the tombstone's version into
+  // the version-conflict path. Projects are handled by applyProjectMutation.
+  if (
+    mutation.operation !== 'create' &&
+    mutation.entityType !== 'project' &&
+    !(await entityExists(env, table, mutation.entityId))
+  ) {
+    return { conflict: entityNotFoundConflict(mutation, currentVersion) };
+  }
+
   if (
     mutation.operation !== 'create' &&
     mutation.baseVersion !== undefined &&
@@ -698,6 +713,19 @@ async function applyProjectMutation(
   }
 
   if (mutation.operation === 'delete') {
+    // Reconcile the soft-delete basis: an already soft-deleted project is "not
+    // present", so return a clean not-found conflict instead of running the
+    // guarded UPDATE (which matches 0 rows) while still committing a phantom
+    // version bump and a spurious `delete` change-log row.
+    const liveProject = await env.D1_DATABASE.prepare(
+      'SELECT id FROM projects WHERE id = ? AND deleted_at IS NULL'
+    )
+      .bind(mutation.entityId)
+      .first<{ id: string }>();
+    if (!liveProject) {
+      return { conflict: entityNotFoundConflict(mutation, currentVersion) };
+    }
+
     const role = await getMembershipRole(env, actorId, mutation.projectId);
     if (!requireMinRole(role, 'admin')) {
       return {
