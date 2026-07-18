@@ -1018,20 +1018,47 @@ export const createTaskActions = (
 
   pausePomodoroSession: () =>
     set((state: AppState) => {
-      if (!state.activePomodoroSession) return state;
+      const session = state.activePomodoroSession;
+      if (!session || session.isPaused) return state;
 
-      // Implementation would pause the timer
-      // This is a simplified version
-      return state;
+      const pausedSession: PomodoroSession = {
+        ...session,
+        isPaused: true,
+        pausedAt: generateTimestamp(),
+      };
+
+      return {
+        ...state,
+        activePomodoroSession: pausedSession,
+        pomodoroSessions: state.pomodoroSessions.map((s) =>
+          s.id === pausedSession.id ? pausedSession : s
+        ),
+      };
     }),
 
   resumePomodoroSession: () =>
     set((state: AppState) => {
-      if (!state.activePomodoroSession) return state;
+      const session = state.activePomodoroSession;
+      if (!session || !session.isPaused) return state;
 
-      // Implementation would resume the timer
-      // This is a simplified version
-      return state;
+      const pausedMs = session.pausedAt
+        ? Date.now() - session.pausedAt.getTime()
+        : 0;
+
+      const resumedSession: PomodoroSession = {
+        ...session,
+        isPaused: false,
+        pausedAt: undefined,
+        pausedDuration: (session.pausedDuration ?? 0) + pausedMs,
+      };
+
+      return {
+        ...state,
+        activePomodoroSession: resumedSession,
+        pomodoroSessions: state.pomodoroSessions.map((s) =>
+          s.id === resumedSession.id ? resumedSession : s
+        ),
+      };
     }),
 
   completePomodoroSession: () =>

@@ -261,10 +261,14 @@ export async function requestLoginCode(
     created_at: string;
   }>();
 
+  const requestCount = existing
+    ? nowMs - new Date(existing.first_request_at).getTime() > REQUEST_WINDOW_MS
+      ? 1
+      : existing.request_count + 1
+    : 1;
+  const firstRequestAt = existing ? existing.first_request_at : nowIso;
+
   if (existing) {
-    const firstMs = new Date(existing.first_request_at).getTime();
-    const requestCount =
-      nowMs - firstMs > REQUEST_WINDOW_MS ? 1 : existing.request_count + 1;
     if (requestCount > MAX_REQUESTS_PER_WINDOW) {
       // Still 202 so we don't leak that the address is rate-limited.
       return new Response(null, { status: 202 });
@@ -277,12 +281,6 @@ export async function requestLoginCode(
 
   const code = generateLoginCode();
   const expiresAt = new Date(nowMs + LOGIN_CODE_TTL_MS).toISOString();
-  const requestCount = existing
-    ? nowMs - new Date(existing.first_request_at).getTime() > REQUEST_WINDOW_MS
-      ? 1
-      : existing.request_count + 1
-    : 1;
-  const firstRequestAt = existing ? existing.first_request_at : nowIso;
 
   await env.D1_DATABASE.prepare(
     `

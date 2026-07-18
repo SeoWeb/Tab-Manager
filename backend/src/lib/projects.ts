@@ -431,7 +431,7 @@ export async function createInvitation(
     expiresInDays?: unknown;
   };
 
-  const email = parseOptionalString(input.email);
+  const email = parseOptionalString(input.email)?.trim().toLowerCase();
   const role = normalizeRole(input.role) ?? 'editor';
   if (role === 'owner') {
     return badRequest('Invitations cannot grant the owner role');

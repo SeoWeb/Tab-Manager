@@ -68,9 +68,12 @@ export default function PomodoroTimer({
   // Update timer state based on active session
   useEffect(() => {
     if (activePomodoroSession) {
-      setTimerState('running');
+      setTimerState(activePomodoroSession.isPaused ? 'paused' : 'running');
       const elapsed = Math.floor(
-        (Date.now() - activePomodoroSession.startTime.getTime()) / 1000
+        (Date.now() -
+          activePomodoroSession.startTime.getTime() -
+          (activePomodoroSession.pausedDuration ?? 0)) /
+          1000
       );
       const remaining = Math.max(
         0,
@@ -105,22 +108,27 @@ export default function PomodoroTimer({
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (timerState === 'running' && timeLeft > 0) {
+    if (timerState === 'running' && activePomodoroSession) {
       interval = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleTimerComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
+        const session = activePomodoroSession;
+        const elapsed = Math.floor(
+          (Date.now() -
+            session.startTime.getTime() -
+            (session.pausedDuration ?? 0)) /
+            1000
+        );
+        const remaining = Math.max(0, session.duration * 60 - elapsed);
+        setTimeLeft(remaining);
+        if (remaining <= 0) {
+          handleTimerComplete();
+        }
       }, 1000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [timerState, timeLeft, handleTimerComplete]);
+  }, [timerState, activePomodoroSession, handleTimerComplete]);
 
   const handleStart = () => {
     if (!activeTask) return;

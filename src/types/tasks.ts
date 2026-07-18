@@ -189,6 +189,9 @@ export interface PomodoroSession {
   isCompleted: boolean;
   breakDuration?: number;
   notes?: string;
+  isPaused?: boolean;
+  pausedAt?: Date;
+  pausedDuration?: number; // total ms spent paused
 }
 
 export interface TaskBulkOperation {
