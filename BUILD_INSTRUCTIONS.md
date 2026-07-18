@@ -21,7 +21,7 @@ This document provides instructions on how to build the TabSpace Chrome Extensio
     ```bash
     npm run build
     ```
-    This command will compile the Next.js application and export it as static files to the `out/` directory in the project root.
+    This command will compile the Next.js application and export it as static files to the `build/` directory in the project root.
 
 ## Loading the Extension in Chrome
 
@@ -33,7 +33,7 @@ This document provides instructions on how to build the TabSpace Chrome Extensio
 
 3.  **Load Unpacked Extension:**
     - Click the "Load unpacked" button that appears after enabling Developer mode.
-    - A file dialog will open. Navigate to the project's root directory and select the `out/` folder.
+    - A file dialog will open. Navigate to the project's root directory and select the `build/` folder.
     - Click "Select Folder" (or "Open").
 
 4.  **Verify the Extension:**

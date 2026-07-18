@@ -353,14 +353,6 @@ export function useDragAndDrop() {
         }
       } else if (activeItem.type === 'collection') {
         // Reordering collections
-        console.log('Collection drag end - Debug info:', {
-          activeId,
-          overId,
-          overData,
-          activeItem,
-          isDifferent: activeId !== overId,
-        });
-
         if (activeId !== overId) {
           const { projectId } = activeItem.data;
 

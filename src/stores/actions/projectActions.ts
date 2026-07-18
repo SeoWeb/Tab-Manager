@@ -101,9 +101,6 @@ export const createProjectActions = (
               projectToUpdate.bookmarkFolderId!,
               newName
             );
-            console.log(
-              `Bookmark folder for project ${id} renamed to ${newName}`
-            );
           } catch (error) {
             console.error(
               `Failed to update bookmark folder name for project ${id}:`,

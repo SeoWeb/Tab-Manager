@@ -134,13 +134,13 @@ pnpm test        # jest
 pnpm build
 ```
 
-`build` chains: `lint` → `typecheck` → `next build` (static export to `out/`) →
-`scripts/build-background.mjs` (bundles the MV3 service worker to `out/background.js`)
+`build` chains: `lint` → `typecheck` → `next build` (static export to `build/`) →
+`scripts/build-background.mjs` (bundles the MV3 service worker to `build/background.js`)
 → `post-build.js` (copies `public/manifest.json`, icons, and other extension
-assets into `out/`). The resulting **`out/`** directory is the loadable extension.
+assets into `build/`). The resulting **`build/`** directory is the loadable extension.
 
 > During development you can iterate with `next dev` for UI work, but the
-> extension APIs (and the service worker) only run when you load the built `out/`
+> extension APIs (and the service worker) only run when you load the built `build/`
 > folder as an unpacked extension.
 
 ---
