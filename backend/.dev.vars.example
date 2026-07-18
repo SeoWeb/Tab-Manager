@@ -10,3 +10,25 @@ ENABLE_DEMO_AUTH=true
 
 # Optional: comma-separated origins allowed by CORS. Defaults to "*" when omitted.
 # ALLOWED_ORIGINS=chrome-extension://YOUR_EXTENSION_ID,http://localhost:5173
+
+# --- Rate-limit thresholds (per 60s window; omit to use the defaults shown) ---
+# Global per-IP cap (default 120/min).
+# RATE_LIMIT_GLOBAL_PER_IP=120
+# Authenticated API per-user cap (default 300/min).
+# RATE_LIMIT_API_PER_USER=300
+# Sync per-user cap (default 60/min).
+# RATE_LIMIT_SYNC_PER_USER=60
+# Auth request-code per-IP cap (default 10/min).
+# RATE_LIMIT_AUTH_REQUEST=10
+# Auth verify per-IP cap (default 20/min).
+# RATE_LIMIT_AUTH_VERIFY=20
+
+# --- Usage quotas (omit to use the defaults shown) ---
+# Max active projects per user (default 10).
+# QUOTA_MAX_PROJECTS_PER_USER=10
+# Max members per project (default 50).
+# QUOTA_MAX_MEMBERS_PER_PROJECT=50
+# Max total entities per project (default 5000).
+# QUOTA_MAX_ENTITIES_PER_PROJECT=5000
+# Max sync mutations per request (default 200).
+# QUOTA_MAX_SYNC_MUTATIONS_PER_REQUEST=200

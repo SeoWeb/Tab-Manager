@@ -35,9 +35,19 @@ database_id = "f26c3b54-96ff-4d66-a9ca-ae9a308aecf8"
 name = "PROJECT_ROOM"
 class_name = "ProjectRoom"
 
+# Rate limiting: one RateLimiter Durable Object per rate-limit key, holding a
+# precise in-memory sliding-window counter. Registers the class below.
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
 # Registers the Durable Object class on first deploy. No SQLite state is used
 # (presence is rebuilt from hibernation tags), but `new_sqlite_classes` is the
 # modern default and works locally with `wrangler dev`.
 [[migrations]]
 tag = "v1-realtime"
 new_sqlite_classes = ["ProjectRoom"]
+
+[[migrations]]
+tag = "v2-rate-limiter"
+new_sqlite_classes = ["RateLimiter"]

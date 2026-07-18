@@ -196,13 +196,17 @@ deploying.
 
 ### Run the migration
 
-The login codes live in a new table. Apply it locally **and** remotely:
+The login codes live in a new table (`0002`). Apply them locally **and** remotely:
 
 ```bash
 cd backend
 npm run migrate:local
 npm run migrate:remote
 ```
+
+`migrate:local`/`migrate:remote` run every `src/db/migrations/*.sql` file in
+order. After
+deploying a new Worker version, re-run `migrate:remote` to apply the new schema.
 
 ### Local development
 
@@ -364,8 +368,7 @@ The response returns the next `cursor`, the `changes` log since `lastCursor`
 - Verify the email sending domain (the `EMAIL` binding `from` address) before
   going live; login codes can't be delivered until it is verified.
 - The login flow already rate-limits code requests per email; consider Cloudflare
-  rate limiting at the edge if the Worker becomes heavily public.
-- Consider end-to-end encryption for project payloads.
+   rate limiting at the edge if the Worker becomes heavily public.
 - Run the test suites (`pnpm test` for the extension, `pnpm test:backend` for
   the Worker) in CI; the sync applier, action enqueue shapes, roles, and
   background sync are all covered.

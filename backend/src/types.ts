@@ -38,12 +38,30 @@ export interface Env {
    * project id, obtained via `idForName(projectId)`.
    */
   PROJECT_ROOM: DurableObjectNamespace;
+  /**
+   * Per-key sliding-window rate limiter (this change). One Durable Object
+   * instance per rate-limit key, obtained via `idForName(key)`.
+   */
+  RATE_LIMITER: DurableObjectNamespace;
   JWT_SECRET: string;
   ALLOWED_ORIGINS?: string;
   /**
    * Cloudflare `send_email` binding used to deliver the magic-PIN login email.
    */
   EMAIL: EmailBinding;
+
+  // --- Rate-limit threshold overrides (all per-60s window) ---
+  RATE_LIMIT_GLOBAL_PER_IP?: string;
+  RATE_LIMIT_API_PER_USER?: string;
+  RATE_LIMIT_SYNC_PER_USER?: string;
+  RATE_LIMIT_AUTH_REQUEST?: string;
+  RATE_LIMIT_AUTH_VERIFY?: string;
+
+  // --- Usage-quota overrides ---
+  QUOTA_MAX_PROJECTS_PER_USER?: string;
+  QUOTA_MAX_MEMBERS_PER_PROJECT?: string;
+  QUOTA_MAX_ENTITIES_PER_PROJECT?: string;
+  QUOTA_MAX_SYNC_MUTATIONS_PER_REQUEST?: string;
 }
 
 export interface JwtPayload {

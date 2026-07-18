@@ -65,5 +65,9 @@ export function withCors(
   for (const [key, value] of Object.entries(headers)) {
     response.headers.set(key, value);
   }
+  // Baseline security headers on every response (success and error alike).
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   return response;
 }

@@ -23,6 +23,7 @@ and [Zustand](https://github.com/pmndrs/zustand).
 - [Per-project data & cloud sync](#per-project-data--cloud-sync)
 - [Import & export (JSON / CSV / HTML)](#import--export-json--csv--html)
 - [Setting up cloud sync](#setting-up-cloud-sync)
+- [Backend protections (rate limits, quotas, abuse protection)](#backend-protections-rate-limits-quotas-abuse-protection)
 - [Testing](#testing)
 - [Project structure](#project-structure)
 - [Documentation](#documentation)
@@ -58,6 +59,9 @@ and [Zustand](https://github.com/pmndrs/zustand).
   Turn a local project into a cloud project from **Project menu → Edit Project →
   "Sync this project to cloud"**; if you aren't signed in yet, a dialog prompts
   you to create an account first, then converts the project once connected.
+  Sign-in is **passwordless**: enter your email (and an optional display name)
+  and we email you a one-time **8-digit code** you paste into the app to verify —
+   no password to remember.
 - **Local-first.** Without a backend the extension is fully functional; sync is an
   opt-in layer on top. Data persists in `chrome.storage`.
 - **Import & export (per project).** Back up or move a project's data from the
@@ -68,6 +72,10 @@ and [Zustand](https://github.com/pmndrs/zustand).
 - **Drag & drop**, **dark mode**, **global search**, **quick links**, and a
   background service worker that keeps cloud projects synced even when the popup
   is closed.
+- **First-run onboarding.** A guided, multi-step wizard explains the core model
+  (**Projects → Collections → Links & Quick Links**) the first time you open the
+  app. It shows exactly once for a fresh install and is skipped automatically for
+  existing users; replay it any time from **Settings → Tutorial**.
 
 ---
 
@@ -164,14 +172,25 @@ split into focused "action slices" under `src/stores/actions/`:
   project → collection → link tree (also mirrored into Chrome bookmarks).
 - `taskActions` — the advanced task system.
 - `noteActions` — per-project notes.
-- `uiActions` — todos, quick links, modals, panel state, and theme.
+- `uiActions` — todos, quick links, modals, panel state, onboarding, and theme.
 - `cloudSyncActions` — cloud-sync status, cursors, role/flag setters, and the
   remote-change reducer bridge.
 - `dragDropActions` — reorder/move links and collections.
 
 State persists to `chrome.storage` via Zustand's `persist` middleware; a `merge`
 hook runs a one-time migration to assign legacy items to the active project (see
-[Per-project data](#per-project-data--cloud-sync)).
+[Per-project data](#per-project-data--cloud-sync)) **and marks onboarding
+complete for any snapshot that already contains a `projects` array** (so existing
+users never see the first-run wizard).
+
+### First-run onboarding
+
+A controlled `OnboardingWizard` (`src/components/onboarding/OnboardingWizard.tsx`)
+is mounted in `AppClient` and opens automatically the first time the store
+hydrates with `hasCompletedOnboarding === false`. Completion persists via the same
+`persist` pipeline, so the wizard shows once per fresh install; the **Settings →
+Tutorial** button calls `openOnboarding()` to replay it on demand. The open/closed
+flag (`isOnboardingOpen`) is transient and excluded from persistence.
 
 ### Extension shell (Manifest V3)
 
@@ -331,7 +350,10 @@ Cloud sync is optional. To enable it:
    [`deployment.md`](./deployment.md).
 2. Add the Worker URL to `public/manifest.json` → `host_permissions` and rebuild.
 3. In the extension, open **Settings → Cloud Sync**, enter the Worker URL, and
-   sign in (demo auth by default; swap in a real provider for production).
+   sign in. Sign-in is passwordless: submit your email (and optional display
+   name), we email you an 8-digit code, and you paste it into the 8-box code
+   field to verify and connect. Codes are valid for ~10 minutes and can be
+   re-sent; see [`deployment.md`](./deployment.md) for the email-binding setup.
 4. Create a cloud project (tick **"Sync this project to cloud"** when adding one —
    if you aren't signed in yet, you'll be prompted to connect first, then the
    project converts automatically), or convert an existing local project to cloud
@@ -343,6 +365,59 @@ Cloud sync is optional. To enable it:
    (display name or email, joined server-side so it's visible to all roles), and a
    relative timestamp (hover for the absolute time). Use **Refresh** to pull the
    latest changes.
+
+---
+
+## Backend protections (rate limits, quotas, abuse protection)
+
+The backend is hardened with defense-in-depth edge controls. These are additive
+and safe by default — every threshold has a sensible default and is overridable
+via an environment variable (no code changes needed). See
+[`deployment.md`](./deployment.md) for the binding/migration setup.
+
+### Rate limiting
+
+A `RateLimiter` Durable Object enforces a precise sliding-window counter, one
+instance per rate-limit key. Limits are enforced at the Worker entrypoint,
+**before routing** (and skipped for `OPTIONS` preflight):
+
+| Tier              | Key                                  | Default (per 60s) |
+| ----------------- | ------------------------------------ | ----------------- |
+| Global per-IP     | `rl:global:ip:<ip>`                  | 120               |
+| Authenticated API | `rl:api:user:<sub>` (fallback `:ip`) | 300               |
+| Sync              | `rl:sync:user:<sub>` (fallback `:ip`)| 60                |
+| Auth request-code | `rl:auth:request:ip:<ip>`            | 10                |
+| Auth verify       | `rl:auth:verify:ip:<ip>`             | 20                |
+
+- On breach: `429` with `Retry-After` and `X-RateLimit-Limit` /
+  `X-RateLimit-Remaining` / `X-RateLimit-Reset` headers.
+- On success: the enforced tier's `X-RateLimit-*` headers are attached to the
+  response.
+- Overrides: `RATE_LIMIT_GLOBAL_PER_IP`, `RATE_LIMIT_API_PER_USER`,
+  `RATE_LIMIT_SYNC_PER_USER`, `RATE_LIMIT_AUTH_REQUEST`, `RATE_LIMIT_AUTH_VERIFY`.
+
+### Usage quotas
+
+Enforced inside the domain handlers, returning `403` (or `400` for the
+sync-mutation cap) with a structured error:
+
+- **Max projects per user** — default `10` (`QUOTA_MAX_PROJECTS_PER_USER`).
+- **Max members per project** — default `50` (`QUOTA_MAX_MEMBERS_PER_PROJECT`).
+- **Max entities per project** (collections + links + tasks + notes + todos) —
+  default `5000` (`QUOTA_MAX_ENTITIES_PER_PROJECT`).
+- **Max sync mutations per request** — default `200`
+  (`QUOTA_MAX_SYNC_MUTATIONS_PER_REQUEST`); exceeding it returns `400`.
+
+### Abuse protection
+
+- **Request-body size limit** — JSON bodies over `1 MB` (default) are rejected
+  with `413 Payload Too Large`, applied to **all** JSON endpoints including auth.
+  Shared `readJson` helper used by routing and auth parsing.
+- **Security headers** on every response (success and error):
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and
+  `Referrer-Policy: strict-origin-when-cross-origin`.
+
+All overrides are documented in `backend/.dev.vars.example`.
 
 ---
 
@@ -370,6 +445,7 @@ jsdom environment.
 │   ├── app/                # Next.js app (entry, layout, global styles)
 │   ├── background/         # MV3 service worker source (→ out/background.js)
 │   ├── components/         # UI: views, panels, modals, cloud-sync, sidebar, …
+│   │   ├── onboarding/     # OnboardingWizard (first-run guided tour)
 │   │   └── views/          # NotesView, TodosView, TasksView, TaskCalendarView, …
 │   ├── lib/
 │   │   ├── cloudflareSync/ # client: queue, API, applier, orchestrator, realtime

@@ -21,16 +21,26 @@ import {
   getActivity,
 } from './lib/projects';
 import { syncProject } from './lib/sync';
-// Re-exported so Wrangler can find the Durable Object class in the entry module.
-export { ProjectRoom } from './lib/realtime';
 import {
   badRequest,
   errorResponse,
   jsonResponse,
   methodNotAllowed,
   notFound,
+  readJson,
 } from './lib/response';
+import {
+  clientIp,
+  enforceRateLimit,
+  getRateLimitConfig,
+  type RateDecision,
+} from './lib/ratelimit';
+import { verifyJwt } from './lib/auth';
 import type { Env } from './types';
+
+// Re-exported so Wrangler can find the Durable Object classes in the entry module.
+export { ProjectRoom } from './lib/realtime';
+export { RateLimiter } from './lib/ratelimit';
 
 export default {
   async fetch(
@@ -64,9 +74,20 @@ export default {
       return handleRealtimeUpgrade(request, env, url);
     }
 
+    // Rate limiting runs before routing: a global per-IP cap plus a tier
+    // selected from the route + (cheaply decoded) auth subject. A breach
+    // returns a CORS-wrapped 429; otherwise the decision's headers are attached
+    // to the final response.
+    const rateLimitResult = await applyRateLimiting(request, env, segments);
+    if (rateLimitResult instanceof Response) {
+      return withCors(rateLimitResult, request, env);
+    }
+
     try {
       const response = await route(request, env, ctx);
-      return withCors(response, request, env);
+      const wrapped = withCors(response, request, env);
+      attachRateLimitHeaders(wrapped, rateLimitResult);
+      return wrapped;
     } catch (error) {
       console.error(error);
       return withCors(
@@ -77,6 +98,92 @@ export default {
     }
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * Enforce the global per-IP limit, then a route-specific tier, returning the
+ * final tier's decision (for header attachment) or a `429` `Response`.
+ */
+async function applyRateLimiting(
+  request: Request,
+  env: Env,
+  segments: string[]
+): Promise<RateDecision | Response> {
+  const ip = clientIp(request);
+  const config = getRateLimitConfig(env);
+
+  const globalResult = await enforceRateLimit(
+    env,
+    `rl:global:ip:${ip}`,
+    config.globalPerIp.limit,
+    config.globalPerIp.windowMs
+  );
+  if (globalResult instanceof Response) return globalResult;
+
+  if (segments[0] === 'auth' && segments[1] === 'request-code') {
+    return enforceRateLimit(
+      env,
+      `rl:auth:request:ip:${ip}`,
+      config.authRequest.limit,
+      config.authRequest.windowMs
+    );
+  }
+
+  if (segments[0] === 'auth' && segments[1] === 'verify') {
+    return enforceRateLimit(
+      env,
+      `rl:auth:verify:ip:${ip}`,
+      config.authVerify.limit,
+      config.authVerify.windowMs
+    );
+  }
+
+  if (
+    segments[0] === 'projects' &&
+    segments.length === 3 &&
+    segments[2] === 'sync'
+  ) {
+    const sub = await subjectOf(request, env);
+    const key = sub ? `rl:sync:user:${sub}` : `rl:sync:ip:${ip}`;
+    return enforceRateLimit(
+      env,
+      key,
+      config.syncPerUser.limit,
+      config.syncPerUser.windowMs
+    );
+  }
+
+  // Everything else is the authenticated API tier.
+  const sub = await subjectOf(request, env);
+  const key = sub ? `rl:api:user:${sub}` : `rl:api:ip:${ip}`;
+  return enforceRateLimit(
+    env,
+    key,
+    config.apiPerUser.limit,
+    config.apiPerUser.windowMs
+  );
+}
+
+/** Cheaply decode the JWT subject (no D1 lookup) for user-keyed rate limits. */
+async function subjectOf(
+  request: Request,
+  env: Env
+): Promise<string | null> {
+  const authorization = request.headers.get('Authorization');
+  if (!authorization?.startsWith('Bearer ')) return null;
+  const token = authorization.slice('Bearer '.length).trim();
+  if (!token) return null;
+  const payload = await verifyJwt(token, env.JWT_SECRET);
+  return payload?.sub ?? null;
+}
+
+function attachRateLimitHeaders(response: Response, decision: RateDecision): void {
+  response.headers.set('X-RateLimit-Limit', String(decision.limit));
+  response.headers.set('X-RateLimit-Remaining', String(decision.remaining));
+  response.headers.set(
+    'X-RateLimit-Reset',
+    String(Math.floor(decision.resetAt / 1000))
+  );
+}
 
 async function route(
   request: Request,
@@ -329,19 +436,6 @@ async function handleRealtimeUpgrade(
 
   const stub = env.PROJECT_ROOM.get(env.PROJECT_ROOM.idFromName(projectId));
   return stub.fetch(new Request(request, { headers }));
-}
-
-async function readJson(request: Request): Promise<unknown | Response> {
-  const contentType = request.headers.get('content-type') ?? '';
-  if (!contentType.includes('application/json')) {
-    return badRequest('Content-Type must be application/json');
-  }
-
-  try {
-    return (await request.json()) as unknown;
-  } catch {
-    return badRequest('Invalid JSON body');
-  }
 }
 
 function parsePositiveInt(value: string | null, fallback: number): number {

@@ -97,6 +97,10 @@ export interface AppState {
   editingCollectionId: string | null;
   editingLinkId: string | null;
 
+  // Onboarding State
+  hasCompletedOnboarding: boolean;
+  isOnboardingOpen: boolean;
+
   // Cloud sync state
   cloudSync: CloudSyncState;
 
@@ -348,6 +352,11 @@ export interface AppState {
   closeAddLinkModal: () => void;
   openEditLinkModal: (collectionId: string, linkId: string) => void;
   closeEditLinkModal: () => void;
+
+  // Onboarding actions
+  openOnboarding: () => void;
+  closeOnboarding: () => void;
+  completeOnboarding: () => void;
 
   // View actions
   setActiveView: (view: ActiveViewType) => void;

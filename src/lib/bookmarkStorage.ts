@@ -14,6 +14,12 @@ export const bookmarkStorage = {
    * @returns The ID of the root folder.
    */
   async initialize(): Promise<string> {
+    // No Chrome bookmarks on the web — keep the root-folder guards inert so no
+    // bookmark CRUD is armed. Mirrors the extension's `tabManagerRootFolderId`
+    // staying null on web.
+    if (typeof chrome === 'undefined' || !chrome.bookmarks) {
+      return '';
+    }
     let rootFolder = await this.findRootFolder();
     if (!rootFolder) {
       console.log(`Root folder not found, creating...`);

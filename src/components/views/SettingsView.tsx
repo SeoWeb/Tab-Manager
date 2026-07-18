@@ -10,14 +10,15 @@ import { CloudSyncSettingsPanel } from '@/components/cloud-sync/CloudSyncSetting
 import { CloudSyncMyProjectsCard } from '@/components/cloud-sync/CloudSyncMyProjectsCard';
 import { CloudSyncInvitesCard } from '@/components/cloud-sync/CloudSyncInvitesCard';
 import { useSidebarState } from '@/hooks/useSidebarState';
-import { Menu } from 'lucide-react';
+import { Menu, GraduationCap } from 'lucide-react';
 import ThemeToggle from '@/components/main-content/ThemeToggle';
 
 export default function SettingsView() {
-  const { themeColor, setThemeColor } = useAppStore(
+  const { themeColor, setThemeColor, openOnboarding } = useAppStore(
     useShallow((state) => ({
       themeColor: state.themeColor,
       setThemeColor: state.setThemeColor,
+      openOnboarding: state.openOnboarding,
     }))
   );
   const { toggleSidebar } = useSidebarState();
@@ -69,6 +70,18 @@ export default function SettingsView() {
           <CloudSyncSettingsPanel />
           <CloudSyncMyProjectsCard />
           <CloudSyncInvitesCard />
+
+          <div>
+            <Label className='text-base font-medium'>Tutorial</Label>
+            <p className='text-sm text-muted-foreground mb-2'>
+              Replay the guided tour that explains Projects, Collections, and
+              Links.
+            </p>
+            <Button variant='outline' onClick={openOnboarding}>
+              <GraduationCap className='mr-2 h-4 w-4' />
+              Show onboarding
+            </Button>
+          </div>
         </div>
       </div>
     </div>

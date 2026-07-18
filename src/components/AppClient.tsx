@@ -31,6 +31,7 @@ const AddProjectModal = lazy(() => import('./modals/AddProjectModal'));
 const AddCollectionModal = lazy(() => import('./modals/AddCollectionModal'));
 const AddLinkModal = lazy(() => import('./modals/AddLinkModal'));
 const EditLinkModal = lazy(() => import('./modals/EditLinkModal'));
+const OnboardingWizard = lazy(() => import('./onboarding/OnboardingWizard'));
 
 export default function AppClient() {
   const isDarkMode = useIsDarkMode();
@@ -39,7 +40,7 @@ export default function AppClient() {
   const _hasHydrated = useHasHydrated();
   const setActiveProject = useSetActiveProject();
 
-  // Initialize Chrome tabs monitoring
+  // Initialize Chrome tabs monitoring — no-op on the web (no chrome.tabs).
   useChromeTabsMonitoring();
 
   // Preload critical resources for better performance
@@ -129,6 +130,16 @@ export default function AppClient() {
       }
     }
   }, [isDarkMode, _hasHydrated]);
+
+  useEffect(() => {
+    // Auto-open the onboarding wizard after hydration for fresh users.
+    // Re-shows on reloads until explicitly completed, per design D3.
+    if (!_hasHydrated) return;
+    const state = useAppStore.getState();
+    if (!state.hasCompletedOnboarding) {
+      state.openOnboarding();
+    }
+  }, [_hasHydrated]);
 
   useEffect(() => {
     if (!activeProjectId && projects.length > 0) {
@@ -231,6 +242,9 @@ export default function AppClient() {
       </Suspense>
       <Suspense fallback={<Skeleton className='h-8 w-8' />}>
         <EditLinkModal />
+      </Suspense>
+      <Suspense fallback={null}>
+        <OnboardingWizard />
       </Suspense>
     </>
   );

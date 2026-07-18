@@ -1,6 +1,17 @@
 // Jest setup: adds @testing-library/jest-dom matchers (toBeInTheDocument, etc.)
 // and silences noisy console output from Chrome-API fallback paths under jsdom.
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
+
+// `TextEncoder` / `TextDecoder` back the crypto module's byte<->string helpers.
+// They are a browser/global-Node feature but the jsdom env here does not
+// expose them; provide them so tests that use them can run.
+const g = globalThis as unknown as {
+  TextEncoder?: unknown;
+  TextDecoder?: unknown;
+};
+if (typeof g.TextEncoder === 'undefined') g.TextEncoder = TextEncoder;
+if (typeof g.TextDecoder === 'undefined') g.TextDecoder = TextDecoder;
 
 // The tab/bookmark services log warnings/info/errors when the Chrome API is
 // absent or during normal sync flows; during tests that is expected behaviour,
@@ -23,24 +34,21 @@ if (
   ) => JSON.parse(JSON.stringify(value)) as typeof value;
 }
 
-// `crypto.randomUUID` is used throughout the store actions to mint entity ids.
-// It exists in browsers and modern Node, but the jsdom env here does not expose
-// it on `globalThis.crypto`; provide a RFC-4122 v4-shaped fallback so tests can
-// exercise the actions. (Math.random is fine here — this only runs under Jest.)
+// `crypto` must expose `subtle`, `getRandomValues`, and `randomUUID` for the
+// cloud-sync store actions. The jsdom env here ships only a
+// partial `crypto`, so back it with Node's `webcrypto` (which has all three).
+import { webcrypto } from 'node:crypto';
+
 const cryptoGlobal = globalThis as unknown as {
-  crypto?: { randomUUID?: () => string } & Record<string, unknown>;
+  crypto?: Partial<Crypto> & Record<string, unknown>;
 };
-if (typeof cryptoGlobal.crypto?.randomUUID !== 'function') {
+if (
+  !cryptoGlobal.crypto ||
+  typeof cryptoGlobal.crypto.getRandomValues !== 'function' ||
+  typeof cryptoGlobal.crypto.subtle?.encrypt !== 'function'
+) {
   Object.defineProperty(globalThis, 'crypto', {
-    value: {
-      ...cryptoGlobal.crypto,
-      randomUUID: () =>
-        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-          const r = (Math.random() * 16) | 0;
-          const v = c === 'x' ? r : (r & 0x3) | 0x8;
-          return v.toString(16);
-        }),
-    },
+    value: webcrypto,
     writable: true,
     configurable: true,
   });

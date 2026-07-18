@@ -1,4 +1,5 @@
 import { badRequest, forbidden, notFound } from './response';
+import { checkMemberQuota, checkProjectQuota } from './quotas';
 import { getLatestChange } from './sync';
 import { notifyRealtime } from './realtime';
 import type {
@@ -186,6 +187,9 @@ export async function createProject(
     return badRequest('Project name is required');
   }
 
+  const quota = await checkProjectQuota(env, owner.id);
+  if (quota) return quota;
+
   const now = nowIso();
   const id = crypto.randomUUID();
   const description = parseOptionalString(input.description);
@@ -267,7 +271,7 @@ export async function updateProject(
       ? existing.color
       : parseOptionalString(input.color);
   const icon =
-    input.icon === undefined ? existing.icon : parseOptionalString(input.icon);
+    input.icon === undefined       ? existing.icon : parseOptionalString(input.icon);
   const now = nowIso();
 
   await env.D1_DATABASE.batch([
@@ -375,9 +379,22 @@ export async function getProjectMembers(
     `
   )
     .bind(projectId)
-    .all<ProjectMember>();
+    .all<
+      ProjectMember
+    >();
 
-  return Response.json({ members: rows.results ?? [] });
+  const members = (rows.results ?? []).map((m) => ({
+    id: m.id,
+    project_id: m.project_id,
+    user_id: m.user_id,
+    role: m.role,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
+    email: m.email,
+    display_name: m.display_name,
+  }));
+
+  return Response.json({ members });
 }
 
 export async function createInvitation(
@@ -388,6 +405,9 @@ export async function createInvitation(
 ): Promise<Response> {
   const access = await requireProjectAccess(env, user.id, projectId, 'admin');
   if (access instanceof Response) return access;
+
+  const memberQuota = await checkMemberQuota(env, projectId);
+  if (memberQuota) return memberQuota;
 
   const input = body as {
     email?: unknown;
@@ -486,6 +506,9 @@ export async function acceptInvitation(
   if (invite.email && invite.email !== user.email) {
     return forbidden('Invitation is for a different email address');
   }
+
+  const memberQuota = await checkMemberQuota(env, invite.project_id);
+  if (memberQuota) return memberQuota;
 
   const existingMember = await getProjectMember(
     env,
@@ -781,19 +804,20 @@ export async function getProjectSnapshot(
     'links',
     'link',
     [
-    'id',
-    'project_id',
-    'collection_id',
-    'url',
-    'title',
-    'fav_icon_url',
-    'notes',
-    'tags_json',
-    'order_index',
-    'bookmark_id',
-    'updated_at',
-    'deleted_at',
-  ]);
+      'id',
+      'project_id',
+      'collection_id',
+      'url',
+      'title',
+      'fav_icon_url',
+      'notes',
+      'tags_json',
+      'order_index',
+      'bookmark_id',
+      'updated_at',
+      'deleted_at',
+    ]
+  );
 
   const tasks = await fetchSnapshotTable<SnapshotJsonEntity>(
     env,

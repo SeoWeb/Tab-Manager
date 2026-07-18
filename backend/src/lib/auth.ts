@@ -1,4 +1,4 @@
-import { badRequest, errorResponse, unauthorized } from './response';
+import { badRequest, errorResponse, readJson, unauthorized } from './response';
 import type { Env, JwtPayload, User } from '../types';
 import {
   buildLoginEmail,
@@ -220,15 +220,9 @@ export async function requestLoginCode(
   request: Request,
   env: Env
 ): Promise<Response> {
-  let body: { email?: string; display_name?: string } | undefined;
-  try {
-    body = (await request.json()) as {
-      email?: string;
-      display_name?: string;
-    };
-  } catch {
-    return badRequest('Invalid JSON body');
-  }
+  const parsed = await readJson(request);
+  if (parsed instanceof Response) return parsed;
+  const body = parsed as { email?: string; display_name?: string };
 
   const email = body.email?.trim().toLowerCase();
   if (!email || !isValidEmail(email)) {
@@ -333,12 +327,9 @@ export async function verifyLoginCode(
   request: Request,
   env: Env
 ): Promise<Response> {
-  let body: { email?: string; code?: string } | undefined;
-  try {
-    body = (await request.json()) as { email?: string; code?: string };
-  } catch {
-    return badRequest('Invalid JSON body');
-  }
+  const parsed = await readJson(request);
+  if (parsed instanceof Response) return parsed;
+  const body = parsed as { email?: string; code?: string };
 
   const email = body.email?.trim().toLowerCase();
   const code = body.code?.trim();

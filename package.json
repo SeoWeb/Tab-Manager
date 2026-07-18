@@ -14,7 +14,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:backend": "npm --prefix backend run typecheck && npm --prefix backend run test",
-    "test:all": "pnpm run test && pnpm run test:backend"
+    "test:all": "pnpm run test && pnpm run test:backend",
+    "deploy:backend": "npm --prefix backend run deploy",
+    "deploy:frontend": "npm --prefix frontend run deploy",
+    "migrate:backend": "npm --prefix backend run migrate:remote"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

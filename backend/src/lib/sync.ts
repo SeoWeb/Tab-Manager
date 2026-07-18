@@ -1,5 +1,10 @@
 import { badRequest } from './response';
 import {
+  checkEntityQuotaForMutations,
+  checkSyncMutationsPerRequest,
+  getQuotaConfig,
+} from './quotas';
+import {
   requireProjectAccess,
   getMembershipRole,
   requireMinRole,
@@ -116,8 +121,27 @@ export async function syncProject(
   }
 
   const request = body as SyncRequest;
+  const rawMutationCount = Array.isArray(request.mutations)
+    ? request.mutations.length
+    : 0;
+  const mutationCap = checkSyncMutationsPerRequest(
+    rawMutationCount,
+    getQuotaConfig(env)
+  );
+  if (mutationCap) return mutationCap;
+
   const lastCursor = parseCursor(request.lastCursor);
   const mutations = parseMutations(request.mutations);
+  const createCount = mutations.filter(
+    (m) => m.operation === 'create'
+  ).length;
+  const entityQuota = await checkEntityQuotaForMutations(
+    env,
+    projectId,
+    createCount
+  );
+  if (entityQuota) return entityQuota;
+
   const conflicts: SyncConflict[] = [];
 
   // Capture the highest existing change id before applying, so we can fan out

@@ -92,26 +92,7 @@ function LinkItem({
             className='rounded shrink-0 hover:opacity-80 transition-opacity cursor-pointer'
             unoptimized
             onError={(e) => {
-              console.error('Favicon load error:', {
-                url: link.url,
-                favIconUrl: link.favIconUrl,
-                fallbackFavicon: favicon,
-                error: e,
-              });
-              // Try fallback favicon first, then placeholder
-              if (
-                e.currentTarget.src !==
-                convertChromeFaviconUrl(link.favIconUrl || favicon)
-              ) {
-                e.currentTarget.src = 'https://placehold.co/32x32.png';
-              }
-            }}
-            onLoad={() => {
-              console.log('Favicon loaded successfully:', {
-                url: link.url,
-                favIconUrl: link.favIconUrl,
-                fallbackFavicon: favicon,
-              });
+              e.currentTarget.src = 'https://placehold.co/32x32.png';
             }}
           />
         </a>
@@ -123,7 +104,7 @@ function LinkItem({
           className={`text-sm font-medium text-foreground truncate block pt-2 pb-2 ${
             isDraggingExternalItem ? 'pointer-events-none' : 'hover:underline'
           }`}
-          title={link.url}
+          title={link.url || link.title}
           onClick={
             isDraggingExternalItem ? (e) => e.preventDefault() : undefined
           }

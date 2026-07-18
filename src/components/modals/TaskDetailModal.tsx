@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -313,6 +314,9 @@ export default function TaskDetailModal({
               <Pencil className='h-4 w-4' />
             </Button>
           </DialogTitle>
+          <DialogDescription className='sr-only'>
+            Task details for {task.title}
+          </DialogDescription>
           {task.status === 'completed' && (
             <Button variant='outline' size='sm' onClick={handleArchive}>
               <Archive className='h-4 w-4 mr-2' />

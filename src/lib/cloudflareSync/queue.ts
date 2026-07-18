@@ -85,6 +85,7 @@ export async function enqueueMutation(
     if (queue.some((m) => m.clientMutationId === mutation.clientMutationId)) {
       return queue;
     }
+
     const next = [...queue, mutation];
     await writeJson(CLOUD_SYNC_STORAGE_KEYS.queue, next);
     return next;

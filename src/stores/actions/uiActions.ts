@@ -235,6 +235,24 @@ export const createUIActions = (
       editingLinkId: null,
     })),
 
+  // Onboarding actions
+  openOnboarding: () =>
+    set((state: AppState) => ({
+      ...state,
+      isOnboardingOpen: true,
+    })),
+  closeOnboarding: () =>
+    set((state: AppState) => ({
+      ...state,
+      isOnboardingOpen: false,
+    })),
+  completeOnboarding: () =>
+    set((state: AppState) => ({
+      ...state,
+      isOnboardingOpen: false,
+      hasCompletedOnboarding: true,
+    })),
+
   // Chrome Windows/Tabs actions
   refreshChromeWindows: async () => {
     try {
