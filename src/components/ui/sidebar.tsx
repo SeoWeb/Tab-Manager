@@ -1,6 +1,11 @@
 'use client';
 
-export { Sidebar, SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar/provider';
+export {
+  Sidebar,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from '@/components/ui/sidebar/provider';
 export { SidebarRail } from '@/components/ui/sidebar/rail';
 export { SidebarInset } from '@/components/ui/sidebar/inset';
 export {

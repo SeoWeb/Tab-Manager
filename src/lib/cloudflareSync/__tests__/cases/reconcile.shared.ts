@@ -53,7 +53,11 @@ export function link(
   };
 }
 
-export function note(id: string, updatedAt: Date, extra: Partial<Note> = {}): Note {
+export function note(
+  id: string,
+  updatedAt: Date,
+  extra: Partial<Note> = {}
+): Note {
   return {
     id,
     title: `note-${id}`,

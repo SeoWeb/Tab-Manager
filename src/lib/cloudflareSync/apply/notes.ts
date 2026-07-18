@@ -1,11 +1,6 @@
 import type { CloudSyncChange } from '../types';
 import type { ApplyChangesInput, ApplyContext, Note } from './shared';
-import {
-  patchOf,
-  payloadOf,
-  pickString,
-  parseDate,
-} from './shared';
+import { patchOf, payloadOf, pickString, parseDate } from './shared';
 import { touchedFieldsOf, detectConflicts } from './conflicts';
 
 export function applyNote(

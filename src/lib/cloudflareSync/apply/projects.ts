@@ -1,11 +1,7 @@
 import type { Project } from '@/types';
 import type { CloudSyncChange } from '../types';
 import type { ApplyChangesInput } from './shared';
-import {
-  patchOf,
-  pickString,
-  parseDate,
-} from './shared';
+import { patchOf, pickString, parseDate } from './shared';
 
 export function applyProject(
   state: ApplyChangesInput,

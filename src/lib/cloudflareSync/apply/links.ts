@@ -100,10 +100,7 @@ export function buildLink(
   };
 }
 
-export function mergeLink(
-  link: Link,
-  patch: Record<string, unknown>
-): Link {
+export function mergeLink(link: Link, patch: Record<string, unknown>): Link {
   const updatedAt =
     parseDate(patch.updated_at ?? patch.updatedAt) ?? link.updatedAt;
   return {

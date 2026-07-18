@@ -28,16 +28,16 @@
 
 ## 5. Hooks and lib service splits
 
-- [ ] 5.1 Split `src/hooks/useDragAndDrop.ts` (508): extract sub-hooks into `useDragAndDrop/` (drag state, draggable item, droppable zone) + types
-- [ ] 5.2 Split `src/lib/importExport/importProject.ts` (392) and `exportProject.ts` (378): extract shared helpers where natural
-- [ ] 5.3 Split `src/lib/tabService.ts` (386), `tabSessionService.ts` (332), `faviconMigration.ts` (306): extract helper functions into sibling modules
-- [ ] 5.4 Split `src/lib/__tests__/bookmarkSyncService.test.ts` (420) into `cases/*.test.ts`
+- [x] 5.1 Split `src/hooks/useDragAndDrop.ts` (508): extract sub-hooks into `useDragAndDrop/` (drag state, draggable item, droppable zone) + types
+- [x] 5.2 Split `src/lib/importExport/importProject.ts` (392) and `exportProject.ts` (378): extract shared helpers where natural
+- [x] 5.3 Split `src/lib/tabService.ts` (386), `tabSessionService.ts` (332), `faviconMigration.ts` (306): extract helper functions into sibling modules
+- [x] 5.4 Split `src/lib/__tests__/bookmarkSyncService.test.ts` (420) into `cases/*.test.ts`
 
 ## 6. Verification
 
-- [ ] 6.1 Run `pnpm lint` across the repo and fix any issues
-- [ ] 6.2 Run typecheck (`tsc --noEmit` / `pnpm typecheck`) and confirm no errors
-- [ ] 6.3 Run full test suite (frontend Jest + backend `vitest run`) and confirm all tests pass
-- [ ] 6.4 Run `pnpm build` and confirm `out`/`build` generate successfully
-- [ ] 6.5 Confirm no source file under `src/` or `backend/src/lib/` exceeds 400 lines post-refactor
-- [ ] 6.6 Split `backend/src/lib/__tests__/sync.softdelete.test.ts` (427) into `cases/*.test.ts`
+- [x] 6.1 Run `pnpm lint` across the repo and fix any issues
+- [x] 6.2 Run typecheck (`tsc --noEmit` / `pnpm typecheck`) and confirm no errors
+- [x] 6.3 Run full test suite (frontend Jest + backend `vitest run`) and confirm all tests pass
+- [x] 6.4 Run `pnpm build` and confirm `out`/`build` generate successfully
+- [x] 6.5 Confirm no source file under `src/` or `backend/src/lib/` exceeds 400 lines post-refactor
+- [x] 6.6 Split `backend/src/lib/__tests__/sync.softdelete.test.ts` (427) into `cases/*.test.ts`

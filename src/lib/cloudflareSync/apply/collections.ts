@@ -1,12 +1,7 @@
 import type { Collection } from '@/types';
 import type { CloudSyncChange } from '../types';
 import type { ApplyChangesInput } from './shared';
-import {
-  patchOf,
-  pickString,
-  pickNumber,
-  parseDate,
-} from './shared';
+import { patchOf, pickString, pickNumber, parseDate } from './shared';
 
 export function applyCollection(
   state: ApplyChangesInput,

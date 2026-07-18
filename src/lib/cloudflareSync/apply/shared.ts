@@ -37,7 +37,9 @@ export function patchOf(change: CloudSyncChange): Record<string, unknown> {
   return isRecord(change.patch) ? change.patch : {};
 }
 
-export function payloadOf(patch: Record<string, unknown>): Record<string, unknown> {
+export function payloadOf(
+  patch: Record<string, unknown>
+): Record<string, unknown> {
   return isRecord(patch.payload) ? patch.payload : {};
 }
 
@@ -104,7 +106,10 @@ export function parseDate(value: unknown): Date | undefined {
  * merging a remote update — dates and optional fields are omitted from the
  * patch when unset, so presence is what matters.
  */
-export function payloadHas(payload: Record<string, unknown>, key: string): boolean {
+export function payloadHas(
+  payload: Record<string, unknown>,
+  key: string
+): boolean {
   return key in payload;
 }
 
@@ -175,7 +180,9 @@ export function reviveReminders(value: unknown): TaskReminder[] {
   });
 }
 
-export function reviveRecurringPattern(value: unknown): RecurringPattern | undefined {
+export function reviveRecurringPattern(
+  value: unknown
+): RecurringPattern | undefined {
   if (!isRecord(value)) return undefined;
   const type = pickString([value.type]) as RecurringPattern['type'] | undefined;
   if (!type) return undefined;

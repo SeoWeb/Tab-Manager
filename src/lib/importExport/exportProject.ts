@@ -3,6 +3,7 @@
 import { useAppStore } from '@/stores/appStore';
 import type { ExportBundle, ExportSelection, ExportFormat } from './types';
 import type { Collection, Link, AdvancedTask, LegacyTask, Note } from './types';
+import { iso, toCsvRows, escapeHtml, sanitize } from './format';
 
 /** Read the current store and assemble a bundle for the given project. */
 export function buildBundle(
@@ -29,45 +30,15 @@ export function buildBundle(
   };
 }
 
-const iso = (value: unknown): string => {
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'string') return value;
-  return String(value ?? '');
-};
-
 /** Serialize a bundle to a pretty JSON string (Dates become ISO strings). */
 export function toJson(bundle: ExportBundle): string {
   return JSON.stringify(bundle, null, 2);
-}
-
-// ---- CSV helpers -----------------------------------------------------------
-
-function csvCell(value: unknown): string {
-  if (value == null) return '';
-  let str: string;
-  if (value instanceof Date) str = value.toISOString();
-  else if (Array.isArray(value)) str = value.join('; ');
-  else str = String(value);
-  if (/[",\n\r]/.test(str)) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
-
-function toCsvRows(headers: string[], rows: unknown[][]): string {
-  const head = headers.map(csvCell).join(',');
-  const body = rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
-  return `${head}\r\n${body}`;
 }
 
 export interface ExportFile {
   filename: string;
   content: string;
   mime: string;
-}
-
-function sanitize(name: string): string {
-  return (name || 'project').replace(/[^a-z0-9_-]+/gi, '_').slice(0, 60);
 }
 
 /** Produce one or more flat CSV files (one per selected section). */
@@ -211,15 +182,6 @@ export function toCsv(
 }
 
 // ---- HTML helpers ----------------------------------------------------------
-
-function escapeHtml(value: unknown): string {
-  if (value == null) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 /** Render a self-contained, read-only HTML report of the bundle. */
 export function toHtml(

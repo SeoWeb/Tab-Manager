@@ -1,28 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { applyMutation } from '../sync';
-import type { Env, SyncMutation } from '../../types';
+import type { Env, SyncMutation } from '../../../types';
 
-/**
- * Soft-delete basis reconciliation (Option A: "soft-deleted = not present").
- *
- * These tests exercise applyMutation against an in-memory D1 mock and assert
- * that update/delete mutations targeting a soft-deleted entity (or project)
- * return a clean "not found / already deleted" conflict WITHOUT bumping the
- * entity version or appending a sync_changes row, and never surface a spurious
- * "Entity version conflict" against a tombstone.
- */
+export type { Env };
 
-const NOW = '2020-01-01T00:00:00.000Z';
-const DELETED_AT = '2021-01-01T00:00:00.000Z';
+// Shared in-memory D1 mock + fixtures for soft-delete basis reconciliation
+// (Option A: "soft-deleted = not present"). Used by the `cases/*.test.ts`
+// suites that exercise applyMutation against a soft-deleted entity.
 
-interface Row {
+export const NOW = '2020-01-01T00:00:00.000Z';
+export const DELETED_AT = '2021-01-01T00:00:00.000Z';
+
+export interface Row {
   id: string;
   project_id: string;
   deleted_at: string | null;
   [k: string]: unknown;
 }
 
-interface VersionRow {
+export interface VersionRow {
   project_id: string;
   entity_type: string;
   entity_id: string;
@@ -30,14 +24,14 @@ interface VersionRow {
   updated_at: string;
 }
 
-interface ChangeRow {
+export interface ChangeRow {
   client_mutation_id: string | null;
   entity_id: string;
   operation: string;
   [k: string]: unknown;
 }
 
-interface DB {
+export interface DB {
   collections: Row[];
   links: Row[];
   tasks: Row[];
@@ -67,7 +61,7 @@ function tableInSql(sql: string): keyof DB | null {
 }
 
 /** Minimal D1 mock covering the SQL shapes applyMutation issues. */
-function makeEnv(db: DB): Env {
+export function makeEnv(db: DB): Env {
   function run(sql: string, params: unknown[]) {
     // INSERT into sync_changes (idempotency log + change rows).
     if (/INSERT INTO sync_changes/.test(sql)) {
@@ -213,7 +207,7 @@ function makeEnv(db: DB): Env {
   return { D1_DATABASE: database } as unknown as Env;
 }
 
-function baseDb(): DB {
+export function baseDb(): DB {
   return {
     collections: [
       { id: 'c-live', project_id: 'p1', name: 'Live', deleted_at: null },
@@ -291,11 +285,11 @@ function baseDb(): DB {
   };
 }
 
-function versionOf(db: DB, entityId: string): number | undefined {
+export function versionOf(db: DB, entityId: string): number | undefined {
   return db.entity_versions.find((v) => v.entity_id === entityId)?.version;
 }
 
-function mutation(overrides: Partial<SyncMutation>): SyncMutation {
+export function mutation(overrides: Partial<SyncMutation>): SyncMutation {
   return {
     clientMutationId: `cm-${Math.random().toString(36).slice(2)}`,
     entityType: 'task',
@@ -308,120 +302,3 @@ function mutation(overrides: Partial<SyncMutation>): SyncMutation {
     ...overrides,
   } as SyncMutation;
 }
-
-describe('applyMutation soft-delete basis', () => {
-  let db: DB;
-  let env: Env;
-
-  beforeEach(() => {
-    db = baseDb();
-    env = makeEnv(db);
-  });
-
-  it('update on a soft-deleted entity returns a not-found conflict, no version bump, no change row', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'task',
-        entityId: 't-dead',
-        operation: 'update',
-        patch: { title: 'new title' },
-      })
-    );
-
-    expect(result.conflict).toBeDefined();
-    expect(result.conflict?.message).toBe('Entity not found or already deleted');
-    expect(versionOf(db, 't-dead')).toBe(7); // unchanged
-    expect(db.sync_changes).toHaveLength(0);
-  });
-
-  it('delete on a soft-deleted entity returns a not-found conflict, no version bump, no change row', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'collection',
-        entityId: 'c-dead',
-        operation: 'delete',
-      })
-    );
-
-    expect(result.conflict).toBeDefined();
-    expect(result.conflict?.message).toBe('Entity not found or already deleted');
-    expect(versionOf(db, 'c-dead')).toBe(5); // unchanged
-    expect(db.sync_changes).toHaveLength(0);
-  });
-
-  it('update with a MATCHING baseVersion on a tombstone yields not-found, never a version conflict', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'task',
-        entityId: 't-dead',
-        operation: 'update',
-        baseVersion: 7, // matches the tombstone's real version
-        patch: { title: 'x' },
-      })
-    );
-
-    expect(result.conflict?.message).toBe('Entity not found or already deleted');
-    expect(result.conflict?.message).not.toBe('Entity version conflict');
-    expect(db.sync_changes).toHaveLength(0);
-  });
-
-  it('delete on an already-deleted project returns a conflict, no version bump, no change row', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'project',
-        entityId: 'p-dead',
-        projectId: 'p-dead',
-        operation: 'delete',
-      })
-    );
-
-    expect(result.conflict).toBeDefined();
-    expect(result.conflict?.message).toBe('Entity not found or already deleted');
-    expect(versionOf(db, 'p-dead')).toBe(3); // no phantom bump
-    expect(db.sync_changes).toHaveLength(0); // no spurious delete change
-  });
-
-  it('regression: update on a LIVE entity succeeds, bumps version, writes a change row', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'task',
-        entityId: 't-live',
-        operation: 'update',
-        patch: { title: 'updated' },
-      })
-    );
-
-    expect(result.conflict).toBeUndefined();
-    expect(versionOf(db, 't-live')).toBe(3); // 2 -> 3
-    expect(db.sync_changes).toHaveLength(1);
-    expect(db.sync_changes[0]?.operation).toBe('update');
-  });
-
-  it('regression: delete on a LIVE entity succeeds, bumps version, writes a change row', async () => {
-    const result = await applyMutation(
-      env,
-      'u1',
-      mutation({
-        entityType: 'task',
-        entityId: 't-live',
-        operation: 'delete',
-      })
-    );
-
-    expect(result.conflict).toBeUndefined();
-    expect(versionOf(db, 't-live')).toBe(3);
-    expect(db.tasks.find((t) => t.id === 't-live')?.deleted_at).not.toBeNull();
-    expect(db.sync_changes).toHaveLength(1);
-    expect(db.sync_changes[0]?.operation).toBe('delete');
-  });
-});

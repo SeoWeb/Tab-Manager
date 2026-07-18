@@ -1,6 +1,3 @@
-import type { Collection, Link } from '@/types';
-import type { Note } from '@/stores/types';
-import type { AdvancedTask, LegacyTask } from '@/types/tasks';
 import {
   buildCollectionPatch,
   buildLinkPatch,
@@ -17,6 +14,20 @@ import type {
   SnapshotLink,
   SnapshotResponse,
 } from './types';
+import {
+  type DiffSnapshotLocal,
+  type DiffSnapshotResult,
+  type Lww,
+  type PushItem,
+  type SnapshotRow,
+  parseDate,
+} from './reconcileCore/types';
+import {
+  collectionPullPatch,
+  jsonPullPatch,
+  linkPullPatch,
+  todoEqualsServer,
+} from './reconcileCore/pullPatches';
 
 /**
  * Pure reconciliation engine.
@@ -50,40 +61,11 @@ import type {
  * incremental sync instead.
  */
 
-/** Local entities for a single project, as held by the store. */
-export interface DiffSnapshotLocal {
-  collections: Collection[];
-  tasks: AdvancedTask[];
-  notes: Note[];
-  todos: LegacyTask[];
-}
-
-/** A local-newer / local-only entity to enqueue as a cloud mutation. */
-export interface PushItem {
-  entityType: CloudEntityType;
-  entityId: string;
-  operation: CloudOperation;
-  patch: Record<string, unknown>;
-  baseVersion?: number;
-}
-
-export interface DiffSnapshotResult {
-  /** Synthetic change rows (client_id: null) to apply via applyRemoteChanges. */
-  pulls: CloudSyncChange[];
-  /** Local-newer / local-only entities to enqueue as mutations. */
-  pushes: PushItem[];
-}
-
-/** The minimal shape every snapshot row shares. */
-interface ServerRow {
-  id: string;
-  updated_at: string;
-  deleted_at: string | null;
-}
-
-type SnapshotRow = ServerRow & { version: number };
-
-type Lww = 'server' | 'local' | 'equal';
+export type {
+  DiffSnapshotLocal,
+  DiffSnapshotResult,
+  PushItem,
+} from './reconcileCore/types';
 
 let pullChangeId = 1_000_000;
 
@@ -100,7 +82,7 @@ export function diffSnapshot(
 
   // Links are nested under collections; flatten them and remember their parent
   // so push patches can supply the collection id (the Link type has none).
-  const links: Link[] = [];
+  const links: import('@/types').Link[] = [];
   const linkCollectionId = new Map<string, string>();
   for (const collection of input.collections) {
     for (const link of collection.links) {
@@ -109,7 +91,7 @@ export function diffSnapshot(
     }
   }
 
-  diffEntities<Collection, SnapshotCollection>(
+  diffEntities<import('@/types').Collection, SnapshotCollection>(
     {
       entityType: 'collection',
       serverRows: server.collections,
@@ -125,7 +107,7 @@ export function diffSnapshot(
     pushes
   );
 
-  diffEntities<Link, SnapshotLink>(
+  diffEntities<import('@/types').Link, SnapshotLink>(
     {
       entityType: 'link',
       serverRows: server.links,
@@ -147,7 +129,7 @@ export function diffSnapshot(
     pushes
   );
 
-  diffEntities<AdvancedTask, SnapshotJsonEntity>(
+  diffEntities<import('@/types/tasks').AdvancedTask, SnapshotJsonEntity>(
     {
       entityType: 'task',
       serverRows: server.tasks,
@@ -163,7 +145,7 @@ export function diffSnapshot(
     pushes
   );
 
-  diffEntities<Note, SnapshotJsonEntity>(
+  diffEntities<import('@/stores/types').Note, SnapshotJsonEntity>(
     {
       entityType: 'note',
       serverRows: server.notes,
@@ -180,7 +162,7 @@ export function diffSnapshot(
   );
 
   // Legacy todos carry no timestamp, so LWW falls back to content equality.
-  diffEntities<LegacyTask, SnapshotJsonEntity>(
+  diffEntities<import('@/types/tasks').LegacyTask, SnapshotJsonEntity>(
     {
       entityType: 'todo',
       serverRows: server.todos,
@@ -365,100 +347,4 @@ function compareLww(params: {
   if (sv > lv) return 'server';
   if (lv > sv) return 'local';
   return 'equal';
-}
-
-function parseDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function collectionPullPatch(row: SnapshotCollection): Record<string, unknown> {
-  return {
-    name: row.name,
-    description: row.description,
-    color: row.color,
-    minimized: row.minimized === 1,
-    order: row.order_index,
-    bookmarkFolderId: row.bookmark_folder_id,
-    updated_at: row.updated_at,
-  };
-}
-
-function linkPullPatch(row: SnapshotLink): Record<string, unknown> {
-  return {
-    collectionId: row.collection_id,
-    url: row.url,
-    title: row.title,
-    favIconUrl: row.fav_icon_url,
-    notes: row.notes,
-    tags: parseTags(row.tags_json),
-    order: row.order_index,
-    bookmarkId: row.bookmark_id,
-    updated_at: row.updated_at,
-  };
-}
-
-/**
- * Notes/todos/tasks are stored server-side as a `title` plus a `payload_json`
- * blob. The pull patch reproduces exactly that wire shape (plus `updated_at` and
- * `collectionId` for tasks) so `applyRemoteChanges` reconstructs them verbatim.
- */
-function jsonPullPatch(row: SnapshotJsonEntity): Record<string, unknown> {
-  let payload: Record<string, unknown> = {};
-  if (row.payload_json) {
-    try {
-      const parsed = JSON.parse(row.payload_json);
-      if (parsed && typeof parsed === 'object')
-        payload = parsed as Record<string, unknown>;
-    } catch {
-      payload = {};
-    }
-  }
-  const patch: Record<string, unknown> = {
-    title: row.title,
-    payload,
-    updated_at: row.updated_at,
-  };
-  if (row.collection_id) patch.collectionId = row.collection_id;
-  return patch;
-}
-
-function parseTags(tagsJson: string | null): string[] {
-  if (!tagsJson) return [];
-  try {
-    const parsed = JSON.parse(tagsJson);
-    if (Array.isArray(parsed))
-      return parsed.filter((t) => typeof t === 'string');
-  } catch {
-    // leave empty
-  }
-  return [];
-}
-
-function todoEqualsServer(local: LegacyTask, row: SnapshotJsonEntity): boolean {
-  let payload: Record<string, unknown> = {};
-  if (row.payload_json) {
-    try {
-      const parsed = JSON.parse(row.payload_json);
-      if (parsed && typeof parsed === 'object')
-        payload = parsed as Record<string, unknown>;
-    } catch {
-      payload = {};
-    }
-  }
-  const serverText =
-    typeof payload.text === 'string'
-      ? payload.text
-      : typeof payload.title === 'string'
-        ? payload.title
-        : '';
-  const serverCompleted = payload.completed === true;
-  const serverCategory =
-    typeof payload.category === 'string' ? payload.category : null;
-  return (
-    local.text === serverText &&
-    local.completed === serverCompleted &&
-    (local.category ?? null) === serverCategory
-  );
 }

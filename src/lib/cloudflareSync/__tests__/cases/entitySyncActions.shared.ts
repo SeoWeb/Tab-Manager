@@ -44,9 +44,7 @@ export function makeStore(initial: Record<string, unknown>) {
   let state = initial as unknown as AppState;
   const get = (): AppState => state;
   const set = (
-    updater:
-      | ((s: AppState) => AppState | Partial<AppState>)
-      | Partial<AppState>
+    updater: ((s: AppState) => AppState | Partial<AppState>) | Partial<AppState>
   ): void => {
     const partial = typeof updater === 'function' ? updater(state) : updater;
     state = { ...state, ...partial } as AppState;
@@ -68,4 +66,10 @@ export function payloadOf(call: unknown): Record<string, unknown> {
 }
 
 export type { AdvancedTask };
-export { createNoteActions, createTaskActions, createUIActions, createProjectActions, createCloudSyncActions };
+export {
+  createNoteActions,
+  createTaskActions,
+  createUIActions,
+  createProjectActions,
+  createCloudSyncActions,
+};

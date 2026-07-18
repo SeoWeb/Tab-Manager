@@ -1,7 +1,6 @@
 import * as client from './client';
 import * as config from './config';
 import * as queue from './queue';
-import { applyRemoteChanges, type ApplyChangesInput } from './applyChanges';
 import { diffSnapshot } from './reconcile';
 import { canEdit } from './roles';
 import type { CloudRole } from './types';
@@ -13,9 +12,18 @@ import type {
   CloudEntityType,
   CloudOperation,
   CloudSyncChange,
-  CloudSyncState,
   CloudSyncStatus,
 } from './types';
+import {
+  errorMessage,
+  isOnline,
+  nowIso,
+  readPersistedState,
+} from './backgroundSyncImpl/storage';
+import {
+  applyReconcileToStore,
+  applyToStore,
+} from './backgroundSyncImpl/applyToStore';
 
 /**
  * Phase 5 background sync.
@@ -33,57 +41,6 @@ import type {
  * and receiving realtime updates neither has its local edits clobbered nor gets
  * the same changes double-applied.
  */
-
-/** Zustand persist stores the partialized state as `{ state, version }`. */
-const STORE_KEY = 'tab-manager-storage';
-
-interface PersistedWrapper {
-  state?: PartialState;
-  version?: number;
-}
-
-interface PartialState {
-  projects?: unknown[];
-  notes?: unknown[];
-  todos?: unknown[];
-  tasks?: unknown[];
-  cloudSync?: Partial<CloudSyncState>;
-}
-
-function isChromeStorageAvailable(): boolean {
-  return (
-    typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local
-  );
-}
-
-function readStoreRaw(): Promise<string | null> {
-  return new Promise((resolve) => {
-    if (!isChromeStorageAvailable()) return resolve(null);
-    chrome.storage.local.get([STORE_KEY], (result) => {
-      const value = result?.[STORE_KEY];
-      resolve(typeof value === 'string' ? value : null);
-    });
-  });
-}
-
-function writeStoreRaw(value: string): Promise<void> {
-  return new Promise((resolve) => {
-    if (!isChromeStorageAvailable()) return resolve();
-    chrome.storage.local.set({ [STORE_KEY]: value }, () => resolve());
-  });
-}
-
-function isOnline(): boolean {
-  return typeof navigator === 'undefined' ? true : navigator.onLine;
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown error';
-}
 
 /**
  * Run one background sync pass across every cloud-enabled (or queued) project.
@@ -319,160 +276,4 @@ export async function backgroundReconcileAll(): Promise<{
 export async function getLastReconciledAt(): Promise<string | null> {
   const wrapper = await readPersistedState();
   return wrapper?.state?.cloudSync?.lastReconciledAt ?? null;
-}
-
-async function readPersistedState(): Promise<PersistedWrapper | null> {
-  const raw = await readStoreRaw();
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as PersistedWrapper;
-    // Tolerate a legacy flat shape (state stored without the wrapper).
-    if (parsed && parsed.state) return parsed;
-    if (parsed && typeof parsed === 'object' && 'projects' in parsed) {
-      return { state: parsed as PartialState };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Read-modify-write: re-read the freshest persisted state, apply only the
- * pulled changes each project hasn't already seen (by fresh cursor), advance
- * cursors, set sync status, and write back. This is what keeps background sync
- * from clobbering the popup's in-flight local edits or double-applying changes
- * the popup already received over its realtime socket.
- */
-async function applyToStore(input: {
-  changesByProject: Map<string, CloudSyncChange[]>;
-  cursorsAfter: Map<string, number>;
-  status: CloudSyncStatus;
-  lastError: string | null;
-  lastSyncedAt: string | null;
-}): Promise<void> {
-  if (input.changesByProject.size === 0 && input.cursorsAfter.size === 0) {
-    return;
-  }
-
-  const raw = await readStoreRaw();
-  if (!raw) return;
-
-  let wrapper: PersistedWrapper;
-  try {
-    wrapper = JSON.parse(raw) as PersistedWrapper;
-  } catch {
-    return;
-  }
-  const state = wrapper.state ?? (wrapper as unknown as PartialState);
-  if (!state) return;
-
-  const freshCursors = { ...(state.cloudSync?.cursors ?? {}) };
-  // The persisted state is loosely typed; cast into the reducer's input shape.
-  const mutable: ApplyChangesInput = {
-    projects: (state.projects ?? []) as ApplyChangesInput['projects'],
-    notes: (state.notes ?? []) as ApplyChangesInput['notes'],
-    todos: (state.todos ?? []) as ApplyChangesInput['todos'],
-    tasks: (state.tasks ?? []) as ApplyChangesInput['tasks'],
-  };
-
-  for (const [projectId, changes] of input.changesByProject) {
-    const freshCursor = freshCursors[projectId] ?? 0;
-    // Skip changes the popup already applied (e.g. via realtime) while the
-    // background was pulling — applying them again would duplicate work.
-    const pending = changes.filter((c) => c.id > freshCursor);
-    if (pending.length === 0) {
-      // Still advance the cursor if the pull saw further than the popup has.
-      const pulled = input.cursorsAfter.get(projectId) ?? freshCursor;
-      if (pulled > freshCursor) freshCursors[projectId] = pulled;
-      continue;
-    }
-    const result = applyRemoteChanges(
-      mutable,
-      pending,
-      await config.getClientId()
-    );
-    mutable.projects = result.projects;
-    mutable.notes = result.notes;
-    mutable.todos = result.todos;
-    mutable.tasks = result.tasks;
-    const maxId = pending.reduce(
-      (max, c) => (c.id > max ? c.id : max),
-      freshCursor
-    );
-    freshCursors[projectId] = Math.max(
-      maxId,
-      input.cursorsAfter.get(projectId) ?? freshCursor
-    );
-  }
-
-  state.projects = mutable.projects;
-  state.notes = mutable.notes;
-  state.todos = mutable.todos;
-  state.tasks = mutable.tasks;
-  state.cloudSync = {
-    ...(state.cloudSync as CloudSyncState),
-    cursors: freshCursors,
-    status: input.status,
-    lastError: input.lastError,
-    ...(input.lastSyncedAt ? { lastSyncedAt: input.lastSyncedAt } : {}),
-  };
-
-  await writeStoreRaw(JSON.stringify(wrapper));
-}
-
-/**
- * Read-modify-write for reconciliation: re-read the freshest persisted state,
- * apply the (already conflict-free) pull changes each project is missing, and
- * write back — reusing the same `applyRemoteChanges` reducer so apply semantics
- * match the popup exactly. Advances only `lastReconciledAt`; the incremental
- * `lastSyncedAt` cursor heartbeat is left untouched so sync-staleness detection
- * keeps working independently of reconcile.
- */
-async function applyReconcileToStore(input: {
-  pullsByProject: Map<string, CloudSyncChange[]>;
-  status: CloudSyncStatus;
-  lastError: string | null;
-}): Promise<void> {
-  const raw = await readStoreRaw();
-  if (!raw) return;
-
-  let wrapper: PersistedWrapper;
-  try {
-    wrapper = JSON.parse(raw) as PersistedWrapper;
-  } catch {
-    return;
-  }
-  const state = wrapper.state ?? (wrapper as unknown as PartialState);
-  if (!state) return;
-
-  // The persisted state is loosely typed; cast into the reducer's input shape.
-  const mutable: ApplyChangesInput = {
-    projects: (state.projects ?? []) as ApplyChangesInput['projects'],
-    notes: (state.notes ?? []) as ApplyChangesInput['notes'],
-    todos: (state.todos ?? []) as ApplyChangesInput['todos'],
-    tasks: (state.tasks ?? []) as ApplyChangesInput['tasks'],
-  };
-
-  const clientId = await config.getClientId();
-  for (const changes of input.pullsByProject.values()) {
-    const result = applyRemoteChanges(mutable, changes, clientId);
-    mutable.projects = result.projects;
-    mutable.notes = result.notes;
-    mutable.todos = result.todos;
-    mutable.tasks = result.tasks;
-  }
-
-  state.projects = mutable.projects;
-  state.notes = mutable.notes;
-  state.todos = mutable.todos;
-  state.tasks = mutable.tasks;
-  state.cloudSync = {
-    ...(state.cloudSync as CloudSyncState),
-    status: input.status,
-    lastError: input.lastError,
-    lastReconciledAt: nowIso(),
-  };
-
-  await writeStoreRaw(JSON.stringify(wrapper));
 }

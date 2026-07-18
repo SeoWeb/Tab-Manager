@@ -1,5 +1,9 @@
 import { applyRemoteChanges, change, EMPTY } from './applyChanges.shared';
-import { buildNotePatch, buildTodoPatch, buildTaskPatch } from '../../entityPatches';
+import {
+  buildNotePatch,
+  buildTodoPatch,
+  buildTaskPatch,
+} from '../../entityPatches';
 import type { Note } from '@/stores/types';
 import type { AdvancedTask, LegacyTask } from '@/types/tasks';
 import type { CloudEntityType } from '../../types';

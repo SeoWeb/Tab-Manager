@@ -1,10 +1,8 @@
 import { diffSnapshot } from '../../reconcile';
 import {
   collection,
-  link,
   emptyServer,
   snapCollection,
-  snapLink,
   T0,
   T1,
   T2,

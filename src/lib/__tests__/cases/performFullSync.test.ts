@@ -1,18 +1,9 @@
-// src/lib/__tests__/bookmarkSyncService.test.ts
-
-import { bookmarkSyncService } from '../bookmarkSyncService';
-import { bookmarkService } from '../bookmarkService';
-import { useAppStore } from '@/stores/appStore';
-
-// Mock the dependencies
-jest.mock('../bookmarkService');
-// Factory mock so the real store is never loaded. The real `appStore` imports
-// `nanoid` (ESM-only) via `mockData`, which Jest's CJS transform cannot parse.
+// Mocks must be declared at the top of the test file so Jest registers them.
+jest.mock('../../bookmarkService');
 jest.mock('@/stores/appStore', () => ({
   useAppStore: jest.fn(),
 }));
-// Stub favicon preloading (network/cache) so link creation is deterministic.
-jest.mock('../utils', () => ({
+jest.mock('../../utils', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
   getInitials: () => '',
   isValidUrl: () => true,
@@ -23,117 +14,23 @@ jest.mock('../utils', () => ({
     .mockResolvedValue('https://www.google.com/s2/favicons?domain=newlink.com'),
 }));
 
-const mockBookmarkService = bookmarkService as jest.Mocked<
-  typeof bookmarkService
->;
-const mockUseAppStore = useAppStore as jest.MockedFunction<typeof useAppStore>;
+import { bookmarkSyncService } from '../../bookmarkSyncService';
+import {
+  mockBookmarkService,
+  mockUseAppStore,
+  createMockStore,
+  resetServiceState,
+  resetBookmarkMocks,
+} from './shared';
 
-// Mock Chrome APIs
-const mockChrome = {
-  bookmarks: {
-    onCreated: {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    },
-    onRemoved: {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    },
-    onChanged: {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    },
-    onMoved: {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    },
-  },
-};
-
-// @ts-expect-error - Mocking global chrome for testing
-global.chrome = mockChrome;
-
-describe('BookmarkSyncService', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockStore: any;
-
+describe('BookmarkSyncService: performFullSync', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // The service is a module singleton whose `isInitialized` / `syncInProgress`
-    // flags persist across tests; clearAllMocks only clears call history, so
-    // reset the instance state explicitly to keep each test isolated.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (bookmarkSyncService as any).isInitialized = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (bookmarkSyncService as any).syncInProgress = false;
-
-    // clearAllMocks also does not clear the one-shot `mockResolvedValueOnce`
-    // queue, so leftover return values would leak between tests (e.g. an
-    // unconsumed value from one sync shifting the next test's responses). Reset
-    // the bookmark-service mocks that use one-shot queues; each test sets up the
-    // mock it needs.
-    mockBookmarkService.getChildren.mockReset();
-    mockBookmarkService.getBookmarkNode.mockReset();
-
-    mockStore = {
-      tabManagerRootFolderId: 'root-folder-id',
-      projects: [
-        {
-          id: 'project-1',
-          name: 'Test Project',
-          bookmarkFolderId: 'project-folder-id',
-          collections: [
-            {
-              id: 'collection-1',
-              name: 'Test Collection',
-              bookmarkFolderId: 'collection-folder-id',
-              links: [
-                {
-                  id: 'link-1',
-                  title: 'Test Link',
-                  url: 'https://example.com',
-                  bookmarkId: 'bookmark-id',
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      addProject: jest.fn(),
-      updateProject: jest.fn(),
-      deleteProject: jest.fn(),
-      addCollection: jest.fn(),
-      updateCollection: jest.fn(),
-      deleteCollection: jest.fn(),
-      addLink: jest.fn(),
-      updateLink: jest.fn(),
-      deleteLink: jest.fn(),
-    };
-
+    resetServiceState();
+    resetBookmarkMocks();
+    const mockStore = createMockStore();
     mockUseAppStore.mockReturnValue(mockStore);
     mockUseAppStore.getState = jest.fn().mockReturnValue(mockStore);
-  });
-
-  describe('initialize', () => {
-    it('should set up Chrome bookmark event listeners', async () => {
-      await bookmarkSyncService.initialize();
-
-      expect(mockChrome.bookmarks.onCreated.addListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onRemoved.addListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onChanged.addListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onMoved.addListener).toHaveBeenCalled();
-    });
-
-    it('should not initialize twice', async () => {
-      await bookmarkSyncService.initialize();
-      await bookmarkSyncService.initialize();
-
-      // Should only be called once
-      expect(mockChrome.bookmarks.onCreated.addListener).toHaveBeenCalledTimes(
-        1
-      );
-    });
   });
 
   describe('performFullSync', () => {
@@ -162,7 +59,8 @@ describe('BookmarkSyncService', () => {
     });
 
     it('should handle missing root folder ID', async () => {
-      mockStore.tabManagerRootFolderId = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (mockUseAppStore.getState() as any).tabManagerRootFolderId = null;
 
       await bookmarkSyncService.performFullSync();
 
@@ -177,8 +75,6 @@ describe('BookmarkSyncService', () => {
 
       // A single sync starts with exactly one root-folder getChildren call; if
       // the second concurrent sync had also run, the root call would repeat.
-      // (Each sync also makes nested project/collection getChildren calls, so a
-      // raw call count would not prove the second sync was skipped.)
       const rootCalls = mockBookmarkService.getChildren.mock.calls.filter(
         ([id]) => id === 'root-folder-id'
       );
@@ -202,7 +98,8 @@ describe('BookmarkSyncService', () => {
 
       mockBookmarkService.getChildren.mockResolvedValue([bookmarkFolder]);
 
-      // Mock the newly created project
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStore = mockUseAppStore.getState() as any;
       mockStore.projects = [
         ...mockStore.projects,
         {
@@ -247,6 +144,8 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStore = mockUseAppStore.getState() as any;
       expect(mockStore.updateProject).toHaveBeenCalledWith(
         'project-1',
         { name: 'Updated Project Name' },
@@ -288,6 +187,8 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStore = mockUseAppStore.getState() as any;
       expect(mockStore.addCollection).toHaveBeenCalledWith(
         'project-1',
         {
@@ -345,6 +246,8 @@ describe('BookmarkSyncService', () => {
 
       await bookmarkSyncService.performFullSync();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockStore = mockUseAppStore.getState() as any;
       expect(mockStore.addLink).toHaveBeenCalledWith(
         'project-1',
         'collection-1',
@@ -357,64 +260,6 @@ describe('BookmarkSyncService', () => {
         },
         true // skipBookmarkCreation: importing FROM bookmarks
       );
-    });
-  });
-
-  describe('handleBookmarkCreated', () => {
-    it('should trigger sync when bookmark is created in managed folder', async () => {
-      // Make the managed-folder walk terminate at the root in one step:
-      // collection-folder-id -> parent (root-folder-id) -> matches root.
-      mockBookmarkService.getBookmarkNode.mockResolvedValue({
-        id: 'root-folder-id',
-        title: 'TabSpace Projects',
-        parentId: 'root-folder-id',
-        index: 0,
-        dateAdded: Date.now(),
-        dateGroupModified: Date.now(),
-        unmodifiable: undefined,
-        children: undefined,
-        url: undefined,
-      } as chrome.bookmarks.BookmarkTreeNode);
-
-      const bookmark = {
-        id: 'new-bookmark-id',
-        title: 'New Bookmark',
-        url: 'https://example.com',
-        parentId: 'collection-folder-id',
-      };
-
-      // Avoid the real debounced performFullSync firing on a timer; we only care
-      // that a sync is triggered.
-      const partialSyncSpy = jest
-        .spyOn(bookmarkSyncService, 'performPartialSync')
-        .mockResolvedValue(undefined);
-
-      // Listeners are registered during initialize(), so capture the handler
-      // after initializing (not before).
-      await bookmarkSyncService.initialize();
-      const createdHandler =
-        mockChrome.bookmarks.onCreated.addListener.mock.calls[0][0];
-
-      await createdHandler(
-        'new-bookmark-id',
-        bookmark as chrome.bookmarks.BookmarkTreeNode
-      );
-
-      // Should resolve the bookmark's lineage and trigger a partial sync.
-      expect(mockBookmarkService.getBookmarkNode).toHaveBeenCalled();
-      expect(partialSyncSpy).toHaveBeenCalledWith('collection-folder-id');
-      partialSyncSpy.mockRestore();
-    });
-  });
-
-  describe('destroy', () => {
-    it('should remove event listeners', () => {
-      bookmarkSyncService.destroy();
-
-      expect(mockChrome.bookmarks.onCreated.removeListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onRemoved.removeListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onChanged.removeListener).toHaveBeenCalled();
-      expect(mockChrome.bookmarks.onMoved.removeListener).toHaveBeenCalled();
     });
   });
 });
