@@ -13,9 +13,9 @@
 
 ## 3. cloudflareSync module split
 
-- [ ] 3.1 Split `src/lib/cloudflareSync/applyChanges.ts` (1053): extract per-entity files `apply/projects.ts`, `collections.ts`, `links.ts`, `notes.ts`, `todos.ts`, `tasks.ts`, `conflicts.ts`; keep `applyRemoteChanges`/`applyChange` + types as barrel
-- [ ] 3.2 Split `cloudflareSync/__tests__/applyChanges.test.ts` (628) and `reconcile.test.ts` (622) and `entitySyncActions.test.ts` (751) into `cases/*.test.ts`
-- [ ] 3.3 Run Jest `cloudflareSync` suite after split
+- [x] 3.1 Split `src/lib/cloudflareSync/applyChanges.ts` (1053): extract per-entity files `apply/projects.ts`, `collections.ts`, `links.ts`, `notes.ts`, `todos.ts`, `tasks.ts`, `conflicts.ts`; keep `applyRemoteChanges`/`applyChange` + types as barrel
+- [x] 3.2 Split `cloudflareSync/__tests__/applyChanges.test.ts` (628) and `reconcile.test.ts` (622) and `entitySyncActions.test.ts` (751) into `cases/*.test.ts`
+- [x] 3.3 Run Jest `cloudflareSync` suite after split
 
 ## 4. UI component splits
 
