@@ -123,7 +123,6 @@ export async function convertProjectToCloud(
     // state. Entity ids are unchanged (client-authoritative); only the project id
     // is new.
     for (const collection of project.collections) {
-      // eslint-disable-next-line no-await-in-loop -- ordered, low-volume
       await enqueueCloudMutation({
         projectId: serverProject.id,
         entityType: 'collection',
@@ -132,7 +131,6 @@ export async function convertProjectToCloud(
         patch: buildCollectionPatch(collection),
       });
       for (const link of collection.links) {
-        // eslint-disable-next-line no-await-in-loop
         await enqueueCloudMutation({
           projectId: serverProject.id,
           entityType: 'link',
@@ -151,7 +149,6 @@ export async function convertProjectToCloud(
     for (const note of storeState.notes.filter(
       (n) => n.projectId === serverProject.id
     )) {
-      // eslint-disable-next-line no-await-in-loop -- ordered, low-volume
       await enqueueCloudMutation({
         projectId: serverProject.id,
         entityType: 'note',
@@ -163,7 +160,6 @@ export async function convertProjectToCloud(
     for (const todo of storeState.todos.filter(
       (t) => t.projectId === serverProject.id
     )) {
-      // eslint-disable-next-line no-await-in-loop -- ordered, low-volume
       await enqueueCloudMutation({
         projectId: serverProject.id,
         entityType: 'todo',
@@ -175,7 +171,6 @@ export async function convertProjectToCloud(
     for (const task of storeState.tasks.filter(
       (t) => t.projectId === serverProject.id
     )) {
-      // eslint-disable-next-line no-await-in-loop -- ordered, low-volume
       await enqueueCloudMutation({
         projectId: serverProject.id,
         entityType: 'task',

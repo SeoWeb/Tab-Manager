@@ -98,7 +98,6 @@ export function CloudSyncMyProjectsCard() {
     try {
       // Import sequentially so per-project sync status stays coherent.
       for (const project of items) {
-        // eslint-disable-next-line no-await-in-loop
         const local = await importCloudProject(project);
         if (local) added += 1;
       }

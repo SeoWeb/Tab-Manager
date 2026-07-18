@@ -119,9 +119,10 @@ export default function PrivacyPolicy() {
                 API.
               </p>
               <p>
-                For the web companion app, data is saved in your browser's local
-                sandbox via IndexedDB or local storage. This ensures that no
-                data leaves your browser without your active consent and setup.
+                For the web companion app, data is saved in your browser&apos;s
+                local sandbox via IndexedDB or local storage. This ensures that
+                no data leaves your browser without your active consent and
+                setup.
               </p>
             </div>
           </section>
@@ -307,7 +308,7 @@ export default function PrivacyPolicy() {
                     Delete Data:
                   </strong>{' '}
                   You can wipe all local storage at any time by uninstalling the
-                  extension or clearing the browser's application cache.
+                  extension or clearing the browser&apos;s application cache.
                 </li>
                 <li>
                   <strong className='text-[hsl(var(--foreground))]'>

@@ -28,12 +28,6 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_IS_WEB: '1',
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;

@@ -115,7 +115,6 @@ export async function syncAllCloudProjects(): Promise<void> {
   }
 
   for (const projectId of targetProjectIds) {
-    // eslint-disable-next-line no-await-in-loop -- sequential sync keeps status coherent
     await syncProjectNow(projectId);
   }
 }

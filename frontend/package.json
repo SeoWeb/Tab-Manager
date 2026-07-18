@@ -2,11 +2,13 @@
   "name": "tabspace-web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "eslint . && tsc --noEmit && next build",
     "start": "next start",
     "deploy": "next build && npx wrangler deploy",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -56,6 +58,7 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@types/chrome": "^0.0.326",
     "@types/node": "^20",
     "@types/react": "^18",
@@ -63,6 +66,8 @@
     "@types/react-dom": "^18",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

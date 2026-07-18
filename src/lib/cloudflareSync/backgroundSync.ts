@@ -293,7 +293,6 @@ export async function backgroundReconcileAll(): Promise<{
   // incremental sync pushes them; the queue is locked internally so this is
   // safe alongside a concurrent popup enqueue.
   for (const push of pushes) {
-    // eslint-disable-next-line no-await-in-loop -- low-volume enqueue
     await queue.enqueueMutation({
       clientMutationId: crypto.randomUUID(),
       clientId: await config.getClientId(),

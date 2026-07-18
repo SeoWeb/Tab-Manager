@@ -73,7 +73,6 @@ export async function reconcileProject(
     // (role < editor) are pull-only and skip pushes (the server enforces this too).
     if (canEdit(role)) {
       for (const push of diff.pushes) {
-        // eslint-disable-next-line no-await-in-loop -- low-volume enqueue
         await enqueueCloudChange({
           projectId,
           entityType: push.entityType,
@@ -131,7 +130,6 @@ export async function reconcileAllCloudProjects(): Promise<void> {
   }
 
   for (const projectId of targetProjectIds) {
-    // eslint-disable-next-line no-await-in-loop -- sequential reconcile keeps status coherent
     await reconcileProject(projectId);
   }
 }
