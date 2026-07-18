@@ -19,12 +19,12 @@
 
 ## 4. UI component splits
 
-- [ ] 4.1 Split `src/components/ui/sidebar.tsx` (770): extract primitives into `sidebar/` (provider, rail, menu, menu-button, menu-sub, etc.), re-export from `sidebar.tsx`
-- [ ] 4.2 Split `src/components/right-panel/panels/TaskKanbanView.tsx` (615): extract `kanban/KanbanTaskCard.tsx`, `SortableTaskCard.tsx`, `KanbanColumn.tsx`, `kanban-config.ts`
-- [ ] 4.3 Split `src/components/cloud-sync/ProjectCollaborationModal.tsx` (624): extract `collaboration/MembersTab.tsx`, `ActivityTab.tsx`, presentational helpers
-- [ ] 4.4 Split `src/components/modals/TaskDetailModal.tsx` (617): extract `task-detail/MetadataItem.tsx`, `priorityConfig.ts`, section sub-components
-- [ ] 4.5 Split `src/components/right-panel/panels/TaskAnalyticsDashboard.tsx` (675): extract `analytics/format.ts`, `analytics/theme.ts`, chart sections
-- [ ] 4.6 Split `src/components/views/NotesView.tsx` (427): extract `NoteCard.tsx`, `note-config.ts`
+- [x] 4.1 Split `src/components/ui/sidebar.tsx` (770): extract primitives into `sidebar/` (provider, rail, menu, menu-button, menu-sub, etc.), re-export from `sidebar.tsx`
+- [x] 4.2 Split `src/components/right-panel/panels/TaskKanbanView.tsx` (615): extract `kanban/KanbanTaskCard.tsx`, `SortableTaskCard.tsx`, `KanbanColumn.tsx`, `kanban-config.ts`
+- [x] 4.3 Split `src/components/cloud-sync/ProjectCollaborationModal.tsx` (624): extract `collaboration/MembersTab.tsx`, `ActivityTab.tsx`, presentational helpers
+- [x] 4.4 Split `src/components/modals/TaskDetailModal.tsx` (617): extract `task-detail/MetadataItem.tsx`, `priorityConfig.ts`, section sub-components
+- [x] 4.5 Split `src/components/right-panel/panels/TaskAnalyticsDashboard.tsx` (675): extract `analytics/format.ts`, `analytics/theme.ts`, chart sections
+- [x] 4.6 Split `src/components/views/NotesView.tsx` (427): extract `NoteCard.tsx`, `note-config.ts`
 
 ## 5. Hooks and lib service splits
 

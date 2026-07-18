@@ -1,24 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from 'recharts';
+import { ResponsiveContainer, Area, AreaChart } from 'recharts';
 import {
   TrendingUp,
   TrendingDown,
@@ -27,81 +14,42 @@ import {
   CheckCircle2,
   AlertTriangle,
   Calendar,
-  BarChart3,
-  PieChart as PieIcon,
   Activity,
   Zap,
   Inbox,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AdvancedTask, TaskStats, TaskPriority } from '@/types/tasks';
+import {
+  formatDuration,
+  formatShortDate,
+  formatFullDate,
+} from '@/components/right-panel/panels/analytics/format';
+import {
+  RANGE_OPTIONS,
+  statusColors,
+  type RangeKey,
+} from '@/components/right-panel/panels/analytics/theme';
+import {
+  CompletionTrendChart,
+  StatusOverviewChart,
+} from '@/components/right-panel/panels/analytics/CompletionTrendChart';
+import {
+  PriorityDistributionChart,
+  CategoryBreakdownChart,
+} from '@/components/right-panel/panels/analytics/PriorityCategoryChart';
+
+const STATUS_NAME_TO_KEY: Record<string, string> = {
+  'To Do': 'todo',
+  'In Progress': 'in-progress',
+  Blocked: 'blocked',
+  Completed: 'completed',
+  Cancelled: 'cancelled',
+};
 
 interface TaskAnalyticsDashboardProps {
   tasks: AdvancedTask[];
   stats: TaskStats;
-}
-
-type RangeKey = '7d' | '30d' | 'all';
-
-const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
-  { key: '7d', label: '7 Days' },
-  { key: '30d', label: '30 Days' },
-  { key: 'all', label: 'All Time' },
-];
-
-const priorityColors: Record<TaskPriority, string> = {
-  low: '#3b82f6',
-  medium: '#eab308',
-  high: '#f97316',
-  urgent: '#ef4444',
-};
-
-const statusColors: Record<string, string> = {
-  todo: '#6b7280',
-  'in-progress': '#3b82f6',
-  blocked: '#a855f7',
-  completed: '#22c55e',
-  cancelled: '#9ca3af',
-};
-
-const categoryPalette = [
-  '#3b82f6',
-  '#22c55e',
-  '#f97316',
-  '#a855f7',
-  '#ef4444',
-  '#14b8a6',
-  '#eab308',
-  '#ec4899',
-];
-
-const chartAxisColor = 'hsl(var(--muted-foreground))';
-const chartGridColor = 'hsl(var(--border))';
-const chartTooltipStyle = {
-  backgroundColor: 'hsl(var(--popover))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: 8,
-  color: 'hsl(var(--foreground))',
-  fontSize: 12,
-};
-
-function formatDuration(hours: number): string {
-  if (!hours || hours <= 0) return '—';
-  if (hours < 1) return `${Math.round(hours * 60)}m`;
-  if (hours < 24) return `${hours.toFixed(1)}h`;
-  return `${(hours / 24).toFixed(1)}d`;
-}
-
-function formatShortDate(d: Date): string {
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function formatFullDate(d: Date): string {
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 }
 
 export default function TaskAnalyticsDashboard({
@@ -115,8 +63,6 @@ export default function TaskAnalyticsDashboard({
     [tasks]
   );
 
-  // Completion time-series for the selected range, recomputed from raw tasks
-  // so the toggle genuinely scopes the chart to the chosen window.
   const series = useMemo(() => {
     const completed = activeTasks.filter(
       (t) => t.status === 'completed' && t.completedAt
@@ -168,7 +114,6 @@ export default function TaskAnalyticsDashboard({
     [series]
   );
 
-  // Trend compares the most recent half of the window against the earlier half.
   const productivityTrend = useMemo(() => {
     const n = series.length;
     const half = Math.floor(n / 2);
@@ -178,7 +123,6 @@ export default function TaskAnalyticsDashboard({
     return ((curr - prev) / prev) * 100;
   }, [series]);
 
-  // Upcoming deadlines (next 7 days) — independent of history range.
   const upcomingDeadlines = useMemo(() => {
     const now = new Date();
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -217,29 +161,24 @@ export default function TaskAnalyticsDashboard({
         {
           name: 'To Do',
           value: activeTasks.filter((t) => t.status === 'todo').length,
-          color: statusColors.todo,
         },
-        {
-          name: 'In Progress',
-          value: stats.inProgress,
-          color: statusColors['in-progress'],
-        },
+        { name: 'In Progress', value: stats.inProgress },
         {
           name: 'Blocked',
           value: activeTasks.filter((t) => t.status === 'blocked').length,
-          color: statusColors.blocked,
         },
-        {
-          name: 'Completed',
-          value: stats.completed,
-          color: statusColors.completed,
-        },
+        { name: 'Completed', value: stats.completed },
         {
           name: 'Cancelled',
           value: activeTasks.filter((t) => t.status === 'cancelled').length,
-          color: statusColors.cancelled,
         },
-      ].filter((s) => s.value > 0),
+      ]
+        .filter((s) => s.value > 0)
+        .map((s) => ({
+          name: s.name,
+          value: s.value,
+          color: statusColors[STATUS_NAME_TO_KEY[s.name]] ?? '#6b7280',
+        })),
     [activeTasks, stats.inProgress, stats.completed]
   );
 
@@ -398,239 +337,18 @@ export default function TaskAnalyticsDashboard({
         </Card>
       </div>
 
-      {/* Completion Trend Chart */}
-      <Card>
-        <CardHeader className='pb-2'>
-          <CardTitle className='text-sm flex items-center justify-between'>
-            <span className='flex items-center gap-2'>
-              <BarChart3 className='h-4 w-4' />
-              Completion Trend
-            </span>
-            <span className='text-xs font-normal text-muted-foreground'>
-              {rangeLabel}
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='h-[220px]'>
-            <ResponsiveContainer width='100%' height='100%'>
-              <AreaChart
-                data={series}
-                margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id='trend' x1='0' y1='0' x2='0' y2='1'>
-                    <stop offset='0%' stopColor='#3b82f6' stopOpacity={0.4} />
-                    <stop offset='100%' stopColor='#3b82f6' stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray='3 3'
-                  stroke={chartGridColor}
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey='label'
-                  tick={{ fontSize: 10, fill: chartAxisColor }}
-                  tickLine={false}
-                  axisLine={{ stroke: chartGridColor }}
-                  interval='preserveStartEnd'
-                  minTickGap={16}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 10, fill: chartAxisColor }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={32}
-                />
-                <Tooltip
-                  contentStyle={chartTooltipStyle}
-                  labelStyle={{ color: chartAxisColor }}
-                  formatter={(value: number) => [`${value} completed`, 'Tasks']}
-                />
-                <Area
-                  type='monotone'
-                  dataKey='value'
-                  stroke='#3b82f6'
-                  strokeWidth={2}
-                  fill='url(#trend)'
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <CompletionTrendChart series={series} rangeLabel={rangeLabel} />
 
-      {/* Status Overview */}
-      <Card>
-        <CardHeader className='pb-2'>
-          <CardTitle className='text-sm flex items-center gap-2'>
-            <BarChart3 className='h-4 w-4' />
-            Task Status Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent className='space-y-3'>
-          <div className='flex h-2.5 w-full overflow-hidden rounded-full bg-muted'>
-            {statusData.map((s) => (
-              <div
-                key={s.name}
-                className='h-full'
-                style={{
-                  width: `${stats.total > 0 ? (s.value / stats.total) * 100 : 0}%`,
-                  backgroundColor: s.color,
-                }}
-                title={`${s.name}: ${s.value}`}
-              />
-            ))}
-          </div>
-          <div className='grid grid-cols-2 gap-2 text-xs'>
-            {statusData.map((s) => (
-              <div key={s.name} className='flex items-center justify-between'>
-                <span className='flex items-center gap-1'>
-                  <div
-                    className='w-2 h-2 rounded-full'
-                    style={{ backgroundColor: s.color }}
-                  ></div>
-                  {s.name}
-                </span>
-                <span className='font-medium'>{s.value}</span>
-              </div>
-            ))}
-            <div className='flex items-center justify-between'>
-              <span className='flex items-center gap-1'>
-                <div className='w-2 h-2 rounded-full bg-red-500'></div>
-                Overdue
-              </span>
-              <span className='font-medium'>{stats.overdue}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <StatusOverviewChart
+        statusData={statusData}
+        total={stats.total}
+        overdue={stats.overdue}
+      />
 
       {/* Priority & Category */}
       <div className='grid grid-cols-1 md:grid-cols-2 gap-3'>
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm flex items-center gap-2'>
-              <PieIcon className='h-4 w-4' />
-              Priority Distribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {priorityData.length > 0 ? (
-              <div className='h-[180px]'>
-                <ResponsiveContainer width='100%' height='100%'>
-                  <PieChart>
-                    <Pie
-                      data={priorityData}
-                      dataKey='value'
-                      nameKey='name'
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      isAnimationActive={false}
-                    >
-                      {priorityData.map((entry) => (
-                        <Cell
-                          key={entry.name}
-                          fill={priorityColors[entry.name as TaskPriority]}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={chartTooltipStyle}
-                      formatter={(value: number, name: string) => [
-                        `${value}`,
-                        name.charAt(0).toUpperCase() + name.slice(1),
-                      ]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className='text-xs text-muted-foreground py-6 text-center'>
-                No priority data
-              </p>
-            )}
-            <div className='flex flex-wrap gap-x-3 gap-y-1 justify-center mt-1'>
-              {priorityData.map((entry) => (
-                <span
-                  key={entry.name}
-                  className='flex items-center gap-1 text-xs capitalize text-muted-foreground'
-                >
-                  <span
-                    className='w-2 h-2 rounded-full'
-                    style={{
-                      backgroundColor:
-                        priorityColors[entry.name as TaskPriority],
-                    }}
-                  />
-                  {entry.name} ({entry.value})
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className='pb-2'>
-            <CardTitle className='text-sm flex items-center gap-2'>
-              <BarChart3 className='h-4 w-4' />
-              Category Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {categoryData.length > 0 ? (
-              <div className='h-[180px]'>
-                <ResponsiveContainer width='100%' height='100%'>
-                  <BarChart
-                    data={categoryData}
-                    layout='vertical'
-                    margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray='3 3'
-                      stroke={chartGridColor}
-                      horizontal={false}
-                    />
-                    <XAxis type='number' hide allowDecimals={false} />
-                    <YAxis
-                      type='category'
-                      dataKey='name'
-                      width={70}
-                      tick={{ fontSize: 10, fill: chartAxisColor }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'hsl(var(--muted))' }}
-                      contentStyle={chartTooltipStyle}
-                      formatter={(value: number) => [`${value}`, 'Tasks']}
-                    />
-                    <Bar
-                      dataKey='value'
-                      radius={[0, 4, 4, 0]}
-                      isAnimationActive={false}
-                    >
-                      {categoryData.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={categoryPalette[i % categoryPalette.length]}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className='text-xs text-muted-foreground py-6 text-center'>
-                No category data
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        <PriorityDistributionChart priorityData={priorityData} />
+        <CategoryBreakdownChart categoryData={categoryData} />
       </div>
 
       {/* Quick Stats */}
