@@ -13,19 +13,17 @@ import type { Project } from '@/types';
 import { useHotkeys } from '@/hooks/useHotkeys';
 import { useAppStore } from '@/stores/appStore';
 import { useDragAndDropContext } from '@/components/drag-drop/GlobalDragDropProvider';
-import { useVirtualScroll } from '@/lib/virtualScroll';
 import { useHasHydrated } from '@/hooks/useAppStoreWithDefaults';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DragEnabledCollectionsListProps {
   project: Project;
-  /** External scroll container (e.g. the main content area) for windowing. */
+  /** Unused – kept for API compatibility with parent components. */
   scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function DragEnabledCollectionsList({
   project,
-  scrollRef,
 }: DragEnabledCollectionsListProps) {
   const [focusedCollectionIndex, setFocusedCollectionIndex] = useState(-1);
   const migrateCollectionOrder = useAppStore(
@@ -64,16 +62,6 @@ export function DragEnabledCollectionsList({
   useHotkeys('right', () => handleNavigation('right'));
 
   const collectionIds = sortedCollections.map((collection) => collection.id);
-
-  const { virtualizer } = useVirtualScroll<HTMLDivElement>({
-    count: sortedCollections.length,
-    estimateSize: () => 220,
-    overscan: 6,
-    getItemKey: (index) => sortedCollections[index]?.id ?? index,
-    scrollRef,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
 
   if (!_hasHydrated) {
     return (
@@ -126,58 +114,38 @@ export function DragEnabledCollectionsList({
       items={collectionIds}
       strategy={verticalListSortingStrategy}
     >
-      <div
-        style={{
-          height: virtualizer.getTotalSize(),
-          position: 'relative',
-          width: '100%',
-        }}
-      >
-        {virtualItems.map((vi) => {
-          const collection = sortedCollections[vi.index];
-          return (
+      <div className='space-y-4'>
+        {sortedCollections.map((collection, index) => (
+          <div key={collection.id}>
+            {/* Drop placeholder before this collection */}
+            <CollectionDropPlaceholder
+              isVisible={
+                collectionDropPlaceholder?.projectId === project.id &&
+                collectionDropPlaceholder?.position === index
+              }
+            />
             <div
-              key={collection.id}
-              data-index={vi.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${vi.start}px)`,
-              }}
+              className={
+                index === focusedCollectionIndex
+                  ? 'ring-2 ring-primary rounded-lg'
+                  : ''
+              }
             >
-              {/* Show placeholder before this collection if needed */}
-              <CollectionDropPlaceholder
-                isVisible={
-                  collectionDropPlaceholder?.projectId === project.id &&
-                  collectionDropPlaceholder?.position === vi.index
-                }
+              <SortableCollectionItem
+                collection={collection}
+                projectId={project.id}
               />
-              <div
-                className={
-                  vi.index === focusedCollectionIndex
-                    ? 'ring-2 ring-primary rounded-lg'
-                    : ''
-                }
-              >
-                <SortableCollectionItem
-                  collection={collection}
-                  projectId={project.id}
-                />
-              </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
+        {/* Drop placeholder at the end */}
+        <CollectionDropPlaceholder
+          isVisible={
+            collectionDropPlaceholder?.projectId === project.id &&
+            collectionDropPlaceholder?.position === sortedCollections.length
+          }
+        />
       </div>
-      {/* Show placeholder at the end if needed */}
-      <CollectionDropPlaceholder
-        isVisible={
-          collectionDropPlaceholder?.projectId === project.id &&
-          collectionDropPlaceholder?.position === sortedCollections.length
-        }
-      />
       <div className='mt-6'>
         <AddCollectionButton />
       </div>
