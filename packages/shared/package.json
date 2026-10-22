@@ -1,0 +1,14 @@
+{
+  "name": "@tabspace/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Context-neutral TS source modules shared by the extension (src/) and the web frontend (frontend/src/). No build step: consumers compile the TS source directly.",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "zustand": "^4.5.2"
+  }
+}

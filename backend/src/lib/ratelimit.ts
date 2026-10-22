@@ -47,17 +47,25 @@ export function evaluateWindow(
 /**
  * `RateLimiter` Durable Object — one instance per rate-limit key (the key is
  * turned into the instance id by the caller via `idFromName`). It keeps an
- * in-memory `number[]` of request timestamps; the window is precise (true
- * sliding window, not fixed buckets). An `alarm()` clears empty instances so
- * idle keys don't pin memory.
- *
- * A lost/restarted instance resets the window (more permissive briefly); that
- * is an accepted trade-off for throttle-grade defense, and the global per-IP
- * cap still bounds the worst case.
+ * in-memory `number[]` of request timestamps as the read fast-path; the window
+ * is precise (true sliding window, not fixed buckets). The array is persisted
+ * write-through to Durable Object storage (`timestamps` key, one small put per
+ * recorded request) so eviction, hibernation, or restart does not reset any
+ * window — a fresh instance lazily hydrates from storage on first access. An
+ * `alarm()` clears empty instances so idle keys don't pin memory or storage:
+ * when the window has fully drained, the persisted state is deleted and the
+ * Durable Object is reclaimed.
  */
 export class RateLimiter implements DurableObject {
+  /** DO storage key holding the sliding-window timestamps for this key. */
+  private static readonly STORAGE_KEY = 'timestamps';
+
   private timestamps: number[] = [];
   private windowMs = 60_000;
+  /** Whether storage has been read into memory during this instance's life. */
+  private hydrated = false;
+  /** In-flight hydration, so concurrent requests read storage only once. */
+  private hydrating: Promise<void> | null = null;
 
   constructor(
     private readonly ctx: DurableObjectState,
@@ -89,11 +97,19 @@ export class RateLimiter implements DurableObject {
         : 60_000;
     this.windowMs = windowMs;
 
+    // A restarted/evicted instance adopts its persisted window before deciding.
+    await this.ensureHydrated();
+
     const now = Date.now();
     const decision = evaluateWindow(now, this.timestamps, limit, windowMs);
 
     if (decision.allowed) {
       this.timestamps.push(now);
+      // Write-through: persist the window so a restart keeps the budget.
+      await this.ctx.storage.put(
+        RateLimiter.STORAGE_KEY,
+        this.timestamps
+      );
       // Wake once the oldest timestamp is due to expire so we can prune/clear.
       const oldest = this.timestamps[0];
       const delay = Math.max(1, oldest + windowMs - Date.now());
@@ -108,10 +124,39 @@ export class RateLimiter implements DurableObject {
     const now = Date.now();
     this.timestamps = this.timestamps.filter((t) => t > now - this.windowMs);
     // When the window has fully drained there are no in-window timestamps, so
-    // delete the stored state and let the Durable Object be reclaimed instead of
-    // lingering with empty state.
+    // delete the stored state (including the persisted timestamps) and let the
+    // Durable Object be reclaimed instead of lingering with empty state.
     if (this.timestamps.length === 0) {
       await this.ctx.storage.deleteAll();
+    }
+  }
+
+  /** Hydrate the window from storage once per instance, lazily. */
+  private ensureHydrated(): Promise<void> {
+    if (this.hydrated) return Promise.resolve();
+    this.hydrating ??= this.hydrate();
+    return this.hydrating;
+  }
+
+  private async hydrate(): Promise<void> {
+    try {
+      const stored = await this.ctx.storage.get<number[]>(
+        RateLimiter.STORAGE_KEY
+      );
+      // A live instance's in-memory array is authoritative; only a fresh
+      // (empty) instance adopts the persisted window. Stale entries are
+      // harmless — evaluateWindow prunes them before counting.
+      if (Array.isArray(stored) && this.timestamps.length === 0) {
+        this.timestamps = stored.filter(
+          (t) => typeof t === 'number' && Number.isFinite(t)
+        );
+      }
+    } catch (error) {
+      // Fail open: if storage is unreadable the window falls back to empty
+      // (permissive) rather than blocking traffic.
+      console.error('[ratelimit] failed to hydrate window from storage', error);
+    } finally {
+      this.hydrated = true;
     }
   }
 }

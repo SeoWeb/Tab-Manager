@@ -52,11 +52,10 @@ export default function TasksView({
   const { toggleSidebar } = useSidebarState();
 
   // Store data
-  const allTasks = useAppStoreWithDefaults((state) => state.tasks, []);
-  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const allTasks = useAppStoreWithDefaults((state) => state.tasks);
+  const projects = useAppStoreWithDefaults((state) => state.projects);
   const cloudSyncEnabled = useAppStoreWithDefaults(
-    (state) => state.cloudSync?.enabled,
-    false
+    (state) => state.cloudSync.enabled
   );
   const [projectMembers, setProjectMembers] = useState<
     Record<string, CloudMember[]>
@@ -89,40 +88,16 @@ export default function TasksView({
   const tasks = projectId
     ? allTasks.filter((task) => task.projectId === projectId)
     : allTasks;
-  const globalTaskStats = useAppStoreWithDefaults((state) => state.taskStats, {
-    total: 0,
-    completed: 0,
-    inProgress: 0,
-    overdue: 0,
-    completionRate: 0,
-    averageCompletionTime: 0,
-    productivityScore: 0,
-    categoryBreakdown: {},
-    priorityBreakdown: { low: 0, medium: 0, high: 0, urgent: 0 },
-    weeklyProgress: [],
-    monthlyProgress: [],
-  });
+  const globalTaskStats = useAppStoreWithDefaults((state) => state.taskStats);
   const taskStats = useMemo(() => {
     return projectId ? calculateTaskStats(tasks) : globalTaskStats;
   }, [projectId, tasks, globalTaskStats]);
   // Actions
 
-  const updateTask = useAppStoreWithDefaults(
-    (state) => state.updateTask,
-    () => {}
-  );
-  const addTask = useAppStoreWithDefaults(
-    (state) => state.addTask,
-    () => {}
-  );
-  const setTaskStatus = useAppStoreWithDefaults(
-    (state) => state.setTaskStatus,
-    () => {}
-  );
-  const archiveTask = useAppStoreWithDefaults(
-    (state) => state.archiveTask,
-    () => {}
-  );
+  const updateTask = useAppStoreWithDefaults((state) => state.updateTask);
+  const addTask = useAppStoreWithDefaults((state) => state.addTask);
+  const setTaskStatus = useAppStoreWithDefaults((state) => state.setTaskStatus);
+  const archiveTask = useAppStoreWithDefaults((state) => state.archiveTask);
 
   const handleStatusChange = (id: string, status: TaskStatus) => {
     setTaskStatus(id, status);

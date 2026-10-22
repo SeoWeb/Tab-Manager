@@ -18,12 +18,9 @@ export const createUIActions = (
   set: StoreApi<AppState>['setState'],
   get: () => AppState
 ) => ({
-  setHasHydrated: (hydrated: boolean) =>
-    set((state: AppState) => ({
-      ...state,
-      _hasHydrated: hydrated,
-    })),
-
+  // Note: `setHasHydrated` is intentionally NOT defined here. appStore.ts
+  // defines it directly (after this spread, so it would win anyway) — keeping
+  // a second copy here was a silent override trap.
   setActiveProject: (id: string | null) =>
     set((state: AppState) => ({
       ...state,
@@ -315,30 +312,40 @@ export const createUIActions = (
 
     const newCollectionName = windowInfo.name || `Window ${windowInfo.id} Tabs`;
 
-    // First create the collection
+    // Capture the existing collection ids BEFORE the insert so the new
+    // collection can be identified by id — never by display name (duplicate
+    // collection names would mislink).
+    const existingIds = new Set(
+      (
+        get().projects.find((p) => p.id === activeProjectId)?.collections ?? []
+      ).map((c) => c.id)
+    );
+
+    // First create the collection (inserts synchronously into the store).
     get().addCollection(activeProjectId, {
       name: newCollectionName,
     });
 
-    // Find the newly created collection to add links to it
-    setTimeout(() => {
-      const state = get();
-      const project = state.projects.find((p) => p.id === activeProjectId);
-      if (!project) return;
-
-      const newCollection = project.collections.find(
-        (c) => c.name === newCollectionName
+    // The newly created collection is the one whose id we have not seen
+    // before; no name matching and no timer-based delay needed.
+    const project = get().projects.find((p) => p.id === activeProjectId);
+    const newCollection = project?.collections.find(
+      (c) => !existingIds.has(c.id)
+    );
+    if (!newCollection) {
+      console.warn(
+        'Failed to locate the newly created collection; window tabs were not added.'
       );
-      if (!newCollection) return;
+      return;
+    }
 
-      // Add each tab as a link to the collection
-      windowInfo.tabs.forEach((tab) => {
-        get().addLink(activeProjectId, newCollection.id, {
-          title: tab.title,
-          url: tab.url,
-          favIconUrl: tab.favIconUrl,
-        });
+    // Add each tab as a link to the collection
+    windowInfo.tabs.forEach((tab) => {
+      get().addLink(activeProjectId, newCollection.id, {
+        title: tab.title,
+        url: tab.url,
+        favIconUrl: tab.favIconUrl,
       });
-    }, 100); // Small delay to ensure collection is created
+    });
   },
 });

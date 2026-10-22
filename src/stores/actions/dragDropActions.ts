@@ -1,8 +1,27 @@
 import type { Project, Collection, Link } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
+import { queueLinkBookmarkMove } from '@/lib/linkBookmarkMirror';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 import type { StoreApi } from 'zustand';
+
+/**
+ * Find a link anywhere in a project, together with the collection currently
+ * holding it. The bookmark-mirror plumbing must act on the link's CURRENT
+ * collection and bookmark id — a queued mirror op can run after the link has
+ * been optimistically moved again, and an earlier op in its chain may already
+ * have replaced the bookmark the move started from.
+ */
+function findLinkLocation(
+  project: Project | undefined,
+  linkId: string
+): { collection: Collection; link: Link } | undefined {
+  for (const collection of project?.collections ?? []) {
+    const link = collection.links.find((l: Link) => l.id === linkId);
+    if (link) return { collection, link };
+  }
+  return undefined;
+}
 
 /**
  * Enqueue an `update` mutation for every link in a collection carrying its
@@ -79,34 +98,10 @@ export const createDragDropActions = (
         return state;
       }
 
-      // --- Bookmark Logic ---
-      if (linkToMove.bookmarkId && targetCollection.bookmarkFolderId) {
-        (async () => {
-          try {
-            // Create a new bookmark in the target folder
-            const newBookmark = await bookmarkStorage.createLink(
-              linkToMove.title!,
-              linkToMove.url,
-              targetCollection.bookmarkFolderId!
-            );
-
-            // Delete the old bookmark
-            await bookmarkStorage.deleteLink(linkToMove.bookmarkId!);
-
-            // Update the link's bookmarkId in the state
-            get().updateLink(
-              projectId,
-              targetCollectionId,
-              linkId,
-              { bookmarkId: newBookmark.id },
-              true // isInternalCall
-            );
-          } catch (error) {
-            console.error('Failed to move bookmark:', error);
-          }
-        })();
-      }
-      // --- End Bookmark Logic ---
+      // NOTE: the bookmark mirror is intentionally NOT started here. State
+      // updaters must stay side-effect free, and the mirror has to be
+      // sequenced with the `bookmarkId` it records — see the
+      // `queueLinkBookmarkMove` call below the state commit.
 
       const updatedProjects = state.projects.map((p: Project) => {
         if (p.id === projectId) {
@@ -188,6 +183,58 @@ export const createDragDropActions = (
       syncLinkOrders(projectId, source);
     }
     syncLinkOrders(projectId, target);
+
+    // --- Bookmark mirror (sequenced with the state it records) ---
+    // The collection move above is optimistic; the bookmark mirror is tracked
+    // and per-link serialized by `queueLinkBookmarkMove`. The new `bookmarkId`
+    // reaches the store only after the mirrored bookmark exists in the target
+    // folder AND the previous one was deleted, so a failed mirror can never
+    // leave `bookmarkId` pointing at the wrong (or a nonexistent) bookmark —
+    // see the ui-resilience requirement "No detached async mutations of
+    // state-linked resources".
+    //
+    // The `source !== target` guard keeps the rejected same-collection move (a
+    // no-op by the duplicate check above) from queueing a mirror. The mirror
+    // request itself carries no snapshot: the op re-resolves the link's
+    // current collection/bookmarkId when it reaches the front of its chain, so
+    // a follow-up move of the same link always acts on the freshest mirror.
+    if (
+      sourceCollectionId !== targetCollectionId &&
+      movedLink?.bookmarkId &&
+      target?.bookmarkFolderId
+    ) {
+      const targetFolderId = target.bookmarkFolderId;
+      void queueLinkBookmarkMove({
+        linkId,
+        targetFolderId,
+        resolveMirror: () => {
+          const current = findLinkLocation(
+            get().projects.find((p) => p.id === projectId),
+            linkId
+          );
+          if (!current || !current.link.bookmarkId) return null;
+          return {
+            oldBookmarkId: current.link.bookmarkId,
+            title: current.link.title ?? '',
+            url: current.link.url,
+          };
+        },
+        commitBookmarkId: (newBookmarkId) => {
+          const current = findLinkLocation(
+            get().projects.find((p) => p.id === projectId),
+            linkId
+          );
+          if (!current) return;
+          get().updateLink(
+            projectId,
+            current.collection.id,
+            linkId,
+            { bookmarkId: newBookmarkId },
+            true // isInternalCall
+          );
+        },
+      });
+    }
   },
 
   reorderLinks: (
@@ -214,21 +261,10 @@ export const createDragDropActions = (
 
       if (activeIndex === -1 || overIndex === -1) return state;
 
-      const movedLink = collection.links[activeIndex];
-
-      // --- Bookmark Logic ---
-      if (movedLink.bookmarkId && collection.bookmarkFolderId) {
-        (async () => {
-          try {
-            await bookmarkStorage.moveBookmark(movedLink.bookmarkId!, {
-              index: overIndex,
-            });
-          } catch (error) {
-            console.error('Failed to move bookmark:', error);
-          }
-        })();
-      }
-      // --- End Bookmark Logic ---
+      // NOTE: the bookmark relocation is intentionally NOT started here —
+      // state updaters must stay side-effect free. It runs after the state
+      // commit below (a reorder does not change bookmark ids, so there is no
+      // state-linked commit to sequence).
 
       const updatedProjects = state.projects.map((p: Project) => {
         if (p.id === projectId) {
@@ -274,6 +310,32 @@ export const createDragDropActions = (
     // Push the reordered link orders to the cloud.
     const project = get().projects.find((p) => p.id === projectId);
     const collection = project?.collections.find((c) => c.id === collectionId);
+
+    // Bookmark mirror: a reorder only relocates the existing bookmark within
+    // its folder (ids and the state's bookmarkId are unchanged), so unlike
+    // `moveLink` there is no state-linked commit to sequence. The write stays
+    // fire-and-forget, with failures logged.
+    const movedLink = collection?.links.find(
+      (l: Link) => l.id === activeLinkId
+    );
+    if (movedLink?.bookmarkId && collection?.bookmarkFolderId) {
+      // After the reorder commit the moved link sits at the index of the link
+      // it was dropped onto; resolve it from the committed state.
+      const bookmarkId = movedLink.bookmarkId;
+      const bookmarkIndex = collection.links.findIndex(
+        (l: Link) => l.id === activeLinkId
+      );
+      (async () => {
+        try {
+          await bookmarkStorage.moveBookmark(bookmarkId, {
+            index: bookmarkIndex,
+          });
+        } catch (error) {
+          console.error('Failed to move bookmark:', error);
+        }
+      })();
+    }
+
     syncLinkOrders(projectId, collection);
   },
 

@@ -26,6 +26,17 @@ export interface Collection {
   minimized?: boolean; // If the collection is rendered in a minimized state
   order?: number; // Optional field for explicit ordering of collections within a project
   bookmarkFolderId?: string | null; // Store ID of the associated bookmark folder
+  /**
+   * Display-only marker: the mirrored bookmark folder no longer exists in the
+   * Chrome bookmark tree. Local data is kept; the UI surfaces a re-link flow.
+   */
+  mirrorRemoved?: boolean;
+  /**
+   * The last known bookmark folder id, kept aside while `mirrorRemoved` is
+   * set so a re-created folder with the same id can restore the mapping
+   * automatically. Null/absent once the mirror is restored (or never existed).
+   */
+  mirrorRemovedFolderId?: string | null;
 }
 
 export interface Project {
@@ -39,6 +50,17 @@ export interface Project {
   color?: string; // e.g., a hex code for the project's theme color
   order?: number; // Optional field for explicit ordering of projects
   bookmarkFolderId?: string | null; // Store ID of the associated bookmark folder
+  /**
+   * Display-only marker: the mirrored bookmark folder no longer exists in the
+   * Chrome bookmark tree. Local data is kept; the UI surfaces a re-link flow.
+   */
+  mirrorRemoved?: boolean;
+  /**
+   * The last known bookmark folder id, kept aside while `mirrorRemoved` is
+   * set so a re-created folder with the same id can restore the mapping
+   * automatically. Null/absent once the mirror is restored (or never existed).
+   */
+  mirrorRemovedFolderId?: string | null;
   /**
    * Whether this project has a server-side counterpart and should sync through the
    * Cloudflare Worker. Cloud projects use the server-assigned id as their local id

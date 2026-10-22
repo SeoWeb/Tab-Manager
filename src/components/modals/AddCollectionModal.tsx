@@ -8,20 +8,14 @@ import CollectionForm from './CollectionForm';
 
 export default function AddCollectionModal() {
   const isAddCollectionModalOpen = useAppStoreWithDefaults(
-    (state) => state.isAddCollectionModalOpen,
-    false
+    (state) => state.isAddCollectionModalOpen
   );
   const closeAddCollectionModal = useAppStoreWithDefaults(
-    (state) => state.closeAddCollectionModal,
-    () => {}
+    (state) => state.closeAddCollectionModal
   );
-  const addCollection = useAppStoreWithDefaults(
-    (state) => state.addCollection,
-    () => {}
-  );
+  const addCollection = useAppStoreWithDefaults((state) => state.addCollection);
   const activeProjectId = useAppStoreWithDefaults(
-    (state) => state.activeProjectId,
-    null
+    (state) => state.activeProjectId
   );
   const [collectionName, setCollectionName] = useState('');
   const [collectionDescription, setCollectionDescription] = useState('');

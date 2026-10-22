@@ -22,21 +22,15 @@ import { DraggableTab } from '@/components/drag-drop/DraggableTab';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ChromeOpenTabsPanel() {
-  const chromeWindows = useAppStoreWithDefaults(
-    (state) => state.chromeWindows,
-    []
-  );
+  const chromeWindows = useAppStoreWithDefaults((state) => state.chromeWindows);
   const renameChromeWindow = useAppStoreWithDefaults(
-    (state) => state.renameChromeWindow,
-    () => {}
+    (state) => state.renameChromeWindow
   );
   const addChromeWindowToCollections = useAppStoreWithDefaults(
-    (state) => state.addChromeWindowToCollections,
-    () => {}
+    (state) => state.addChromeWindowToCollections
   );
   const activeProjectId = useAppStoreWithDefaults(
-    (state) => state.activeProjectId,
-    null
+    (state) => state.activeProjectId
   );
   const [editingWindowId, setEditingWindowId] = useState<number | null>(null);
   const [newWindowName, setNewWindowName] = useState('');
@@ -162,6 +156,7 @@ export default function ChromeOpenTabsPanel() {
           disabled={isRefreshing}
           className='h-8 w-8'
           title='Refresh Chrome tabs'
+          aria-label='Refresh Chrome tabs'
         >
           <RefreshCw
             className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
@@ -187,6 +182,7 @@ export default function ChromeOpenTabsPanel() {
                       size='icon'
                       onClick={() => handleRenameWindow(window.id)}
                       className='h-8 w-8'
+                      aria-label='Confirm window rename'
                     >
                       <Check className='h-4 w-4 text-green-500' />
                     </Button>
@@ -195,6 +191,7 @@ export default function ChromeOpenTabsPanel() {
                       size='icon'
                       onClick={cancelRename}
                       className='h-8 w-8'
+                      aria-label='Cancel window rename'
                     >
                       <X className='h-4 w-4 text-red-500' />
                     </Button>

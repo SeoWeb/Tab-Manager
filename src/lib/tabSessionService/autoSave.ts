@@ -6,8 +6,75 @@ import {
   AUTO_SAVE_INTERVAL,
 } from './sessions';
 
+/**
+ * Messages page contexts (popup/newtab) send to the background worker. The
+ * worker is the single writer for `current_tab_session`; pages must not touch
+ * session storage themselves (fix-cross-context-data-loss §4).
+ */
+export const SAVE_TAB_SESSION_MESSAGE_TYPE = 'save-tab-session';
+export const RESTORE_TAB_SESSION_MESSAGE_TYPE = 'restore-tab-session';
+
+export interface TabSessionMessageResponse {
+  ok: boolean;
+  restored?: boolean;
+}
+
+/**
+ * True only in the MV3 service worker. The worker is the one extension context
+ * without a `document` (every extension page has one) — the same convention
+ * `cloudflareSync/syncLock.ts` uses. `isExtensionContext()` additionally keeps
+ * the plain-web build (no chrome APIs) out of "worker mode".
+ */
+export const isWorkerContext = (): boolean =>
+  isExtensionContext() && typeof document === 'undefined';
+
+/**
+ * Send a tab-session request to the background worker and await its reply.
+ * Resolves `null` when the worker is unreachable (`chrome.runtime.lastError`,
+ * e.g. the worker was torn down or the extension reloaded) — callers log and
+ * give up; they must NOT fall back to writing session storage themselves
+ * (single-writer rule for the session key).
+ */
+const sendTabSessionMessage = (
+  messageType: string
+): Promise<TabSessionMessageResponse | null> => {
+  return new Promise((resolve) => {
+    if (!isExtensionContext()) {
+      resolve(null);
+      return;
+    }
+    try {
+      chrome.runtime.sendMessage({ type: messageType }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.warn(
+            `Tab-session worker unreachable (${messageType}):`,
+            chrome.runtime.lastError.message
+          );
+          resolve(null);
+          return;
+        }
+        resolve(response as TabSessionMessageResponse);
+      });
+    } catch (error) {
+      // e.g. "Extension context invalidated" while the page is going away.
+      console.warn(`Error sending ${messageType} to the worker:`, error);
+      resolve(null);
+    }
+  });
+};
+
 export const autoSaveCurrentSession = async (): Promise<void> => {
   if (!isExtensionContext()) {
+    return;
+  }
+
+  // Page contexts delegate the write to the background worker so exactly one
+  // writer exists for the session key (§4: pages never touch session storage).
+  if (!isWorkerContext()) {
+    const response = await sendTabSessionMessage(SAVE_TAB_SESSION_MESSAGE_TYPE);
+    if (response && !response.ok) {
+      console.warn('Background worker failed to save the current session');
+    }
     return;
   }
 
@@ -90,11 +157,14 @@ export const restoreLastSession = async (): Promise<boolean> => {
   }
 };
 
-export const checkForSessionRestore = async (): Promise<boolean> => {
-  if (!isExtensionContext()) {
-    return false;
-  }
+/** In-flight eligibility check, so concurrent requests share one run. */
+let sessionRestoreCheck: Promise<boolean> | null = null;
 
+/**
+ * The worker-side eligibility check: only restore when no normal windows are
+ * open. Runs exclusively in the service worker (see `checkForSessionRestore`).
+ */
+const runSessionRestoreCheck = async (): Promise<boolean> => {
   try {
     // Check if there are currently any open tabs
     const currentWindows = await getAllWindows();
@@ -113,8 +183,40 @@ export const checkForSessionRestore = async (): Promise<boolean> => {
   }
 };
 
+export const checkForSessionRestore = async (): Promise<boolean> => {
+  if (!isExtensionContext()) {
+    return false;
+  }
+
+  // Session-restore eligibility runs in the worker only (§4); pages ask the
+  // worker to check. If the worker is unreachable this resolves false without
+  // touching storage (log, don't write).
+  if (!isWorkerContext()) {
+    const response = await sendTabSessionMessage(
+      RESTORE_TAB_SESSION_MESSAGE_TYPE
+    );
+    return response?.restored === true;
+  }
+
+  // Serialise eligibility checks: two pages delegating at once (or a page
+  // racing the worker's own onStartup check) must not both observe "no open
+  // tabs" and restore the session twice — that would open duplicate windows.
+  if (!sessionRestoreCheck) {
+    sessionRestoreCheck = runSessionRestoreCheck();
+  }
+  const check = sessionRestoreCheck;
+  return check.finally(() => {
+    if (sessionRestoreCheck === check) {
+      sessionRestoreCheck = null;
+    }
+  });
+};
+
 export const startAutoSaveMonitoring = (): (() => void) => {
-  if (!isExtensionContext() || typeof window === 'undefined') {
+  // Auto-save is worker-owned (§4): only the service worker may register the
+  // tab listeners and the periodic save, keeping exactly one auto-saver no
+  // matter how many popup/newtab contexts are open.
+  if (!isWorkerContext()) {
     return () => {};
   }
 

@@ -9,24 +9,17 @@ import LinkForm from './LinkForm';
 
 export default function AddLinkModal() {
   const isAddLinkModalOpen = useAppStoreWithDefaults(
-    (state) => state.isAddLinkModalOpen,
-    false
+    (state) => state.isAddLinkModalOpen
   );
   const closeAddLinkModal = useAppStoreWithDefaults(
-    (state) => state.closeAddLinkModal,
-    () => {}
+    (state) => state.closeAddLinkModal
   );
-  const addLink = useAppStoreWithDefaults(
-    (state) => state.addLink,
-    () => {}
-  );
+  const addLink = useAppStoreWithDefaults((state) => state.addLink);
   const activeProjectId = useAppStoreWithDefaults(
-    (state) => state.activeProjectId,
-    null
+    (state) => state.activeProjectId
   );
   const editingCollectionIdForLink = useAppStoreWithDefaults(
-    (state) => state.editingCollectionIdForLink,
-    null
+    (state) => state.editingCollectionIdForLink
   );
 
   const [linkName, setLinkName] = useState('');
@@ -71,7 +64,7 @@ export default function AddLinkModal() {
         ?.collections.find((c) => c.id === state.editingCollectionIdForLink) ||
       null
     );
-  }, null);
+  });
 
   return (
     <ModalWrapper

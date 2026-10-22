@@ -1,9 +1,12 @@
 import type { Env, SyncMutation } from '../../../types';
 import {
   TABLE_COUNT_PLACEHOLDERS,
+  MutationPatchError,
+  VERSION_GUARD_SQL,
   jsonTableFor,
   optionalNumber,
   optionalString,
+  versionGuardBindings,
 } from '../shared';
 
 export function prepareInsertJsonEntity(
@@ -23,7 +26,7 @@ export function prepareInsertJsonEntity(
   const collectionId = optionalString(mutation.patch.collectionId);
 
   const table = jsonTableFor(mutation.entityType);
-  if (!table) throw new Error('Unsupported entity type');
+  if (!table) throw new MutationPatchError('Unsupported entity type');
 
   const cols = [
     'id',
@@ -68,25 +71,60 @@ export function prepareInsertJsonEntity(
   return env.D1_DATABASE.prepare(sql).bind(...bound);
 }
 
-export async function prepareUpdateJsonEntity(
+/**
+ * Shape of the current-row read feeding the JSON-entity update merge. The
+ * batched apply path materializes these rows through a shared pre-batch read
+ * (see `prepareReadJsonEntityRow`), so the merge itself is pure.
+ */
+export interface JsonEntityRow {
+  collection_id: string | null;
+  title: string | null;
+  payload_json: string | null;
+  order_index: number | null;
+}
+
+/**
+ * Project-scoped current-row read for the update merge. Exported so the
+ * batched apply path can fan one read per mutation through a single shared D1
+ * batch instead of a round-trip per mutation.
+ */
+export function prepareReadJsonEntityRow(
   env: Env,
   mutation: SyncMutation,
-  now: string
-): Promise<D1PreparedStatement | null> {
+  projectId: string
+): D1PreparedStatement {
+  const table = jsonTableFor(mutation.entityType);
+  if (!table) throw new MutationPatchError('Unsupported entity type');
+  return env.D1_DATABASE.prepare(
+    `SELECT collection_id, title, payload_json, order_index FROM ${table} WHERE id = ? AND project_id = ? AND deleted_at IS NULL`
+  ).bind(mutation.entityId, projectId);
+}
+
+/**
+ * Build the CAS-guarded (or legacy unguarded, when `baseVersion` is undefined)
+ * entity UPDATE for a JSON entity from an already-read row.
+ *
+ * Security invariants:
+ * - the write is scoped to `projectId` — a caller can never update a row owned
+ *   by another project;
+ * - `project_id` is NEVER part of the SET list — an update cannot move an
+ *   entity across projects;
+ * - when `baseVersion` is supplied the write only commits while the entity's
+ *   version still equals it (compare-and-swap).
+ *
+ * Returns null when `existing` is null (row gone between read and build — the
+ * caller maps that to the not-found conflict, like the serial path).
+ */
+export function buildJsonEntityUpdateStatement(
+  env: Env,
+  mutation: SyncMutation,
+  projectId: string,
+  now: string,
+  baseVersion: number | undefined,
+  existing: JsonEntityRow | null
+): D1PreparedStatement | null {
   const table = jsonTableFor(mutation.entityType);
   if (!table) return null;
-
-  const existing = await env.D1_DATABASE.prepare(
-    `SELECT collection_id, title, payload_json, order_index FROM ${table} WHERE id = ? AND deleted_at IS NULL`
-  )
-    .bind(mutation.entityId)
-    .first<{
-      collection_id: string | null;
-      title: string | null;
-      payload_json: string | null;
-      order_index: number | null;
-    }>();
-
   if (!existing) return null;
 
   const collectionId =
@@ -107,19 +145,50 @@ export async function prepareUpdateJsonEntity(
       ? existing.order_index
       : optionalNumber(mutation.patch.order ?? mutation.patch.orderIndex);
 
+  const guardSql =
+    baseVersion === undefined ? '' : ` ${VERSION_GUARD_SQL}`;
   return env.D1_DATABASE.prepare(
     `
     UPDATE ${table}
-    SET project_id = ?, collection_id = ?, title = ?, payload_json = ?, order_index = ?, updated_at = ?
-    WHERE id = ? AND deleted_at IS NULL
+    SET collection_id = ?, title = ?, payload_json = ?, order_index = ?, updated_at = ?
+    WHERE id = ? AND project_id = ? AND deleted_at IS NULL${guardSql}
     `
   ).bind(
-    mutation.projectId,
     collectionId,
     title,
     payloadJson,
     orderIndex,
     now,
-    mutation.entityId
+    mutation.entityId,
+    projectId,
+    ...(baseVersion === undefined
+      ? []
+      : versionGuardBindings(projectId, mutation.entityType, mutation.entityId, baseVersion))
+  );
+}
+
+/**
+ * Serial path: read the row, then merge + build (see the two functions above).
+ */
+export async function prepareUpdateJsonEntity(
+  env: Env,
+  mutation: SyncMutation,
+  projectId: string,
+  now: string,
+  baseVersion?: number
+): Promise<D1PreparedStatement | null> {
+  const existing = await prepareReadJsonEntityRow(
+    env,
+    mutation,
+    projectId
+  ).first<JsonEntityRow>();
+
+  return buildJsonEntityUpdateStatement(
+    env,
+    mutation,
+    projectId,
+    now,
+    baseVersion,
+    existing
   );
 }

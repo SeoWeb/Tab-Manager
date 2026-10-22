@@ -19,6 +19,7 @@ import ProjectForm from './ProjectForm';
 import DeleteProjectConfirmation from './DeleteProjectConfirmation';
 import { CloudSyncConnectModal } from '@/components/cloud-sync/CloudSyncConnectModal';
 import { convertProjectToCloud } from '@/lib/cloudflareSync/orchestrator';
+import { RelinkBookmarkFolder } from '@/components/sync/RelinkBookmarkFolder';
 
 interface EditProjectModalProps {
   project: Project;
@@ -191,6 +192,16 @@ const EditProjectModal: React.FC<EditProjectModalProps> = ({
               </Button>
             </div>
           </div>
+        )}
+
+        {project.mirrorRemoved && (
+          <RelinkBookmarkFolder
+            kind='project'
+            entityId={project.id}
+            onRelinked={() => {
+              if (onOpenChange) onOpenChange(false);
+            }}
+          />
         )}
 
         <CloudSyncConnectModal

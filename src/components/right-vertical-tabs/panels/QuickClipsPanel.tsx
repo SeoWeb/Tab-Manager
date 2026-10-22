@@ -71,6 +71,7 @@ export default function QuickClipsPanel() {
           disabled={isRefreshing}
           className='h-8 w-8'
           title='Refresh clips'
+          aria-label='Refresh clips'
         >
           <RefreshCw
             className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}

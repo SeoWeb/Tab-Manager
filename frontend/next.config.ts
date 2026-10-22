@@ -5,7 +5,8 @@ import type { NextConfig } from 'next';
  *
  * Differs from the extension's next.config.ts in two ways:
  *  - `experimental.externalDir` lets us import the extension source from
- *    `../src` (required for the shadowing to reach the real files).
+ *    `../src` and the shared source package from `../packages` (required to
+ *    compile files that live outside this project's root).
  *  - `env.NEXT_PUBLIC_IS_WEB` exposes a clean build-time flag for components
  *    that need to branch between extension and web behaviour.
  *

@@ -9,7 +9,10 @@ import type {
 } from '@/lib/cloudflareSync/types';
 import { applyRemoteChanges } from '@/lib/cloudflareSync/applyChanges';
 import {
+  buildCollectionPatch,
+  buildLinkPatch,
   buildNotePatch,
+  buildTodoPatch,
   buildTaskPatch,
 } from '@/lib/cloudflareSync/entityPatches';
 
@@ -120,29 +123,42 @@ export const createCloudSyncActions = (
     if (resolution === 'local') {
       // Keep the local value; re-push it so the server adopts our edit.
       pushResolvedValue(get, conflict);
-      get().dismissSyncConflict(id);
-      return;
-    }
-
-    _set((state: AppState) => {
-      const next = applyResolution(state, conflict, resolution);
-      return {
-        ...next,
+      _set((state: AppState) => ({
         syncConflicts: state.syncConflicts.filter((c) => c.id !== id),
-      };
-    });
+      }));
+    } else {
+      _set((state: AppState) => {
+        const next = applyResolution(state, conflict, resolution);
+        return {
+          ...next,
+          syncConflicts: state.syncConflicts.filter((c) => c.id !== id),
+        };
+      });
 
-    if (resolution === 'merge') {
-      // Merging produced a local-only value that must be pushed too.
-      pushResolvedValue(get, conflict);
+      if (resolution === 'merge') {
+        // Merging produced a local-only value that must be pushed too.
+        pushResolvedValue(get, conflict);
+      }
     }
+
+    // Every resolution path supersedes the conflicted mutation(s) this
+    // conflict left queued: release them so the queue holds only the fresh
+    // resolution push (fix-cross-context-data-loss 7.1).
+    releaseConflictedQueueEntries(get, conflict);
   },
 
-  /** Drop a conflict from the list without applying either side. */
+  /**
+   * Drop a conflict from the list without applying either side. This is the
+   * spec's "explicit user discard": any queued mutation the conflict kept
+   * alive is released, so the entity converges via later syncs instead of
+   * holding a permanently-rejected mutation forever.
+   */
   dismissSyncConflict: (id: string): void => {
+    const conflict = get().syncConflicts.find((c) => c.id === id);
     _set((state: AppState) => ({
       syncConflicts: state.syncConflicts.filter((c) => c.id !== id),
     }));
+    if (conflict) releaseConflictedQueueEntries(get, conflict);
   },
 
   /** Clear all pending conflicts (e.g. on sign-out). */
@@ -293,40 +309,122 @@ function applyResolution(
       ),
     };
   }
+  // Collections and links live nested under their owning project; only that
+  // project is remapped. This walks the same store shape the reconcile apply
+  // (applyCollections/applyLink) mutates, so "take theirs" lands exactly where
+  // a remote change would have.
+  if (entityType === 'collection') {
+    return {
+      projects: state.projects.map((p) =>
+        p.id === conflict.projectId
+          ? {
+              ...p,
+              collections: p.collections.map((c) =>
+                c.id === entityId ? { ...c, [field]: setValue } : c
+              ),
+            }
+          : p
+      ),
+    };
+  }
+  if (entityType === 'link') {
+    return {
+      projects: state.projects.map((p) =>
+        p.id === conflict.projectId
+          ? {
+              ...p,
+              collections: p.collections.map((c) => ({
+                ...c,
+                links: c.links.map((l) =>
+                  l.id === entityId ? { ...l, [field]: setValue } : l
+                ),
+              })),
+            }
+          : p
+      ),
+    };
+  }
   return {};
 }
 
-/** Re-push the current local value of a conflicting entity so the server adopts it. */
+/**
+ * Re-push the current local value of a conflicting entity so the server adopts
+ * it. The patch is built with the same per-type builder a fresh local edit
+ * uses, so a resolution push is wire-identical to a normal edit. Covers every
+ * syncable entity type (fix-cross-context-data-loss 7.2).
+ */
 function pushResolvedValue(
   get: () => AppState,
   conflict: SyncConflictItem
 ): void {
   const state = get();
+  const push = (
+    entityType: SyncConflictItem['entityType'],
+    entityId: string,
+    patch: Record<string, unknown>
+  ) => {
+    void import('@/lib/cloudflareSync/orchestrator').then((m) =>
+      m.enqueueCloudChange({
+        projectId: conflict.projectId,
+        entityType,
+        entityId,
+        operation: 'update',
+        patch,
+      })
+    );
+  };
+
   if (conflict.entityType === 'task') {
     const task = state.tasks.find((t) => t.id === conflict.entityId);
-    if (task) {
-      void import('@/lib/cloudflareSync/orchestrator').then((m) =>
-        m.enqueueCloudChange({
-          projectId: conflict.projectId,
-          entityType: 'task',
-          entityId: conflict.entityId,
-          operation: 'update',
-          patch: buildTaskPatch(task),
-        })
-      );
-    }
+    if (task) push('task', task.id, buildTaskPatch(task));
   } else if (conflict.entityType === 'note') {
     const note = state.notes.find((n) => n.id === conflict.entityId);
-    if (note) {
-      void import('@/lib/cloudflareSync/orchestrator').then((m) =>
-        m.enqueueCloudChange({
-          projectId: conflict.projectId,
-          entityType: 'note',
-          entityId: conflict.entityId,
-          operation: 'update',
-          patch: buildNotePatch(note),
-        })
-      );
+    if (note) push('note', note.id, buildNotePatch(note));
+  } else if (conflict.entityType === 'todo') {
+    const todo = state.todos.find((t) => t.id === conflict.entityId);
+    if (todo) push('todo', todo.id, buildTodoPatch(todo));
+  } else if (conflict.entityType === 'collection') {
+    const collection = state.projects
+      .flatMap((p) => p.collections)
+      .find((c) => c.id === conflict.entityId);
+    if (collection)
+      push('collection', collection.id, buildCollectionPatch(collection));
+  } else if (conflict.entityType === 'link') {
+    // A link patch carries the `collectionId` binding, so resolve the link's
+    // owning collection the same way the store nests it.
+    for (const project of state.projects) {
+      for (const collection of project.collections) {
+        const link = collection.links.find((l) => l.id === conflict.entityId);
+        if (link) {
+          push('link', link.id, buildLinkPatch(collection.id, link));
+          return;
+        }
+      }
     }
   }
+}
+
+/**
+ * Release the queued mutations a conflict left behind (fix-cross-context-data-loss
+ * 7.1). Keyed by entity (projectId/entityType/entityId) because field-level
+ * conflict items carry no `clientMutationId`; every conflicted mutation for the
+ * entity is superseded by the resolution. Refreshes the sync-status counters
+ * and the pending-edit map from the released queue.
+ */
+function releaseConflictedQueueEntries(
+  get: () => AppState,
+  conflict: SyncConflictItem
+): void {
+  void import('@/lib/cloudflareSync/queue').then(async (q) => {
+    const remaining = await q.releaseConflictedForEntity({
+      projectId: conflict.projectId,
+      entityType: conflict.entityType,
+      entityId: conflict.entityId,
+    });
+    get().setCloudSyncState({
+      pendingMutationCount: remaining.length,
+      conflictedMutationCount: q.countConflicted(remaining),
+      pendingEdits: q.pendingEditsFromQueue(remaining),
+    });
+  });
 }

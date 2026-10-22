@@ -82,3 +82,9 @@ If users ask why the extension requires these permissions, here is a clear, non-
   - _Why we need it:_ To save all your projects, tasks, calendar notes, and settings locally on your machine.
 - **"Access to tab-manager-backend.ww0.dev" (or your custom sync server)**
   - _Why we need it:_ Only used if you choose to sync your projects across devices or collaborate with team members. It allows the extension to talk securely to your synchronization server.
+
+---
+
+## 4. Versioning
+
+Bump `version` in `package.json` only — the build syncs it into the manifest. Do not edit the version in `public/manifest.json` by hand: `post-build.js` copies it into `build/` and overwrites the copied manifest's `version` field with the `package.json` value, so the built `build/manifest.json` is authoritative for Chrome Web Store uploads.

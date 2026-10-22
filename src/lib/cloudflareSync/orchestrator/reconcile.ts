@@ -43,7 +43,8 @@ export async function reconcileProject(
 
   setCloudState({ status: 'syncing', lastError: null });
   try {
-    const server: SnapshotResponse = await client.getProjectSnapshot(projectId);
+    const server: SnapshotResponse =
+      await client.getProjectSnapshotAllPages(projectId);
     const clientId = await config.getClientId();
     const role = project.cloudRole;
     const queued = await queue.getQueueForProject(projectId);

@@ -1,20 +1,39 @@
 # pnpm 11 gates install on packages with unacknowledged build scripts
 # (ERR_PNPM_IGNORED_BUILDS), which also fails the pre-run deps check that gates
-# every `pnpm run <script>` (test/build/lint/typecheck). These four native build
+# every `pnpm run <script>` (test/build/lint/typecheck). These native build
 # scripts are not needed here — the build uses unoptimized images and the tests
 # do not touch them — so explicitly mark each as disallowed. With an explicit
 # decision recorded, pnpm no longer treats them as pending, so neither the error
 # nor the warning fires and `pnpm install` / `pnpm run` succeed cleanly.
+#
+# `workerd` (via wrangler/miniflare in `backend/`) also ships a postinstall,
+# but it is only an optimization: it hard-links the already-downloaded
+# platform binary (`@cloudflare/workerd-linux-64`) over the tarball's JS
+# launcher in `bin/workerd`. Both the JS API (`lib/main.js`) and the launcher
+# resolve the real binary from the platform package at runtime regardless.
+# Verified empirically: with the postinstall skipped, the full
+# vitest-pool-workers integration suite and `wrangler dev` both work.
 allowBuilds:
-  '@firebase/util': false
   esbuild: false
-  protobufjs: false
   sharp: false
   unrs-resolver: false
+  workerd: false
 
-# The web frontend is a workspace member. It reuses the extension's source via
-# tsconfig `@/*` shadowing and shares the root `node_modules` (pnpm hoists the
-# shared deps), so its own dependency list mirrors the root to guarantee every
-# imported module resolves identically.
+# The web frontend is a workspace member. Code shared with the extension lives
+# in the `packages/shared` TS source package (`@tabspace/shared/*`): one
+# canonical copy, imported by both `src/` and `frontend/src/` — there is no
+# tsconfig shadowing anymore. The frontend still compiles the extension's
+# non-shared UI/store tree directly (its tsconfig maps `@/*` to `../src/*`,
+# single-candidate), and CI fails if a module path ever exists in both trees
+# (scripts/check-no-duplicated-frontend-modules.sh). Runtime dependencies used
+# by that reused tree are provided by the root workspace and are deliberately
+# NOT mirrored in frontend/package.json.
+# `backend` (the Cloudflare Worker) is a workspace member too. Its npm
+# artifacts (`package-lock.json`, npm `node_modules`) are gone — the root
+# `pnpm-lock.yaml` is the single lockfile — but wrangler itself is still run
+# from `backend/` (`pnpm --filter tab-manager-cloudflare-backend exec wrangler
+# ...`, `cd backend && npx wrangler ...`); only installs are centralized.
 packages:
   - 'frontend'
+  - 'backend'
+  - 'packages/*'

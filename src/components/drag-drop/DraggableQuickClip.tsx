@@ -13,7 +13,7 @@ import { ExternalLink, X, GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import type { QuickClip } from '@/lib/quickClips';
 import { useFavicon } from '@/hooks/useFavicon';
-import { convertChromeFaviconUrl } from '@/lib/faviconService';
+import { convertChromeFaviconUrl } from '@tabspace/shared/lib/faviconService';
 
 interface DraggableQuickClipProps {
   clip: QuickClip;

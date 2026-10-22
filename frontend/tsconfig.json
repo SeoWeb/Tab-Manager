@@ -18,12 +18,15 @@
         "name": "next"
       }
     ],
-    // `@/*` resolves to the web shadow first (`./src/*`), then falls back to
-    // the extension source (`../src/*`). TypeScript + Next try each candidate
-    // in order and use the first that exists, so a file placed under
-    // frontend/src/ shadows its extension counterpart.
+    // `@/*` resolves into the extension source tree (`../src/*`), which the
+    // web build compiles directly (reuse of the shared UI/store tree). It is
+    // a single-candidate lookup: no frontend-local module may share a path
+    // with `src/` — genuinely shared code lives in `@tabspace/shared/*` and
+    // CI enforces the no-duplication rule
+    // (scripts/check-no-duplicated-frontend-modules.sh).
     "paths": {
-      "@/*": ["./src/*", "../src/*"]
+      "@/*": ["../src/*"],
+      "@tabspace/shared/*": ["../packages/shared/src/*"]
     }
   },
   "include": [

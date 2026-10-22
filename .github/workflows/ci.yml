@@ -1,0 +1,337 @@
+# Continuous Integration for the Tab Manager extension.
+#
+# - The whole repo (root, frontend, backend, packages/shared) is one pnpm
+#   workspace (task 3.4, cleanup-and-regression-tests): installed once at the
+#   repo root with `pnpm install --frozen-lockfile`; backend has no npm
+#   lockfile anymore.
+# - Backend-specific steps still only run when backend/** files changed (or
+#   when the workflow was started manually via workflow_dispatch).
+#
+# Live red/green semantics: any step exiting non-zero fails its job, so the
+# gates below only stay green while lint/typecheck/test/build all pass.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref, but never cancel runs on main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Path detection for the backend gates: `npm ci` + the wrangler toolchain
+  # make backend jobs expensive, so they only run when backend/** changed.
+  # workflow_dispatch always runs them for a manual full check.
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.backend-filter.outputs.backend }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: backend-filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install root + frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      # Task 3.5 guardrail (cleanup-and-regression-tests): shared code must
+      # live in packages/shared — no module may exist in both src/ and
+      # frontend/src/ (that would resurrect the removed tsconfig shadowing).
+      - name: Assert no duplicated frontend modules
+        run: bash scripts/check-no-duplicated-frontend-modules.sh
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install root + frontend + backend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck root + frontend
+        run: pnpm run typecheck
+
+      - name: Typecheck backend
+        if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+        run: pnpm --filter tab-manager-cloudflare-backend run typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: changes
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install root + frontend + backend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test root + frontend
+        run: pnpm test
+
+      # Root script `test:backend` runs backend typecheck + backend vitest.
+      - name: Test backend
+        if: ${{ needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch' }}
+        run: pnpm run test:backend
+
+  # ---------------------------------------------------------------------------
+  # Task 5.8 (cleanup-and-regression-tests): the backend integration suite as
+  # its own REQUIRED job. It runs the `integration` vitest project
+  # (@cloudflare/vitest-pool-workers: tests execute inside real workerd
+  # against a migrations-applied local D1), in addition to the combined
+  # `Test` job above which runs both backend projects.
+  #
+  # Why unconditional (no dorny/paths-filter gate like typecheck/test): a
+  # SKIPPED job counts as success for GitHub branch protection, so a
+  # path-gated "required" check would let the integration suite be skipped
+  # whenever a PR touches no backend files — precisely the silent skip this
+  # suite's loud-skip guard forbids. Running on every PR/push to main is the
+  # price of a check that can actually block a merge.
+  #
+  # *** REQUIRED IN BRANCH PROTECTION (one GitHub settings toggle — this
+  # cannot be set from YAML): Repo → Settings → Branches → branch protection
+  # rule for `main` → "Require a pull request before merging" → "Require
+  # status checks to pass" → search for and add the status check named
+  # exactly: Backend integration tests (workerd + D1)
+  # (status checks carry the job `name:`, not the `backend-integration` id.)
+  # ***
+  #
+  # Install: `backend` is a pnpm workspace member (task 3.4), so the single
+  # root `pnpm install --frozen-lockfile` covers frontend AND backend; there
+  # is no backend package-lock.json anymore. The workerd runtime comes
+  # reproducibly from the exact pins in backend/package.json
+  # (miniflare 4.20260730.0, @cloudflare/vitest-pool-workers 0.19.1) and runs
+  # unprivileged on ubuntu-latest.
+  #
+  # No-silent-skip enforcement — two independent tripwires, each failing the
+  # job on its own:
+  #   1. The gate log must not contain the harness's "LOUD SKIP" banner
+  #      (backend/src/lib/__tests__/integration/harness.ts).
+  #   2. The integration project is re-run with a JSON sidecar report and a
+  #      Node assertion proves it REALLY executed: ≥ 1 integration test file,
+  #      > 0 executed (passed|failed) tests, 0 skipped/pending. A misroute
+  #      that runs the files under plain Node exits 0 with every test
+  #      skipped — step 2 is what turns that into a hard CI failure.
+  # ---------------------------------------------------------------------------
+  backend-integration:
+    name: Backend integration tests (workerd + D1)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install root + frontend + backend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # pipefail so `tee` cannot swallow vitest's exit code.
+      - name: Test backend (unit + integration pools)
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm run test:backend 2>&1 | tee vitest-backend.log
+
+      - name: Fail if the loud-skip banner appeared
+        shell: bash
+        run: |
+          if grep -q 'LOUD SKIP' vitest-backend.log; then
+            echo '::error::The integration loud-skip banner appeared in the backend test log — an integration suite skipped instead of running.'
+            exit 1
+          fi
+
+      # Evidence run for the assertion below: readable console progress via
+      # the default reporter, machine-readable counts via the JSON sidecar.
+      - name: Run integration project with JSON report
+        shell: bash
+        run: |
+          pnpm --filter tab-manager-cloudflare-backend exec vitest run \
+            --project integration \
+            --reporter=default \
+            --reporter=json \
+            --outputFile.json=integration-report.json
+
+      - name: Assert the integration pool ran (no silent skip)
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+
+          const reportPath = 'backend/integration-report.json';
+          const logPath = 'vitest-backend.log';
+          const errors = [];
+          const fail = (m) => {
+            errors.push(m);
+            console.error(`ASSERT-INTEGRATION-RAN: FAIL: ${m}`);
+          };
+
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+          } catch (e) {
+            console.error(
+              `ASSERT-INTEGRATION-RAN: FAIL: cannot read vitest JSON report at ${reportPath}: ${e.message}`
+            );
+            process.exit(1);
+          }
+
+          const integrationFiles = (report.testResults ?? []).filter((f) =>
+            String(f.name).replace(/\\/g, '/').includes('/__tests__/integration/')
+          );
+          const assertions = integrationFiles.flatMap((f) => f.assertionResults ?? []);
+          const executed = assertions.filter(
+            (a) => a.status === 'passed' || a.status === 'failed'
+          ).length;
+          const skipped = assertions.filter(
+            (a) => a.status === 'skipped' || a.status === 'pending' || a.status === 'todo'
+          ).length;
+
+          if (integrationFiles.length === 0) {
+            fail(
+              'the vitest JSON report contains no test files under __tests__/integration/ — ' +
+                'the @cloudflare/vitest-pool-workers pool did not run at all'
+            );
+          }
+          if (integrationFiles.length > 0 && executed === 0) {
+            fail(
+              `integration pool collected ${integrationFiles.length} file(s) but executed 0 tests — silent skip`
+            );
+          }
+          if (skipped > 0) {
+            fail(
+              `${skipped} integration test(s) report as skipped/pending — the loud-skip path was taken ` +
+                '(workerd runtime not detected). CI must never let the integration suite skip silently.'
+            );
+          }
+
+          const log = fs.readFileSync(logPath, 'utf8');
+          if (log.includes('LOUD SKIP')) {
+            fail('gate log contains the "LOUD SKIP" banner — a suite reported itself as skipped');
+          }
+
+          if (errors.length > 0) {
+            console.error(
+              `ASSERT-INTEGRATION-RAN: ${errors.length} error(s) — the integration suite did not really run`
+            );
+            process.exit(1);
+          }
+          console.log(
+            `ASSERT-INTEGRATION-RAN: OK — ${integrationFiles.length} integration file(s), ` +
+              `${executed} executed test(s), 0 skipped, no loud-skip banner in the gate log`
+          );
+          EOF
+
+      - name: Upload backend test output
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-integration-test-output
+          path: |
+            vitest-backend.log
+            backend/integration-report.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install root + frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Upload extension build
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build
+          path: build/
+          retention-days: 7
+          if-no-files-found: error

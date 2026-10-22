@@ -22,17 +22,14 @@ export const useChromeTabsMonitoring = () => {
     const cleanup = setupTabMonitoring(
       // onTabCreated
       (tab: ChromeTabInfo) => {
-        console.log('Tab created:', tab);
         addChromeTab(tab.windowId, tab);
       },
       // onTabRemoved
-      (tabId: number, windowId: number) => {
-        console.log('Tab removed:', tabId, 'from window:', windowId);
+      (tabId: number) => {
         removeChromeTab(tabId);
       },
       // onTabUpdated
       (tabId: number, tab: ChromeTabInfo) => {
-        console.log('Tab updated:', tabId, tab);
         updateChromeTab(tabId, tab);
       }
     );

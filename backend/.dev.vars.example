@@ -8,8 +8,13 @@ JWT_SECRET=replace-with-a-long-random-string
 # Enable the POST /auth/demo endpoint for local testing. Keep false in production.
 ENABLE_DEMO_AUTH=true
 
-# Optional: comma-separated origins allowed by CORS. Defaults to "*" when omitted.
-# ALLOWED_ORIGINS=chrome-extension://YOUR_EXTENSION_ID,http://localhost:5173
+# CORS allow-list (exact match, comma-separated; "*" is rejected — fails closed).
+# Production sets this in backend/wrangler.toml [vars] as:
+#   ALLOWED_ORIGINS = "https://tab-manager.ww0.dev,chrome-extension://<EXTENSION_ID>"
+# <EXTENSION_ID> is the extension's ID in the Chrome Web Store — read it from
+# the store listing URL (or chrome://extensions) before deploying. For local
+# development, override it here (dashboard + extension + local dashboard dev):
+# ALLOWED_ORIGINS=https://tab-manager.ww0.dev,chrome-extension://YOUR_EXTENSION_ID,http://localhost:5173
 
 # --- Rate-limit thresholds (per 60s window; omit to use the defaults shown) ---
 # Global per-IP cap (default 120/min).

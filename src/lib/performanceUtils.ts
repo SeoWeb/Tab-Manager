@@ -2,6 +2,8 @@
  * Performance optimization utilities
  */
 
+import { debugLog } from '@/lib/debugLog';
+
 /**
  * Defers execution of a function until the browser is idle
  */
@@ -110,7 +112,7 @@ export const measurePerformance = async <T>(
   const start = performance.now();
   const result = await fn();
   const end = performance.now();
-  console.log(`${name} took ${end - start} milliseconds`);
+  debugLog(`${name} took ${end - start} milliseconds`);
   return result;
 };
 

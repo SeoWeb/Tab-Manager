@@ -4,6 +4,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '@/stores/appStore';
 import { createLinkDataFromTab } from '@/lib/faviconUtils';
 import { removeQuickClip } from '@/lib/quickClips';
+import { debugLog } from '@/lib/debugLog';
+import { isUrlInCollection } from './urlInCollection';
 import type {
   DragItem,
   CollectionDropPlaceholder,
@@ -119,7 +121,7 @@ export function useHandleDragEnd({
             targetCollectionId = overData.collectionId || overId;
           }
 
-          console.log('Triggering reorderCollections:', {
+          debugLog('Triggering reorderCollections:', {
             projectId,
             activeId,
             targetCollectionId,
@@ -128,8 +130,6 @@ export function useHandleDragEnd({
           });
 
           reorderCollections(projectId, activeId, targetCollectionId);
-        } else {
-          console.log('Not reordering - same collection');
         }
       } else if (activeItem.type === 'tab') {
         if (overData?.type === 'collection') {
@@ -139,14 +139,7 @@ export function useHandleDragEnd({
           const collectionId = overData.collectionId || overData.collection?.id;
 
           if (tab && projectId && collectionId) {
-            // Check if URL already exists in the collection
-            const collection = overData.collection;
-            const urlExists =
-              collection?.links?.some(
-                (link: { url: string }) => link.url === tab.url
-              ) || false;
-
-            if (!urlExists) {
+            if (!isUrlInCollection(overData.collection, tab.url)) {
               // Use the improved favicon service to preserve high-quality tab favicons
               const linkData = await createLinkDataFromTab(tab);
 
@@ -168,13 +161,7 @@ export function useHandleDragEnd({
           const collectionId = overData.collectionId || overData.collection?.id;
 
           if (clip && projectId && collectionId) {
-            const collection = overData.collection;
-            const urlExists =
-              collection?.links?.some(
-                (link: { url: string }) => link.url === clip.url
-              ) || false;
-
-            if (!urlExists) {
+            if (!isUrlInCollection(overData.collection, clip.url)) {
               addLink(projectId, collectionId, {
                 title: clip.title,
                 url: clip.url,
@@ -198,14 +185,7 @@ export function useHandleDragEnd({
           const collectionId = overData.collectionId || overData.collection?.id;
 
           if (bookmark && projectId && collectionId) {
-            // Check if URL already exists in the collection
-            const collection = overData.collection;
-            const urlExists =
-              collection?.links?.some(
-                (link: { url: string }) => link.url === bookmark.url
-              ) || false;
-
-            if (!urlExists) {
+            if (!isUrlInCollection(overData.collection, bookmark.url)) {
               // Use the improved favicon service for bookmarks as well
               const { preloadFavicon } = await import('@/lib/utils');
               const favIconUrl = bookmark.favIconUrl

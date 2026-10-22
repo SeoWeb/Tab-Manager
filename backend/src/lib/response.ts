@@ -44,6 +44,24 @@ export function badRequest(message: string, details?: unknown): Response {
 }
 
 /**
+ * `500` for unhandled server failures. The error itself is logged by the
+ * caller (`console.error`) — this response carries only a fixed message plus a
+ * `retryable` hint, so stack traces, SQL text, and constraint names can never
+ * reach the client.
+ */
+export function internalError(): Response {
+  return jsonResponse(
+    {
+      error: {
+        message: 'Internal server error',
+        retryable: true,
+      },
+    },
+    { status: 500 }
+  );
+}
+
+/**
  * `429 Too Many Requests` with `Retry-After` and the `X-RateLimit-*` headers
  * derived from the limiter decision. CORS-wrapped by the caller.
  */

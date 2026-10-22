@@ -1,5 +1,7 @@
-## ADDED Requirements
+## Purpose
 
+Bound resource consumption per user, project, and request so no tenant can exhaust the backend: caps on projects, project members, entities per project, and sync request size, each enforced atomically and configurable via environment variables.
+## Requirements
 ### Requirement: Maximum projects per user
 The system SHALL enforce a maximum number of active (non-deleted) projects owned by a user. The default maximum is 10 and SHALL be overridable via `QUOTA_MAX_PROJECTS_PER_USER`. The count check and the project creation SHALL occur within a single transaction so that concurrent requests cannot both observe available capacity and overshoot the maximum.
 
@@ -66,3 +68,23 @@ Every usage-quota limit SHALL be overridable via an optional environment variabl
 #### Scenario: Override applied
 - **WHEN** a valid numeric override env var is provided
 - **THEN** the system uses that value instead of the default
+
+### Requirement: Quota guard failure does not commit dependents
+When a quota-guard insert or update affects zero rows (quota reached), the system SHALL NOT execute any dependent statements of that operation. Specifically: no membership insert, no invitation acceptance, no version bumps, and no change-log rows SHALL be committed for an operation whose guard did not pass. The client SHALL receive the structured `403` quota error, never a derived `500`.
+
+#### Scenario: Project creation at the cap
+- **WHEN** a user at the project maximum creates a project
+- **THEN** the response is `403` with a quota-exceeded error, no project row and no membership row is created, and no error is thrown
+
+#### Scenario: Invitation acceptance at the member cap
+- **WHEN** a project at the member maximum receives an invitation acceptance
+- **THEN** the response is `403`, no membership is created, and the invitation remains unaccepted (retryable later)
+
+#### Scenario: Entity creates at the entity cap
+- **WHEN** a sync's create mutations are blocked by the entity quota
+- **THEN** no version bumps and no change-log `create` rows are written for the blocked creates, so other clients never observe phantom entities
+
+#### Scenario: Partial capacity applies only within capacity
+- **WHEN** a sync carries more creates than the remaining entity capacity
+- **THEN** creates within the remaining capacity are applied (with their changelog rows) and only the overflow is rejected with `403`
+

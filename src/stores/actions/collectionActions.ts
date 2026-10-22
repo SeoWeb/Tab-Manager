@@ -3,6 +3,7 @@ import type { Collection, Project } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import { debugLog } from '@/lib/debugLog';
 import type { StoreApi } from 'zustand';
 import {
   buildCollectionUpdatePatch,
@@ -144,7 +145,7 @@ export const createCollectionActions = (
               collectionToUpdate.bookmarkFolderId!,
               newName
             );
-            console.log(
+            debugLog(
               `Bookmark folder for collection ${collectionId} renamed to ${newName}`
             );
           } catch (error) {
@@ -201,9 +202,7 @@ export const createCollectionActions = (
             await bookmarkStorage.deleteCollection(
               collectionToDelete.bookmarkFolderId!
             );
-            console.log(
-              `Bookmark folder for collection ${collectionId} deleted.`
-            );
+            debugLog(`Bookmark folder for collection ${collectionId} deleted.`);
           } catch (error) {
             console.error(
               `Failed to delete bookmark folder for collection ${collectionId}:`,

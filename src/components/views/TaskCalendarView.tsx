@@ -1,45 +1,21 @@
+'use client';
+
+/**
+ * Task calendar view (cleanup-and-regression-tests §1.2/§1.3).
+ *
+ * The implementation is the react-day-picker rework in `task-calendar/`.
+ * This module remains the stable import point for the view now that the
+ * pre-rework calendar path was deleted in task 1.3.
+ */
+
 import React from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import moment from 'moment';
-import './react-big-calendar.css';
+import TaskCalendarModern from './task-calendar/TaskCalendarModern';
+import type { TaskCalendarViewProps } from './task-calendar/types';
 
-const localizer = momentLocalizer(moment);
+export type { TaskCalendarViewProps };
 
-import { AdvancedTask } from '@/types/tasks';
-
-interface TaskCalendarViewProps {
-  tasks: AdvancedTask[];
-  onViewTask: (task: AdvancedTask) => void;
-}
-
-const TaskCalendarView: React.FC<TaskCalendarViewProps> = ({
-  tasks,
-  onViewTask,
-}) => {
-  const events = tasks
-    .filter(
-      (task) => !task.isArchived && task.status !== 'archived' && task.dueDate
-    )
-    .map((task) => ({
-      title: task.title,
-      start: new Date(task.dueDate!),
-      end: new Date(task.dueDate!),
-      allDay: true,
-      resource: task,
-    }));
-
-  return (
-    <div className='h-full'>
-      <Calendar
-        localizer={localizer}
-        events={events}
-        startAccessor='start'
-        endAccessor='end'
-        style={{ height: '100%' }}
-        onSelectEvent={(event) => onViewTask(event.resource)}
-      />
-    </div>
-  );
-};
+const TaskCalendarView: React.FC<TaskCalendarViewProps> = (props) => (
+  <TaskCalendarModern {...props} />
+);
 
 export default TaskCalendarView;

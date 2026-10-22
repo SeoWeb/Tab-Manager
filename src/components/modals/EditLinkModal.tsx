@@ -11,34 +11,21 @@ import { Trash2 } from 'lucide-react';
 
 export default function EditLinkModal() {
   const isEditLinkModalOpen = useAppStoreWithDefaults(
-    (state) => state.isEditLinkModalOpen,
-    false
+    (state) => state.isEditLinkModalOpen
   );
   const closeEditLinkModal = useAppStoreWithDefaults(
-    (state) => state.closeEditLinkModal,
-    () => {}
+    (state) => state.closeEditLinkModal
   );
-  const updateLink = useAppStoreWithDefaults(
-    (state) => state.updateLink,
-    () => {}
-  );
-  const deleteLink = useAppStoreWithDefaults(
-    (state) => state.deleteLink,
-    () => {}
-  );
+  const updateLink = useAppStoreWithDefaults((state) => state.updateLink);
+  const deleteLink = useAppStoreWithDefaults((state) => state.deleteLink);
   const activeProjectId = useAppStoreWithDefaults(
-    (state) => state.activeProjectId,
-    null
+    (state) => state.activeProjectId
   );
   const editingCollectionId = useAppStoreWithDefaults(
-    (state) => state.editingCollectionId,
-    null
+    (state) => state.editingCollectionId
   );
-  const editingLinkId = useAppStoreWithDefaults(
-    (state) => state.editingLinkId,
-    null
-  );
-  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const editingLinkId = useAppStoreWithDefaults((state) => state.editingLinkId);
+  const projects = useAppStoreWithDefaults((state) => state.projects);
 
   const [linkName, setLinkName] = useState('');
   const [linkUrl, setLinkUrl] = useState('');

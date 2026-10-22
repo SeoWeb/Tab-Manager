@@ -1,6 +1,10 @@
-import { getFaviconUrl, convertChromeFaviconUrl } from '../faviconService';
+import {
+  getFaviconUrl,
+  convertChromeFaviconUrl,
+} from '@tabspace/shared/lib/faviconService';
 import type { AppState } from '@/stores/types';
 import type { Project, Collection, Link } from '@/types';
+import { debugLog } from '@/lib/debugLog';
 
 export interface MigrationResult {
   totalLinks: number;
@@ -104,19 +108,19 @@ export async function migrateAllFavicons(state: AppState): Promise<{
   state: AppState;
   result: MigrationResult;
 }> {
-  console.log('Starting favicon migration...');
+  debugLog('Starting favicon migration...');
 
   const { projects = [] } = state;
 
   if (!projects.length) {
-    console.log('No projects found, nothing to migrate.');
+    debugLog('No projects found, nothing to migrate.');
     return {
       state,
       result: { totalLinks: 0, updatedLinks: 0, errors: [] },
     };
   }
 
-  console.log(`Found ${projects.length} projects`);
+  debugLog(`Found ${projects.length} projects`);
 
   let totalLinks = 0;
   let updatedLinks = 0;
@@ -125,7 +129,7 @@ export async function migrateAllFavicons(state: AppState): Promise<{
   // Process each project
   const updatedProjects = await Promise.all(
     projects.map(async (project: Project) => {
-      console.log(`Processing project: ${project.name || 'Untitled'}`);
+      debugLog(`Processing project: ${project.name || 'Untitled'}`);
 
       // Count total links in this project
       const linksInProject =
@@ -145,7 +149,7 @@ export async function migrateAllFavicons(state: AppState): Promise<{
         updatedLinks += updatedCount;
         allErrors.push(...errors);
 
-        console.log(
+        debugLog(
           `  Updated ${updatedCount} favicons in project "${
             project.name || 'Untitled'
           }" (${errors.length} errors)`
@@ -165,10 +169,10 @@ export async function migrateAllFavicons(state: AppState): Promise<{
 
   const updatedState = { ...state, projects: updatedProjects };
 
-  console.log(`\nFavicon migration complete!`);
-  console.log(`Total links processed: ${totalLinks}`);
-  console.log(`Links updated: ${updatedLinks}`);
-  console.log(`Errors: ${allErrors.length}`);
+  debugLog(`\nFavicon migration complete!`);
+  debugLog(`Total links processed: ${totalLinks}`);
+  debugLog(`Links updated: ${updatedLinks}`);
+  debugLog(`Errors: ${allErrors.length}`);
 
   if (allErrors.length > 0) {
     console.error('Errors encountered during migration:', allErrors);

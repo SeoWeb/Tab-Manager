@@ -1,4 +1,5 @@
 import { badRequest, forbidden, notFound } from './response';
+import { notifyMembersChanged } from './realtime';
 import type {
   Env,
   Project,
@@ -257,6 +258,11 @@ export async function updateMemberRole(
     return notFound('Project member not found');
   }
 
+  // Best-effort (errors are logged inside): wake the project room so a live
+  // session for this member is re-checked — a downgraded editor must stop
+  // receiving editor-only fan-out without waiting for a reconnect.
+  await notifyMembersChanged(env, projectId);
+
   return Response.json({
     project_id: projectId,
     user_id: memberId,
@@ -286,6 +292,11 @@ export async function removeMember(
   if (removed.meta?.changes === 0) {
     return notFound('Project member not found');
   }
+
+  // Best-effort (errors are logged inside): wake the project room so the
+  // removed member's live sockets are closed immediately instead of staying
+  // connected and receiving further fan-out.
+  await notifyMembersChanged(env, projectId);
 
   return Response.json({
     project_id: projectId,

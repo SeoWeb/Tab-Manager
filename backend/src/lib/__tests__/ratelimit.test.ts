@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   evaluateWindow,
   getRateLimitConfig,
@@ -127,6 +127,127 @@ describe('RateLimiter.alarm storage reclamation', () => {
     const { limiter, deleted } = makeRateLimiter([now - 10_000], now);
     await limiter.alarm();
     expect(deleted.value).toBe(false);
+  });
+});
+
+describe('RateLimiter storage persistence', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** In-memory stand-in for DurableObjectStorage (get/put/deleteAll). */
+  function makeDurableStorage() {
+    const data = new Map<string, unknown>();
+    const storage = {
+      get: vi.fn(async (key: string) => data.get(key)),
+      put: vi.fn(async (key: string, value: unknown) => {
+        data.set(key, value);
+      }),
+      deleteAll: vi.fn(async () => {
+        data.clear();
+      }),
+      setAlarm: vi.fn(async () => {}),
+      getAlarm: vi.fn(async () => null),
+    };
+    return { data, storage };
+  }
+
+  function makeLimiter(storage: unknown): RateLimiter {
+    const ctx = { storage };
+    return new RateLimiter(ctx as unknown as DurableObjectState, {} as Env);
+  }
+
+  async function check(
+    limiter: RateLimiter,
+    limit: number,
+    windowMs = 60_000
+  ): Promise<RateDecision> {
+    const response = await limiter.fetch(
+      new Request('https://ratelimit.local/', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ limit, windowMs }),
+      })
+    );
+    return (await response.json()) as RateDecision;
+  }
+
+  it('persists each recorded request write-through to storage', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const { data, storage } = makeDurableStorage();
+    const limiter = makeLimiter(storage);
+
+    await check(limiter, 5);
+    expect(storage.put).toHaveBeenCalledTimes(1);
+    expect(data.get('timestamps')).toEqual([1_000_000]);
+
+    clock.mockReturnValue(1_000_500);
+    await check(limiter, 5);
+    expect(data.get('timestamps')).toEqual([1_000_000, 1_000_500]);
+  });
+
+  it('counts pre-restart requests against a fresh DO instance (same storage)', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const { storage } = makeDurableStorage();
+
+    const before = makeLimiter(storage);
+    expect((await check(before, 3)).allowed).toBe(true);
+    expect((await check(before, 3)).allowed).toBe(true);
+    expect((await check(before, 3)).allowed).toBe(true);
+    expect((await check(before, 3)).allowed).toBe(false); // cap reached
+
+    // Eviction/restart: brand-new instance (empty memory), same storage.
+    const after = makeLimiter(storage);
+    const denied = await check(after, 3);
+    expect(denied.allowed).toBe(false);
+    expect(denied.remaining).toBe(0);
+
+    // Once the window drains, the restarted instance allows again.
+    clock.mockReturnValue(1_000_000 + 60_001);
+    expect((await check(after, 3)).allowed).toBe(true);
+  });
+
+  it('keeps a brute-force budget across a restart', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const { storage } = makeDurableStorage();
+    const windowMs = 60_000;
+
+    // Three attempts hit the limiter before the DO is evicted...
+    const before = makeLimiter(storage);
+    for (let i = 0; i < 3; i++) {
+      expect((await check(before, 5, windowMs)).allowed).toBe(true);
+    }
+
+    // ...after the restart two more succeed and the 6th is denied: the budget
+    // spans the restart instead of resetting.
+    const after = makeLimiter(storage);
+    expect((await check(after, 5, windowMs)).allowed).toBe(true);
+    expect((await check(after, 5, windowMs)).allowed).toBe(true);
+    const denied = await check(after, 5, windowMs);
+    expect(denied.allowed).toBe(false);
+    expect(denied.retryAfter).toBeGreaterThanOrEqual(1);
+  });
+
+  it('deletes persisted state for a drained key when the alarm runs', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const { data, storage } = makeDurableStorage();
+
+    const limiter = makeLimiter(storage);
+    await check(limiter, 3);
+    expect(data.has('timestamps')).toBe(true);
+
+    // Window fully drains, alarm fires → persisted timestamps are reclaimed
+    // and the instance is garbage-collectable again.
+    clock.mockReturnValue(1_000_000 + 60_001);
+    await limiter.alarm();
+    expect(data.size).toBe(0);
+
+    // A restarted instance starts from a clean slate (nothing resurrected).
+    clock.mockReturnValue(1_000_000 + 60_002);
+    const fresh = makeLimiter(storage);
+    const decision = await check(fresh, 3);
+    expect(decision.allowed).toBe(true);
+    expect(decision.remaining).toBe(3); // nothing resurrected: empty window
   });
 });
 

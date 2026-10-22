@@ -27,7 +27,11 @@ interface StatusMeta {
   spin?: boolean;
 }
 
-function statusMeta(status: CloudSyncStatus, pending: number): StatusMeta {
+function statusMeta(
+  status: CloudSyncStatus,
+  pending: number,
+  conflicted: number
+): StatusMeta {
   switch (status) {
     case 'syncing':
       return {
@@ -39,7 +43,14 @@ function statusMeta(status: CloudSyncStatus, pending: number): StatusMeta {
       };
     case 'synced':
       return {
-        label: pending > 0 ? `Synced · ${pending} pending` : 'Synced',
+        // Unresolved conflicts outrank the pending count: the user has a
+        // decision to make even though the last sync "succeeded".
+        label:
+          conflicted > 0
+            ? `Synced · ${conflicted} conflicted`
+            : pending > 0
+              ? `Synced · ${pending} pending`
+              : 'Synced',
         variant: 'secondary',
         icon: CheckCircle2,
         className: 'text-green-500',
@@ -60,7 +71,7 @@ function statusMeta(status: CloudSyncStatus, pending: number): StatusMeta {
       };
     case 'conflict':
       return {
-        label: 'Conflict',
+        label: conflicted > 0 ? `Conflict · ${conflicted}` : 'Conflict',
         variant: 'destructive',
         icon: AlertTriangle,
         className: '',
@@ -68,7 +79,12 @@ function statusMeta(status: CloudSyncStatus, pending: number): StatusMeta {
     case 'idle':
     default:
       return {
-        label: pending > 0 ? `${pending} pending` : 'Cloud idle',
+        label:
+          conflicted > 0
+            ? `${conflicted} conflicted`
+            : pending > 0
+              ? `${pending} pending`
+              : 'Cloud idle',
         variant: 'outline',
         icon: Cloud,
         className: 'text-muted-foreground',
@@ -91,7 +107,11 @@ export function CloudSyncStatusBadge({
     );
   }
 
-  const meta = statusMeta(cloudSync.status, cloudSync.pendingMutationCount);
+  const meta = statusMeta(
+    cloudSync.status,
+    cloudSync.pendingMutationCount,
+    cloudSync.conflictedMutationCount ?? 0
+  );
   const Icon = meta.icon;
   const realtimeConnected = cloudSync.realtimeConnected ?? false;
 

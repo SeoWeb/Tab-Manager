@@ -211,6 +211,7 @@ export const TabSessionsPanel: React.FC = () => {
                 variant='ghost'
                 size='sm'
                 disabled={isLoading}
+                aria-label='Reload saved sessions'
               >
                 <RotateCcw className='h-4 w-4' />
               </Button>
@@ -310,7 +311,12 @@ const SessionCard: React.FC<SessionCardProps> = ({
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant='outline' size='sm' disabled={isLoading}>
+              <Button
+                variant='outline'
+                size='sm'
+                disabled={isLoading}
+                aria-label='Delete session'
+              >
                 <Trash2 className='h-3 w-3' />
               </Button>
             </AlertDialogTrigger>

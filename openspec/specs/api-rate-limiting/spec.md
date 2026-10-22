@@ -1,5 +1,7 @@
-## ADDED Requirements
+## Purpose
 
+Protect the backend from abusive or runaway traffic: a precise sliding-window `RateLimiter` Durable Object with tiered per-IP and per-user limits enforced at the edge, durable window state, and a consistent `429`/header contract.
+## Requirements
 ### Requirement: Rate limiter Durable Object
 The system SHALL provide a `RateLimiter` Durable Object that maintains a precise sliding-window counter per rate-limit key, returning a decision of `{ allowed, limit, remaining, resetAt, retryAfter }` for each check. When the instance's window has fully drained (no in-window timestamps remain after pruning), the instance SHALL delete its stored state so the Durable Object is reclaimed rather than persisting indefinitely with empty state.
 
@@ -63,3 +65,19 @@ Every rate-limit threshold SHALL be overridable via an optional environment vari
 #### Scenario: Override applied
 - **WHEN** a valid numeric override env var is provided
 - **THEN** the system uses that value instead of the default
+
+### Requirement: Rate-limit state survives eviction
+The `RateLimiter` Durable Object SHALL persist sliding-window timestamps to Durable Object storage (write-through with an in-memory fast path) so that eviction, hibernation, or restart does not reset any window. The existing alarm-based reclamation of drained instances SHALL delete the persisted state as before.
+
+#### Scenario: Window survives DO restart
+- **WHEN** a rate-limited key has requests recorded and the Durable Object is evicted and re-created
+- **THEN** subsequent checks still count the pre-eviction requests within the window
+
+#### Scenario: Drained instance is still reclaimed
+- **WHEN** all timestamps in a window expire and the alarm fires
+- **THEN** the persisted state is deleted and the instance can be garbage-collected
+
+#### Scenario: Brute-force budget spans restarts
+- **WHEN** an attacker spreads verify attempts across a DO restart
+- **THEN** the per-IP and per-key budgets continue to be enforced across the restart boundary
+

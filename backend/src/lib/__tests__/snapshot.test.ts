@@ -225,6 +225,13 @@ describe('getProjectSnapshot', () => {
     expect(snapshot.notes[0]?.version).toBe(1);
     expect(snapshot.todos[0]?.version).toBe(1);
   });
+
+  it('omits nextCursor when every type fits on page 1 (additive field)', async () => {
+    const env = makeEnv(baseData());
+    const snapshot = await getProjectSnapshot(env, 'p1');
+    // Small project: nothing exceeds the page cap, so no continuation map.
+    expect(snapshot.nextCursor).toBeUndefined();
+  });
 });
 
 describe('snapshot access control', () => {

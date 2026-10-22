@@ -1,45 +1,78 @@
-import type { Env, SyncMutation } from '../../types';
+import type { Env, SyncConflict, SyncMutation } from '../../types';
 import {
   type ApplyMutationResult,
+  MutationPatchError,
   entityNotFoundConflict,
   jsonTableFor,
   nowIso,
   tableFor,
 } from './shared';
-import { entityExists, getEntityVersion } from './queries';
+import { prepareEntityExistsStatement, prepareMutationDedupeStatement } from './queries';
 import {
   applyProjectMutation,
   buildEntityStatement,
+  commitEntityBatch,
+  invalidPatchConflict,
 } from './mutations';
-import {
-  prepareIncrementVersion,
-  prepareInsertSyncChange,
-  prepareInsertSyncChangeRow,
-} from './statements';
 import { describeMoveFanOut } from './moveFanOut';
+import { isUniqueMutationIdViolation } from './statements/changelog';
 
 /**
- * Apply a single client mutation idempotently. The entity write, the per-entity
- * version bump, and the append-only sync_changes row are committed together in
- * one D1 batch so a failure can never leave the change log out of sync with the
- * entity state.
+ * Apply a single client mutation idempotently and project-scoped.
+ *
+ * Security invariants (change `secure-sync-backend`):
+ * - every existence/version/row read filters on the mutation's project, and
+ *   every UPDATE/DELETE carries `AND project_id = ?` — a caller authorized for
+ *   project A can never read or write an entity of project B. A foreign id is
+ *   indistinguishable from a nonexistent one (not-found conflict);
+ * - `project_id` is never in an UPDATE set-list, so a mutation can never move
+ *   an entity across projects;
+ * - UPDATE mutations require `baseVersion`: the entity write, the change-log
+ *   row(s) and the version bump all carry a `version = baseVersion` guard
+ *   committed in one D1 batch (CAS), so a lost race changes nothing;
+ * - a UNIQUE violation on sync_changes (migration 0004) is a replay that raced
+ *   past the pre-check and maps to an idempotent success.
  */
 export async function applyMutation(
   env: Env,
   actorId: string,
   mutation: SyncMutation
 ): Promise<ApplyMutationResult> {
-  const existingMutation = await env.D1_DATABASE.prepare(
-    'SELECT id FROM sync_changes WHERE client_mutation_id = ?'
-  )
-    .bind(mutation.clientMutationId)
-    .first<{ id: number }>();
+  // Idempotency pre-check, scoped to the mutation's project — matching the
+  // UNIQUE(project_id, client_mutation_id) index from migration 0004. The same
+  // client mutation id in a DIFFERENT project is a distinct mutation. This
+  // read and the presence check below are independent, so they fold into ONE
+  // batched round-trip (per-statement results arrive in order) instead of two
+  // sequential reads. The move-detection read further down stays separate: it
+  // depends on presence having passed.
+  const table = tableFor(mutation.entityType);
+  const needsPresence =
+    table !== null &&
+    mutation.operation !== 'create' &&
+    mutation.entityType !== 'project';
 
-  if (existingMutation) {
+  const dedupeStmt = prepareMutationDedupeStatement(env, mutation);
+
+  const readResults = (await env.D1_DATABASE.batch(
+    needsPresence && table
+      ? [
+          dedupeStmt,
+          prepareEntityExistsStatement(
+            env,
+            table,
+            mutation.entityId,
+            mutation.projectId
+          ),
+        ]
+      : [dedupeStmt]
+  )) as { results?: unknown[] }[];
+
+  // A replayed (project, clientMutationId) is an idempotent success: nothing
+  // further to read or write.
+  if ((readResults[0]?.results ?? []).length > 0) {
     return {};
   }
 
-  const table = tableFor(mutation.entityType);
   if (!table) {
     return {
       conflict: {
@@ -53,86 +86,65 @@ export async function applyMutation(
     };
   }
 
-  const currentVersion = await getEntityVersion(
-    env,
-    mutation.projectId,
-    mutation.entityType,
-    mutation.entityId
-  );
-
-  // Reconcile the soft-delete basis: a soft-deleted entity is "not present" for
-  // mutation purposes, matching the live-only entity-write and quota layers. We
-  // resolve presence on the live basis BEFORE the version guard so an
-  // update/delete targeting a tombstone always yields a clean "not found /
-  // already deleted" conflict, instead of leaking the tombstone's version into
-  // the version-conflict path. Projects are handled by applyProjectMutation.
-  if (
-    mutation.operation !== 'create' &&
-    mutation.entityType !== 'project' &&
-    !(await entityExists(env, table, mutation.entityId))
-  ) {
-    return { conflict: entityNotFoundConflict(mutation, currentVersion) };
+  // Presence is resolved on the live basis BEFORE the version guard so an
+  // update/delete targeting a tombstone — or an entity of another project —
+  // always yields a clean "not found" conflict with zero writes. Projects are
+  // resolved inside applyProjectMutation.
+  if (needsPresence) {
+    const exists = (readResults[1]?.results ?? []).length > 0;
+    if (!exists) {
+      return { conflict: entityNotFoundConflict(mutation, 0) };
+    }
   }
 
+  // Mandatory CAS basis for updates (non-project; project updates enforce this
+  // inside applyProjectMutation after their existence checks). A missing
+  // baseVersion is a per-mutation bad-mutation outcome — never applied, and
+  // never defaulted to 0.
   if (
-    mutation.operation !== 'create' &&
-    mutation.baseVersion !== undefined &&
-    currentVersion !== mutation.baseVersion
+    mutation.operation === 'update' &&
+    mutation.entityType !== 'project' &&
+    mutation.baseVersion === undefined
   ) {
-    return {
-      conflict: {
-        entityType: mutation.entityType,
-        entityId: mutation.entityId,
-        clientMutationId: mutation.clientMutationId,
-        message: 'Entity version conflict',
-        currentVersion,
-        expectedVersion: mutation.baseVersion,
-      },
-    };
+    return { skipped: { reason: 'missing_base_version' } };
   }
 
   const now = nowIso();
 
   if (mutation.entityType === 'project') {
-    return applyProjectMutation(env, actorId, mutation, now, currentVersion);
+    return applyProjectMutation(env, actorId, mutation, now);
   }
 
-  let entityStmt: D1PreparedStatement;
+  let built:
+    | { stmt: D1PreparedStatement }
+    | { conflict: SyncConflict };
   try {
-    const built = await buildEntityStatement(
-      env,
-      table,
-      mutation,
-      now,
-      currentVersion
-    );
-    if ('conflict' in built) return { conflict: built.conflict };
-    entityStmt = built.stmt;
+    built = await buildEntityStatement(env, table, mutation, now);
   } catch (error) {
-    return {
-      conflict: {
-        entityType: mutation.entityType,
-        entityId: mutation.entityId,
-        clientMutationId: mutation.clientMutationId,
-        message:
-          error instanceof Error ? error.message : 'Invalid mutation patch',
-        currentVersion,
-        expectedVersion: mutation.baseVersion,
-      },
-    };
+    // Only the engine's own invalid-patch signals (MutationPatchError) become
+    // conflicts (with a fixed, client-safe message). D1 failures and any other
+    // exception propagate to the top-level handler (500 + retryable) rather
+    // than being converted into a conflict that could leak SQL or constraint
+    // text.
+    if (!(error instanceof MutationPatchError)) throw error;
+    return { conflict: invalidPatchConflict(mutation, 0) };
   }
+  if ('conflict' in built) return { conflict: built.conflict };
+  const entityStmt = built.stmt;
 
   // Cross-project move detection (task/note/todo only). Read the entity's
-  // current project; if the update targets a different one, the change log
-  // needs rows in BOTH projects. See describeMoveFanOut.
+  // current project — scoped, so only an entity of THIS project can be found.
+  // After the scoping above this equals the mutation's project for any applied
+  // mutation, so moves are effectively unreachable; the read keeps the fan-out
+  // wiring correct and harmless.
   let existingProjectId: string | null = null;
   if (mutation.operation === 'update') {
     const jsonTable = jsonTableFor(mutation.entityType);
     if (jsonTable) {
       const row = await env.D1_DATABASE.prepare(
-        `SELECT project_id FROM ${jsonTable} WHERE id = ? AND deleted_at IS NULL`
+        `SELECT project_id FROM ${jsonTable} WHERE id = ? AND project_id = ? AND deleted_at IS NULL`
       )
-        .bind(mutation.entityId)
+        .bind(mutation.entityId, mutation.projectId)
         .first<{ project_id: string | null }>();
       existingProjectId = row?.project_id ?? null;
     }
@@ -144,43 +156,18 @@ export async function applyMutation(
     mutation
   );
 
-  try {
-    await env.D1_DATABASE.batch([
-      entityStmt,
-      prepareIncrementVersion(
-        env,
-        mutation.projectId,
-        mutation.entityType,
-        mutation.entityId,
-        now
-      ),
-      ...(fanOut
-        ? fanOut.map((r) =>
-            prepareInsertSyncChangeRow(
-              env,
-              actorId,
-              mutation,
-              r.projectId,
-              r.operation,
-              r.patch,
-              now
-            )
-          )
-        : [prepareInsertSyncChange(env, actorId, mutation, now)]),
-    ]);
-  } catch (error) {
-    return {
-      conflict: {
-        entityType: mutation.entityType,
-        entityId: mutation.entityId,
-        clientMutationId: mutation.clientMutationId,
-        message:
-          error instanceof Error ? error.message : 'Invalid mutation patch',
-        currentVersion,
-        expectedVersion: mutation.baseVersion,
-      },
-    };
-  }
-
-  return {};
+  // No catch here on purpose beyond the replay mapping inside
+  // commitEntityBatch: every conflict condition was already resolved above.
+  // A batch failure at this point is infrastructure (D1 outage, constraint
+  // violation) and must propagate to the top-level handler, which logs it and
+  // answers `500 retryable` — never a 200 with a fake conflict.
+  return commitEntityBatch(
+    env,
+    actorId,
+    mutation,
+    now,
+    entityStmt,
+    fanOut,
+    mutation.baseVersion
+  );
 }

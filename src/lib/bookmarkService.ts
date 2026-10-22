@@ -297,6 +297,3 @@ export const bookmarkService = {
 };
 
 // Ensure chrome types are available. If not, this might indicate an issue with @types/chrome installation or tsconfig.
-// Example of checking:
-// const exampleBookmark: chrome.bookmarks.BookmarkTreeNode = { id: '1', title: 'test' };
-// console.log(exampleBookmark); // This line is for type checking during development, remove for production.

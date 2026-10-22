@@ -51,7 +51,11 @@ const ProjectItem: React.FC<ProjectItemProps> = ({
           onOpenChange={setIsEditModalOpen}
         >
           {/* Hidden trigger, modal controlled by state. Actual trigger is the button below */}
-          <button style={{ display: 'none' }} />
+          <button
+            style={{ display: 'none' }}
+            aria-hidden='true'
+            tabIndex={-1}
+          />
         </EditProjectModal>
       </React.Suspense>
       <div className={cn('flex items-center', sidebarOpen ? 'w-full' : '')}>

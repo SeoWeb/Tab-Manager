@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useAppStore } from './appStore';
 
 interface StoreWrapperContextType {
@@ -18,69 +18,14 @@ interface StoreWrapperProps {
 }
 
 export const StoreWrapper: React.FC<StoreWrapperProps> = ({ children }) => {
-  const [isHydrated, setIsHydrated] = useState(false);
+  // Gate on the store's real hydration signal: `_hasHydrated` is flipped to
+  // true by the persist middleware's `onRehydrateStorage` callback once the
+  // async chrome.storage.local load resolves (or definitively fails — errors
+  // are logged, but hydration still completes). Subscribing directly to the
+  // store (instead of polling or using timeouts) guarantees we never render
+  // default/mock data as a flash before the persisted state arrives.
+  const isHydrated = useAppStore((state) => state._hasHydrated);
 
-  useEffect(() => {
-    // Much shorter fallback timeout for Chrome extensions (100ms max)
-    // const fallbackTimeout = setTimeout(() => {
-    //   setIsHydrated(true);
-    // }, 100);
-
-    // Try to access the store safely with immediate check
-    const checkStore = () => {
-      try {
-        const store = useAppStore.getState();
-        if (store && typeof store === 'object') {
-          setIsHydrated(true);
-          // clearTimeout(fallbackTimeout);
-          return true;
-        }
-      } catch (error) {
-        console.warn('Store access failed during hydration:', error);
-      }
-      return false;
-    };
-
-    // Check immediately - most Chrome extensions should be ready instantly
-    if (checkStore()) {
-      // return () => clearTimeout(fallbackTimeout);
-    }
-
-    // If not ready immediately, use requestAnimationFrame for next tick check
-    const rafCheck = requestAnimationFrame(() => {
-      if (checkStore()) {
-        return;
-      }
-
-      // Final check after a minimal delay
-      const finalCheck = setTimeout(() => {
-        if (!checkStore()) {
-          // Force hydration after minimal delay
-          setIsHydrated(true);
-        }
-      }, 16); // Single frame delay
-
-      return () => clearTimeout(finalCheck);
-    });
-
-    return () => {
-      // clearTimeout(fallbackTimeout);
-      cancelAnimationFrame(rafCheck);
-    };
-  }, []);
-
-  useEffect(() => {
-    // Listen for the store's hydration state
-    const unsubscribe = useAppStore.subscribe((state) => {
-      if (state?._hasHydrated) {
-        setIsHydrated(true);
-      }
-    });
-
-    return unsubscribe;
-  }, []);
-
-  // For Chrome extensions, render immediately with minimal delay
   if (!isHydrated) {
     return <></>;
   }

@@ -1,5 +1,5 @@
 import type { AppState } from '../types';
-import { chromeStorageApi } from '@/stores/storage';
+import { chromeStorageApi } from '@tabspace/shared/stores/storage';
 
 const SIDEBAR_STORAGE_KEY = 'sidebar-state';
 

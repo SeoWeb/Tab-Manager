@@ -19,7 +19,12 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      // Shared TS source package (compiled directly by every consumer — no
+      // build step). The `paths` entry makes TS resolution deterministic; the
+      // workspace dependency in package.json keeps the pnpm link + runtime
+      // resolution honest. Jest mirrors this via moduleNameMapper.
+      "@tabspace/shared/*": ["./packages/shared/src/*"]
     }
   },
   "include": [

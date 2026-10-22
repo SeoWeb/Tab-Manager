@@ -11,7 +11,7 @@ import { ExternalLink, X, GripVertical } from 'lucide-react';
 import Image from 'next/image';
 import type { ChromeTabInfo } from '@/types';
 import { useFavicon } from '@/hooks/useFavicon';
-import { convertChromeFaviconUrl } from '@/lib/faviconService';
+import { convertChromeFaviconUrl } from '@tabspace/shared/lib/faviconService';
 
 interface DraggableTabProps {
   tab: ChromeTabInfo;

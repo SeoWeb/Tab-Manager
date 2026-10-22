@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAppStoreWithDefaults } from '@/hooks/useAppStoreWithDefaults';
 import { Button } from '@/components/ui/button';
 import { fetchProjectMembers } from '@/lib/cloudflareSync';
-import type { CloudMember, CloudAccount } from '@/lib/cloudflareSync/types';
+import type { CloudMember } from '@/lib/cloudflareSync/types';
 import { marked } from 'marked';
 import {
   Dialog,
@@ -35,38 +35,18 @@ export default function TaskDetailModal({
   onEdit,
   onView,
 }: TaskDetailModalProps) {
-  const tasks = useAppStoreWithDefaults((state) => state.tasks, []);
+  const tasks = useAppStoreWithDefaults((state) => state.tasks);
   const addTaskComment = useAppStoreWithDefaults(
-    (state) => state.addTaskComment,
-    () => {}
+    (state) => state.addTaskComment
   );
-  const updateTask = useAppStoreWithDefaults(
-    (state) => state.updateTask,
-    () => {}
-  );
-  const addSubtask = useAppStoreWithDefaults(
-    (state) => state.addSubtask,
-    () => {}
-  );
+  const updateTask = useAppStoreWithDefaults((state) => state.updateTask);
+  const addSubtask = useAppStoreWithDefaults((state) => state.addSubtask);
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
 
-  const projects = useAppStoreWithDefaults((state) => state.projects, []);
+  const projects = useAppStoreWithDefaults((state) => state.projects);
   const project = projects.find((p) => p.id === task?.projectId);
-  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync, {
-    enabled: false,
-    status: 'idle' as const,
-    lastSyncedAt: null,
-    lastReconciledAt: null,
-    lastError: null,
-    pendingMutationCount: 0,
-    account: null as CloudAccount | null,
-    apiBaseUrl: '',
-    cursors: {},
-    realtimeConnected: false,
-    onlinePresence: [],
-    pendingEdits: {},
-  });
+  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync);
   const currentUser = cloudSync.account;
   const [members, setMembers] = useState<CloudMember[]>([]);
 

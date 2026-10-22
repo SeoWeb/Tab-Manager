@@ -9,13 +9,20 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "migrate:local": "wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0001_init.sql && wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0002_login_codes.sql && wrangler d1 execute tab-manager-dev --local --file=./src/db/migrations/0003_drop_e2e.sql",
-    "migrate:remote": "wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0001_init.sql && wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0002_login_codes.sql && wrangler d1 execute tab-manager-dev --remote --file=./src/db/migrations/0003_drop_e2e.sql"
+    "seed:load": "mkdir -p .wrangler/tmp && node scripts/seed-load.ts > .wrangler/tmp/seed-load.sql && wrangler d1 execute tab-manager-dev --local --file=.wrangler/tmp/seed-load.sql -y",
+    "measure:load": "mkdir -p .wrangler/tmp && esbuild scripts/measure-load.ts --bundle --platform=node --format=esm --outfile=.wrangler/tmp/measure-load.mjs --log-level=warning && node .wrangler/tmp/measure-load.mjs",
+    "migrate:local": "wrangler d1 migrations apply tab-manager-dev --local",
+    "migrate:remote": "wrangler d1 migrations apply tab-manager-dev --remote"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.19.1",
     "@cloudflare/workers-types": "^5.20260718.1",
+    "miniflare": "4.20260730.0",
     "typescript": "^5.9.2",
     "vitest": "^4.1.9",
     "wrangler": "^4.112.0"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }

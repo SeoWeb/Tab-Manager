@@ -121,7 +121,12 @@ describe('backgroundSyncAll', () => {
       const body = JSON.parse(init?.body as string);
       expect(body.mutations).toHaveLength(1);
       expect(body.mutations[0].clientMutationId).toBe('mut-1');
-      return jsonOk({ cursor: 5, changes: [REMOTE_CHANGE], conflicts: [] });
+      return jsonOk({
+        cursor: 5,
+        changes: [REMOTE_CHANGE],
+        conflicts: [],
+        outcomes: [{ clientMutationId: 'mut-1', status: 'applied' }],
+      });
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -174,6 +179,13 @@ describe('backgroundSyncAll', () => {
             currentVersion: 3,
           },
         ],
+        outcomes: [
+          {
+            clientMutationId: 'mut-1',
+            status: 'conflict',
+            message: 'Entity version conflict',
+          },
+        ],
       })
     ) as unknown as typeof fetch;
 
@@ -183,8 +195,16 @@ describe('backgroundSyncAll', () => {
     const state = readState(store);
     expect(state.cloudSync.status).toBe('conflict');
     expect(state.cloudSync.cursors.p1).toBe(6);
-    // The conflicted mutation is still dropped (last-write-wins, queue bounded).
-    expect(store['cloud-sync-mutation-queue']).toEqual([]);
+    // The conflicted mutation is RETAINED, flagged `conflicted`
+    // (fix-cross-context-data-loss 7.1) — the local edit stays queued until
+    // the user resolves or discards the conflict.
+    const queued = store['cloud-sync-mutation-queue'] as Array<{
+      clientMutationId: string;
+      conflicted?: boolean;
+    }>;
+    expect(queued).toHaveLength(1);
+    expect(queued[0].clientMutationId).toBe('mut-1');
+    expect(queued[0].conflicted).toBe(true);
   });
 
   it('is a no-op when cloud sync is disabled', async () => {
@@ -200,5 +220,125 @@ describe('backgroundSyncAll', () => {
     const result = await backgroundSyncAll();
     expect(result).toEqual({ projects: 0, status: 'idle' });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('drops skipped mutations with a warning and never retries them', async () => {
+    const store = seedStore();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    let calls = 0;
+    global.fetch = jest.fn(async (_url: string, init?: RequestInit) => {
+      calls += 1;
+      const body = JSON.parse(init?.body as string);
+      if (calls === 1) {
+        // First pass: the server permanently rejects the mutation.
+        expect(body.mutations).toHaveLength(1);
+        return jsonOk({
+          cursor: 7,
+          changes: [],
+          conflicts: [],
+          outcomes: [
+            {
+              clientMutationId: 'mut-1',
+              status: 'skipped',
+              reason: 'project_mismatch',
+            },
+          ],
+        });
+      }
+      // Second pass: nothing left to push — skipped mutations are not retried.
+      expect(body.mutations).toEqual([]);
+      return jsonOk({
+        cursor: 8,
+        changes: [],
+        conflicts: [],
+        outcomes: [],
+      });
+    }) as unknown as typeof fetch;
+
+    const first = await backgroundSyncAll();
+    expect(first.status).toBe('synced');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('mut-1'));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('project_mismatch')
+    );
+
+    await backgroundSyncAll();
+
+    expect(store['cloud-sync-mutation-queue']).toEqual([]);
+    warnSpy.mockRestore();
+  });
+
+  it('keeps errored mutations queued for the next sync pass', async () => {
+    const store = seedStore();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    let calls = 0;
+    global.fetch = jest.fn(async (_url: string, init?: RequestInit) => {
+      calls += 1;
+      const body = JSON.parse(init?.body as string);
+      if (calls === 1) {
+        expect(body.mutations).toHaveLength(1);
+        return jsonOk({
+          cursor: 9,
+          changes: [],
+          conflicts: [],
+          outcomes: [
+            {
+              clientMutationId: 'mut-1',
+              status: 'error',
+              message: 'payload too large',
+            },
+          ],
+        });
+      }
+      // Second pass: the errored mutation is retried and now applied.
+      expect(
+        body.mutations.map(
+          (m: { clientMutationId: string }) => m.clientMutationId
+        )
+      ).toEqual(['mut-1']);
+      return jsonOk({
+        cursor: 10,
+        changes: [],
+        conflicts: [],
+        outcomes: [{ clientMutationId: 'mut-1', status: 'applied' }],
+      });
+    }) as unknown as typeof fetch;
+
+    const first = await backgroundSyncAll();
+    expect(first.status).toBe('synced');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('mut-1'));
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('payload too large')
+    );
+    // The mutation survived the errored pass...
+    expect(store['cloud-sync-mutation-queue']).toHaveLength(1);
+
+    // ...and was retried and drained on the next pass.
+    await backgroundSyncAll();
+    expect(store['cloud-sync-mutation-queue']).toEqual([]);
+    errorSpy.mockRestore();
+  });
+
+  it('keeps mutations queued when the response has no outcome for them', async () => {
+    const store = seedStore();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    global.fetch = jest.fn(async () =>
+      jsonOk({
+        cursor: 11,
+        changes: [],
+        conflicts: [],
+        // Missing entry for mut-1: conservative — never drop silently.
+        outcomes: [],
+      })
+    ) as unknown as typeof fetch;
+
+    const result = await backgroundSyncAll();
+
+    expect(result.status).toBe('synced');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no outcome reported for mutation mut-1')
+    );
+    expect(store['cloud-sync-mutation-queue']).toHaveLength(1);
+    warnSpy.mockRestore();
   });
 });

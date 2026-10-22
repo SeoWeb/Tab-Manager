@@ -57,15 +57,23 @@ export default function SettingsView() {
             />
           </div>
 
-          <div>
-            <Label className='text-base font-medium'>Favicon Management</Label>
-            <p className='text-sm text-muted-foreground mb-2'>
-              Update all existing favicons with improved quality and caching.
-            </p>
-            <Button asChild variant='outline'>
-              <Link href='/favicon-migration'>Update Favicons</Link>
-            </Button>
-          </div>
+          {/* Debug-only dev tooling: /favicon-migration is excluded from
+              production builds (see next.config.ts pageExtensions). The env
+              var is inlined at build time, so this whole block is
+              dead-code-eliminated from the bundle when the flag is unset. */}
+          {process.env.INCLUDE_DEBUG_ROUTES === '1' && (
+            <div>
+              <Label className='text-base font-medium'>
+                Favicon Management
+              </Label>
+              <p className='text-sm text-muted-foreground mb-2'>
+                Update all existing favicons with improved quality and caching.
+              </p>
+              <Button asChild variant='outline'>
+                <Link href='/favicon-migration'>Update Favicons</Link>
+              </Button>
+            </div>
+          )}
 
           <CloudSyncSettingsPanel />
           <CloudSyncMyProjectsCard />

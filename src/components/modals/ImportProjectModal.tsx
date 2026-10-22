@@ -141,6 +141,7 @@ const ImportProjectModal: React.FC<ImportProjectModalProps> = ({
             accept='application/json,.json'
             onChange={handleFile}
             className='hidden'
+            aria-label='Project JSON file to import'
           />
           <Button
             variant='outline'

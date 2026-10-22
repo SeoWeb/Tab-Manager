@@ -11,6 +11,7 @@ import {
 import { RefreshCw, CheckCircle, AlertCircle, Bookmark } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
+import { debugLog } from '@/lib/debugLog';
 
 interface BookmarkSyncStatusProps {
   className?: string;
@@ -32,7 +33,7 @@ export function BookmarkSyncStatus({ className }: BookmarkSyncStatusProps) {
     try {
       await syncBookmarks();
       setLastSyncTime(new Date());
-      console.log('Manual bookmark sync completed successfully');
+      debugLog('Manual bookmark sync completed successfully');
     } catch (error) {
       console.error('Manual bookmark sync failed:', error);
       setSyncError(error instanceof Error ? error.message : 'Sync failed');

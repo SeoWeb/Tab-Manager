@@ -1,10 +1,14 @@
 import { withCors, preflightHeaders } from './lib/cors';
 import {
-  authenticateToken,
+  assertJwtSecret,
+  getAuth,
+  legacyTokenVerificationCount,
   requireUser,
   requestLoginCode,
+  renewAccessToken,
   verifyLoginCode,
 } from './lib/auth';
+import { createRealtimeTicket } from './lib/realtime';
 import {
   createInvitation,
   createProject,
@@ -21,9 +25,11 @@ import {
   getActivity,
 } from './lib/projects';
 import { syncProject } from './lib/sync';
+import { InvalidSnapshotCursorError } from './lib/snapshot';
 import {
   badRequest,
   errorResponse,
+  internalError,
   jsonResponse,
   methodNotAllowed,
   notFound,
@@ -35,7 +41,8 @@ import {
   getRateLimitConfig,
   type RateDecision,
 } from './lib/ratelimit';
-import { verifyJwt, assertJwtSecret } from './lib/auth';
+import { purgeExpiredLoginCodes } from './lib/login';
+import { runChangelogPruning } from './lib/changelogPruning';
 import type { Env } from './types';
 
 // Re-exported so Wrangler can find the Durable Object classes in the entry module.
@@ -98,13 +105,48 @@ export default {
       attachRateLimitHeaders(wrapped, rateLimitResult);
       return wrapped;
     } catch (error) {
-      console.error(error);
-      return withCors(
-        errorResponse(500, 'Internal server error'),
-        request,
-        env
-      );
+      // Log internals server-side only; the client gets a fixed, retryable
+      // error with no stack, SQL, or constraint text.
+      console.error('[worker] unhandled error', error);
+      return withCors(internalError(), request, env);
     }
+  },
+
+  /**
+   * Nightly maintenance, routed by the exact cron expression from
+   * `[triggers] crons` in wrangler.toml:
+   *
+   *   cron             job
+   *   ---------------  --------------------------------------------------
+   *   "0 3 * * *"      purge expired login codes (purgeExpiredLoginCodes)
+   *   "30 3 * * *"     prune the sync_changes change log (retention window +
+   *                    per-project count cap) and refresh pruning horizons
+   *                    (runChangelogPruning)
+   *
+   * Unknown expressions log and no-op (defensive: a stray trigger must never
+   * run the wrong job). Jobs are awaited inline — `scheduled` has its own
+   * wall-clock budget, so `waitUntil` would add nothing.
+   */
+  async scheduled(controller, env, _ctx): Promise<void> {
+    // Daily legacy-token census (harden-auth-tokens cutover). Tokens are only
+    // observable at request time — there is nothing to count at boot — so each
+    // isolate reports what IT verified since it started; the fetch-path log
+    // (first legacy hit per isolate) covers the per-token detail. Counted
+    // subjects are hashed, never raw.
+    console.log(
+      `[auth] legacy-token verifications since isolate start: ${legacyTokenVerificationCount()}`
+    );
+    if (controller.cron === '30 3 * * *') {
+      await runChangelogPruning(env);
+      return;
+    }
+    if (controller.cron === '0 3 * * *') {
+      await purgeExpiredLoginCodes(env);
+      return;
+    }
+    console.warn(
+      `[cron] unrecognized cron expression "${controller.cron}"; no-op`
+    );
   },
 } satisfies ExportedHandler<Env>;
 
@@ -172,17 +214,17 @@ async function applyRateLimiting(
   );
 }
 
-/** Cheaply decode the JWT subject (no D1 lookup) for user-keyed rate limits. */
+/**
+ * Cheaply resolve the JWT subject for user-keyed rate limits. Uses the shared
+ * memoized `getAuth` context, so the token verified here is not verified again
+ * by the route handler's `requireUser` — one HMAC verification per request.
+ */
 async function subjectOf(
   request: Request,
   env: Env
 ): Promise<string | null> {
-  const authorization = request.headers.get('Authorization');
-  if (!authorization?.startsWith('Bearer ')) return null;
-  const token = authorization.slice('Bearer '.length).trim();
-  if (!token) return null;
-  const payload = await verifyJwt(token, env.JWT_SECRET);
-  return payload?.sub ?? null;
+  const auth = await getAuth(request, env);
+  return auth?.userId ?? null;
 }
 
 function attachRateLimitHeaders(response: Response, decision: RateDecision): void {
@@ -209,6 +251,8 @@ async function route(
       endpoints: [
         'POST /auth/request-code',
         'POST /auth/verify',
+        'POST /auth/renew',
+        'POST /realtime/ticket',
         'GET /me',
         'POST /projects',
         'GET /projects',
@@ -223,7 +267,7 @@ async function route(
         'POST /invitations/:code/accept',
         'GET /projects/:id/activity',
         'GET /projects/:id/snapshot',
-        'GET /projects/:id/realtime (WebSocket)',
+        'GET /projects/:id/realtime (WebSocket, tabspace-auth ticket)',
       ],
     });
   }
@@ -240,6 +284,23 @@ async function route(
   if (segments[0] === 'auth' && segments[1] === 'verify') {
     if (request.method !== 'POST') return methodNotAllowed(['POST']);
     return verifyLoginCode(request, env);
+  }
+
+  // Silent renewal (harden-auth-tokens): authenticated with the current valid
+  // bearer token — no login code re-entry. Rate limiting classifies it in the
+  // authenticated per-user tier via `subjectOf` below (it carries a Bearer
+  // token), so no special tier branch is needed.
+  if (segments[0] === 'auth' && segments[1] === 'renew') {
+    if (request.method !== 'POST') return methodNotAllowed(['POST']);
+    return renewAccessToken(request, env);
+  }
+
+  // Realtime ticket exchange (harden-auth-tokens): bearer token + projectId →
+  // short-lived single-use ticket for the WebSocket subprotocol handshake.
+  // Also classified in the authenticated per-user rate-limit tier.
+  if (segments[0] === 'realtime' && segments[1] === 'ticket') {
+    if (request.method !== 'POST') return methodNotAllowed(['POST']);
+    return createRealtimeTicket(request, env);
   }
 
   if (segments[0] === 'me') {
@@ -311,7 +372,9 @@ async function route(
     if (user instanceof Response) return user;
     const body = await readJson(request);
     if (body instanceof Response) return body;
-    return syncProject(env, user, segments[1], body);
+    // `ctx` lets the sync engine schedule realtime fan-out via `waitUntil`,
+    // keeping the notification off the request path.
+    return syncProject(env, user, segments[1], body, ctx);
   }
 
   if (
@@ -401,18 +464,55 @@ async function route(
       'viewer'
     );
     if (access instanceof Response) return access;
-    const snapshot = await getProjectSnapshot(env, segments[1]);
-    return jsonResponse(snapshot);
+    return handleSnapshotRequest(
+      env,
+      segments[1],
+      url.searchParams.get('cursor'),
+      url.searchParams.get('pageSize')
+    );
   }
 
   return notFound('Route not found');
 }
 
 /**
- * Phase 5 realtime upgrade. Authenticates the `?token=` query parameter,
- * verifies the user is a member of the project (viewer+), then forwards the
- * WebSocket upgrade to the project's Durable Object, stamping the user's
- * identity onto headers the DO trusts for presence.
+ * Snapshot endpoint body (auth + project access are already checked by the
+ * route). Split out so the pagination contract — in particular the fixed
+ * 400 for an invalid cursor — is testable without wiring full JWT auth.
+ */
+export async function handleSnapshotRequest(
+  env: Env,
+  projectId: string,
+  cursor: string | null,
+  pageSize: string | null
+): Promise<Response> {
+  try {
+    const snapshot = await getProjectSnapshot(env, projectId, {
+      cursor,
+      pageSize,
+    });
+    return jsonResponse(snapshot);
+  } catch (error) {
+    if (error instanceof InvalidSnapshotCursorError) {
+      // Fixed, client-safe message: no echo of the untrusted cursor value.
+      // The hint tells clients to fall back to a cursor-less full reconcile.
+      return badRequest(
+        'Invalid snapshot cursor; request the snapshot without a cursor to reconcile'
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Realtime upgrade (harden-auth-tokens). The worker performs no auth of its
+ * own: the client presents a single-use realtime ticket (minted by
+ * `POST /realtime/ticket`, which enforces project membership at mint time) as
+ * the second `Sec-WebSocket-Protocol` entry. The upgrade request is forwarded
+ * verbatim so the ticket header reaches the `ProjectRoom` DO, which verifies
+ * HMAC + expiry + project binding + one-time nonce and rejects with a plain
+ * 401 pre-upgrade. The `?token=` query-parameter path is gone: a token in the
+ * URL is never read or honored.
  */
 async function handleRealtimeUpgrade(
   request: Request,
@@ -432,25 +532,13 @@ async function handleRealtimeUpgrade(
     return badRequest('Expected a WebSocket upgrade');
   }
 
-  const token = url.searchParams.get('token') ?? '';
-  const user = await authenticateToken(token, env);
-  if (user instanceof Response) return user;
-
+  // The DO owns connect-time auth: ticket + one-time nonce live in DO
+  // storage. The request is forwarded as-is so `Sec-WebSocket-Protocol` and
+  // the `?clientId=` parameter reach the room; the project id is re-derived
+  // from the room path and must match the ticket's binding.
   const projectId = url.pathname.split('/').filter(Boolean)[1] ?? '';
-  const access = await requireProjectAccess(env, user.id, projectId);
-  if (access instanceof Response) return access;
-
-  // Forward the upgrade to the DO, carrying identity so presence tags can be
-  // built server-side. The display name is URL-encoded to survive non-ASCII /
-  // header-unfriendly characters.
-  const headers = new Headers(request.headers);
-  headers.set('X-User-Id', user.id);
-  headers.set('X-User-Name', encodeURIComponent(user.display_name ?? ''));
-  headers.set('X-User-Role', access.role);
-  headers.set('X-Client-Id', url.searchParams.get('clientId') ?? '');
-
   const stub = env.PROJECT_ROOM.get(env.PROJECT_ROOM.idFromName(projectId));
-  return stub.fetch(new Request(request, { headers }));
+  return stub.fetch(request);
 }
 
 function parsePositiveInt(value: string | null, fallback: number): number {

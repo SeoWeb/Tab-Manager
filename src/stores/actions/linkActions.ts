@@ -4,6 +4,7 @@ import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { preloadFavicon } from '@/lib/utils';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import { debugLog } from '@/lib/debugLog';
 import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
@@ -199,7 +200,7 @@ export const createLinkActions = (
               title: newTitle || oldTitle,
               url: newUrl || oldUrl,
             });
-            console.log(`Bookmark for link ${linkId} updated.`);
+            debugLog(`Bookmark for link ${linkId} updated.`);
           } catch (error) {
             console.error(
               `Failed to update bookmark for link ${linkId}:`,
@@ -261,7 +262,7 @@ export const createLinkActions = (
         (async () => {
           try {
             await bookmarkStorage.deleteLink(linkToDelete.bookmarkId!);
-            console.log(`Bookmark for link ${linkId} deleted.`);
+            debugLog(`Bookmark for link ${linkId} deleted.`);
           } catch (error) {
             console.error(
               `Failed to delete bookmark for link ${linkId}:`,

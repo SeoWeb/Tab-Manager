@@ -13,7 +13,7 @@ import { highlightText } from '@/lib/highlight';
 import { useDndContext } from '@dnd-kit/core';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
-import { convertChromeFaviconUrl } from '@/lib/faviconService';
+import { convertChromeFaviconUrl } from '@tabspace/shared/lib/faviconService';
 
 interface LinkItemProps {
   link: Link;

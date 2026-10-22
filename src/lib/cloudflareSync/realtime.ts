@@ -1,10 +1,19 @@
 import { useAppStore } from '@/stores/appStore';
 import { getApiBaseUrl, getClientId } from './config';
 import { getToken } from './authStorage';
-import { realtimeUrl, handleRealtimeMessage } from './realtimeMessages';
+import { CloudSyncApiError, requestRealtimeTicket } from './client';
+import {
+  realtimeUrl,
+  handleRealtimeMessage,
+  resetRealtimeChunkBuffer,
+} from './realtimeMessages';
 
 // Re-export the pure helpers so callers can import everything from one module.
-export { realtimeUrl, handleRealtimeMessage } from './realtimeMessages';
+export {
+  realtimeUrl,
+  handleRealtimeMessage,
+  resetRealtimeChunkBuffer,
+} from './realtimeMessages';
 export type { RealtimeStoreLike } from './realtimeMessages';
 
 /**
@@ -15,9 +24,13 @@ export type { RealtimeStoreLike } from './realtimeMessages';
  * handling (apply changes, advance cursor, presence) lives in the pure
  * `realtimeMessages` module; this module owns the socket lifecycle.
  *
- * Auth: the Worker expects the JWT as a `?token=` query param (browsers cannot
- * set headers on `new WebSocket(...)`). The connection is only made over the
- * configured Worker URL, and WSS encrypts the token in transit.
+ * Auth (harden-auth-tokens): browsers cannot set headers on `new WebSocket`
+ * and query params leak, so the access token is exchanged (via
+ * `POST /realtime/ticket`, Bearer-authenticated) for a short-lived single-use
+ * ticket that is presented during the handshake as a `Sec-WebSocket-Protocol`
+ * entry (`tabspace-auth`, <ticket>). Tokens and tickets NEVER appear in the
+ * URL. A fresh ticket is fetched for every attempt — the server-side TTL is
+ * 60 s and tickets are single-use, so nothing is cached across reconnects.
  *
  * The socket lives for the active project and is managed from
  * `CloudSyncRealtime` (popup/newtab); the background service worker does not use
@@ -26,10 +39,18 @@ export type { RealtimeStoreLike } from './realtimeMessages';
 
 const MAX_BACKOFF_MS = 30_000;
 
+/** The supported auth subprotocol the server echoes back on success. */
+const REALTIME_AUTH_PROTOCOL = 'tabspace-auth';
+
 let socket: WebSocket | null = null;
 let activeProjectId: string | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let attempt = 0;
+/**
+ * Bumped by every connect/disconnect. In-flight ticket requests compare their
+ * generation on resume so a superseded attempt can never open a socket.
+ */
+let connectGeneration = 0;
 
 /** Whether the realtime socket is currently open. */
 export function isRealtimeConnected(): boolean {
@@ -52,6 +73,7 @@ export async function connectProjectRealtime(projectId: string): Promise<void> {
 
   disconnectProjectRealtime();
   activeProjectId = projectId;
+  const generation = ++connectGeneration;
 
   const baseUrl = (await getApiBaseUrl()).trim();
   if (!baseUrl) return;
@@ -59,21 +81,44 @@ export async function connectProjectRealtime(projectId: string): Promise<void> {
   if (!token) return;
   const clientId = await getClientId();
 
-  openSocket(projectId, baseUrl, token, clientId);
+  await openSocket(projectId, baseUrl, clientId, generation);
 }
 
-function openSocket(
+async function openSocket(
   projectId: string,
   baseUrl: string,
-  token: string,
-  clientId: string
-): void {
-  const url = realtimeUrl(baseUrl, projectId, token, clientId);
+  clientId: string,
+  generation: number
+): Promise<void> {
+  if (generation !== connectGeneration) return;
+  // A fresh (or reconnecting) socket starts with no partial chunk groups — an
+  // interrupted group from the previous connection can never complete.
+  resetRealtimeChunkBuffer();
+
+  // Fresh single-use ticket per attempt. A 401 here has already been through
+  // the client's renew-then-retry path; a hard 401 means the session is
+  // unrecoverable and the once-only re-auth signal has fired — stop
+  // reconnecting until the user signs in again. Other failures (network,
+  // rate limit, 5xx) follow the normal backoff schedule below.
+  let ticket: string;
+  try {
+    ticket = await requestRealtimeTicket(projectId);
+  } catch (error) {
+    if (generation !== connectGeneration) return;
+    if (error instanceof CloudSyncApiError && error.status === 401) {
+      return;
+    }
+    scheduleReconnect(projectId, baseUrl, clientId, generation);
+    return;
+  }
+  if (generation !== connectGeneration) return;
+
+  const url = realtimeUrl(baseUrl, projectId, clientId);
   let ws: WebSocket;
   try {
-    ws = new WebSocket(url);
+    ws = new WebSocket(url, [REALTIME_AUTH_PROTOCOL, ticket]);
   } catch {
-    scheduleReconnect(projectId, baseUrl, token, clientId);
+    scheduleReconnect(projectId, baseUrl, clientId, generation);
     return;
   }
   socket = ws;
@@ -97,7 +142,7 @@ function openSocket(
     }
     // Only auto-reconnect if we still want this project (not a deliberate close).
     if (activeProjectId === projectId) {
-      scheduleReconnect(projectId, baseUrl, token, clientId);
+      scheduleReconnect(projectId, baseUrl, clientId, generation);
     }
   };
 
@@ -109,8 +154,8 @@ function openSocket(
 function scheduleReconnect(
   projectId: string,
   baseUrl: string,
-  token: string,
-  clientId: string
+  clientId: string,
+  generation: number
 ): void {
   if (reconnectTimer) return;
   attempt += 1;
@@ -118,7 +163,7 @@ function scheduleReconnect(
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     if (activeProjectId === projectId) {
-      openSocket(projectId, baseUrl, token, clientId);
+      void openSocket(projectId, baseUrl, clientId, generation);
     }
   }, delay);
 }
@@ -150,6 +195,8 @@ export function sendEditingPresence(
 export function disconnectProjectRealtime(): void {
   activeProjectId = null;
   attempt = 0;
+  connectGeneration += 1;
+  resetRealtimeChunkBuffer();
   if (reconnectTimer) {
     clearTimeout(reconnectTimer);
     reconnectTimer = null;

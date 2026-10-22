@@ -11,14 +11,8 @@ interface ArchivedTasksViewProps {
 }
 
 const ArchivedTasksView: React.FC<ArchivedTasksViewProps> = ({ tasks }) => {
-  const unarchiveTask = useAppStoreWithDefaults(
-    (state) => state.unarchiveTask,
-    () => {}
-  );
-  const deleteTask = useAppStoreWithDefaults(
-    (state) => state.deleteTask,
-    () => {}
-  );
+  const unarchiveTask = useAppStoreWithDefaults((state) => state.unarchiveTask);
+  const deleteTask = useAppStoreWithDefaults((state) => state.deleteTask);
 
   const archivedTasks = tasks.filter(
     (task) => task.isArchived || task.status === 'archived'

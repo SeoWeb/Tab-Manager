@@ -11,6 +11,7 @@ import {
   errorMessage,
 } from './internal';
 import { refreshProjectRole } from './collaboration';
+import { reconcileProject } from './reconcile';
 import type { CloudSyncStatus } from '../types';
 
 /**
@@ -40,30 +41,55 @@ export async function syncProjectNow(projectId: string): Promise<void> {
   setCloudState({ status: 'syncing', lastError: null });
 
   try {
-    const mutations = await queue.getQueueForProject(projectId);
-    const lastCursor = cloudSync.cursors[projectId] ?? null;
+    // Conflicted entries are excluded (fix-cross-context-data-loss 7.1): they
+    // stay queued until the user resolves or discards the conflict; retrying a
+    // CAS rejection can never succeed, so they are not re-sent.
+    const mutations = await queue.getPushableQueueForProject(projectId);
+    // Read the cursor INSIDE the lock window (fix-cross-context-data-loss
+    // 3.1): the `cloudSync` snapshot above was taken before the lock was
+    // acquired, so a background pass could have completed its own locked
+    // read-modify-write — including a cursor advance for this project — in
+    // between. Reading now, under the lock, mirrors the background path,
+    // which snapshots cursors after acquiring.
+    const lastCursor =
+      useAppStore.getState().cloudSync.cursors[projectId] ?? null;
     const response = await client.syncProject({
       projectId,
       lastCursor,
       mutations,
     });
 
-    // Apply remote changes (skips our own echoes by client id).
+    // Apply remote changes (skips our own echoes by client id) — unless the
+    // server flagged us as a lagging client (see the fallback below): the
+    // flagged response's `changes` is empty BY DESIGN (our cursor predates the
+    // pruned change-log window), so there is nothing to merge and the full
+    // snapshot reconcile supplies the state instead.
     const clientId = await config.getClientId();
     const store = useAppStore.getState();
-    store.mergeRemoteChanges(response.changes, clientId);
+    if (response.reconcileRequired !== true) {
+      store.mergeRemoteChanges(response.changes, clientId);
+    }
 
-    // The server applies accepted mutations idempotently and reports the rest as
-    // conflicts. Under last-write-wins a structurally-conflicted mutation (e.g.
-    // an update of an entity that was deleted remotely) will not succeed on retry,
-    // so we drop every pushed mutation — accepted or conflicted — to keep the
-    // queue bounded and avoid re-reporting the same conflict on every sync.
-    // Conflicts are surfaced via status + lastError; a resolution UI is a later
-    // phase.
-    const remaining = await queue.removeMutations(
-      mutations.map((m) => m.clientMutationId)
+    // The server reports exactly one outcome per pushed mutation. Only
+    // finalized mutations leave the queue: `applied` (accepted) and `skipped`
+    // (permanently rejected; warned and dropped to avoid a retry loop).
+    // `conflict` outcomes RETAIN their mutation, flagged `conflicted`
+    // (fix-cross-context-data-loss 7.1) — the queued local edit survives until
+    // the user resolves or discards the conflict, which releases it.
+    // `error` outcomes and missing entries keep their mutation queued for the
+    // next sync, so nothing is silently lost.
+    const settlement = await queue.settleMutationOutcomes(
+      mutations,
+      response.outcomes
     );
+    const remaining = settlement.queue;
     setCloudState({ pendingEdits: queue.pendingEditsFromQueue(remaining) });
+    // Surface how many queued mutations are conflicted so the status badge can
+    // show the unresolved-conflict count (setCloudState's patch type doesn't
+    // carry the field, so go through the store action directly).
+    useAppStore.getState().setCloudSyncState({
+      conflictedMutationCount: settlement.conflicted.length,
+    });
 
     store.setProjectCursor(projectId, response.cursor);
 
@@ -80,6 +106,32 @@ export async function syncProjectNow(projectId: string): Promise<void> {
         ? formatConflicts(projectId, response.conflicts)
         : null,
     });
+
+    // Lagging-client fallback (scale-sync-backend, change-log-retention): the
+    // server flagged `reconcileRequired` because our incremental cursor points
+    // into the pruned change-log window — the incremental delta would be
+    // incomplete, so it answered `changes: []` and we must rebuild from the
+    // full snapshot instead. The pushed mutations above were still applied
+    // server-side (their outcomes are real), and we DID advance the cursor to
+    // the response's fresh max change id: that value sits at/above the
+    // pruning horizon (pruning deletes oldest-first, so every retained change
+    // id exceeds every pruned one), which means the staleness predicate
+    // (`lastCursor < max_pruned_change_id`) can never fire again for this
+    // horizon — no re-entry loop. The reconcile itself only ever calls the
+    // snapshot endpoint, never the sync endpoint, so it cannot observe (or
+    // re-enter) this flagged branch. (Note: reconcile deliberately does NOT
+    // touch the incremental cursor — the advance here is what breaks the
+    // cycle.)
+    if (response.reconcileRequired === true) {
+      console.warn(
+        `[cloudSync] server flagged reconcileRequired for project ${projectId}; falling back to full snapshot reconcile`
+      );
+      // We already hold the popup sync lock, so run the reconcile with
+      // `force`: that skips acquiring/releasing the advisory lock (a non-force
+      // call would "acquire" our own lock and then release it in its finally,
+      // opening a window for the background worker mid-sync).
+      await reconcileProject(projectId, { force: true });
+    }
   } catch (error) {
     const status: CloudSyncStatus = isOnline() ? 'error' : 'offline';
     setCloudState({ status, lastError: errorMessage(error) });

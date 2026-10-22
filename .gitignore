@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -21,9 +22,13 @@
 /build
 /dist
 
+# swc cache
+/.swc/
+
 # misc
 .DS_Store
 *.pem
+/.modified
 
 # debug
 npm-debug.log*

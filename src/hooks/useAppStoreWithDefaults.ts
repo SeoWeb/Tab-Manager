@@ -1,119 +1,49 @@
 import { useAppStore } from '@/stores/appStore';
 import type { AppState } from '@/stores/types';
 
-// Default values to prevent undefined errors
-const defaultState: Partial<AppState> = {
-  projects: [],
-  activeProjectId: null,
-  isDarkMode: false,
-  activeView: 'projectDetail',
-  isRightContentPanelOpen: false,
-  activeVerticalTabId: null,
-  quickLinks: [],
-  notes: [],
-  todos: [],
-  chromeWindows: [],
-  _hasHydrated: false,
-  isAddProjectModalOpen: false,
-  isAddCollectionModalOpen: false,
-  isAddLinkModalOpen: false,
-  isEditLinkModalOpen: false,
-  editingCollectionIdForLink: null,
-  editingCollectionId: null,
-  editingLinkId: null,
-  tabManagerRootFolderId: null,
-};
-
+/**
+ * Direct pass-through to the store hook.
+ *
+ * Historically this helper wrapped selectors in try/catch with fallback
+ * values to defend against `undefined` state; the store is now created
+ * synchronously with fully-populated state and the UI renders only after
+ * hydration, so those defenses were dead code that hid real selector bugs.
+ * Per the ui-resilience spec ("Selector failures are honest"), a throwing
+ * selector now propagates to the nearest error boundary.
+ */
 export function useAppStoreWithDefaults<T>(
-  selector: (state: AppState) => T,
-  fallback?: T
+  selector: (state: AppState) => T
 ): T {
-  return useAppStore((state) => {
-    // Enhanced safety checks
-    if (!state || typeof state !== 'object') {
-      console.warn(
-        'Store state is undefined or invalid, using fallback. State:',
-        state
-      );
-      if (fallback !== undefined) return fallback;
-
-      // Try to apply selector to default state
-      try {
-        return selector(defaultState as AppState);
-      } catch (error) {
-        console.warn('Failed to apply selector to default state:', error);
-        return fallback as T;
-      }
-    }
-
-    try {
-      const result = selector(state);
-      // Additional check for undefined results
-      if (result === undefined && fallback !== undefined) {
-        console.warn(
-          'Selector returned undefined, using fallback. Selector:',
-          selector.toString()
-        );
-        return fallback;
-      }
-      return result;
-    } catch (error) {
-      console.warn(
-        'Selector failed, using fallback:',
-        error,
-        'Selector:',
-        selector.toString()
-      );
-      return fallback as T;
-    }
-  });
+  return useAppStore(selector);
 }
 
-// Convenience hooks with safe defaults
-export const useProjects = () =>
-  useAppStoreWithDefaults((state) => state.projects, []);
+// Convenience hooks — plain selectors (state fields and actions are always
+// defined on the store, so no fallbacks are needed).
+export const useProjects = () => useAppStore((state) => state.projects);
 
 export const useActiveProjectId = () =>
-  useAppStoreWithDefaults((state) => state.activeProjectId, null);
+  useAppStore((state) => state.activeProjectId);
 
-export const useIsDarkMode = () =>
-  useAppStoreWithDefaults((state) => state.isDarkMode, false);
+export const useIsDarkMode = () => useAppStore((state) => state.isDarkMode);
 
-export const useHasHydrated = () =>
-  useAppStoreWithDefaults((state) => state._hasHydrated, false);
+export const useHasHydrated = () => useAppStore((state) => state._hasHydrated);
 
 export const useToggleDarkMode = () =>
-  useAppStoreWithDefaults(
-    (state) => state.toggleDarkMode,
-    () => {}
-  );
+  useAppStore((state) => state.toggleDarkMode);
 
 export const useSetActiveView = () =>
-  useAppStoreWithDefaults(
-    (state) => state.setActiveView,
-    () => {}
-  );
+  useAppStore((state) => state.setActiveView);
 
 export const useSetActiveProject = () =>
-  useAppStoreWithDefaults(
-    (state) => state.setActiveProject,
-    () => {}
-  );
+  useAppStore((state) => state.setActiveProject);
 
-export const useAddProject = () =>
-  useAppStoreWithDefaults(
-    (state) => state.addProject,
-    () => {}
-  );
+export const useAddProject = () => useAppStore((state) => state.addProject);
 
 export const useActiveVerticalTabId = () =>
-  useAppStoreWithDefaults((state) => state.activeVerticalTabId, null);
+  useAppStore((state) => state.activeVerticalTabId);
 
 export const useToggleRightContentPanel = () =>
-  useAppStoreWithDefaults(
-    (state) => state.toggleRightContentPanel,
-    () => {}
-  );
+  useAppStore((state) => state.toggleRightContentPanel);
 
 export const useIsRightContentPanelOpen = () =>
-  useAppStoreWithDefaults((state) => state.isRightContentPanelOpen, false);
+  useAppStore((state) => state.isRightContentPanelOpen);

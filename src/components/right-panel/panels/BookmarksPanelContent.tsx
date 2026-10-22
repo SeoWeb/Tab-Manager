@@ -14,7 +14,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '@/stores/appStore';
 import { useFavicon } from '@/hooks/useFavicon';
-import { convertChromeFaviconUrl } from '@/lib/faviconService';
+import { convertChromeFaviconUrl } from '@tabspace/shared/lib/faviconService';
 
 interface FaviconProps {
   url: string;
@@ -123,6 +123,7 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className='flex-grow bg-transparent'
+            aria-label='Bookmark title'
           />
         ) : (
           <a
@@ -184,6 +185,7 @@ const BookmarkNode: React.FC<BookmarkNodeProps> = ({ node, level }) => {
             onChange={(e) => setTitle(e.target.value)}
             onClick={(e) => e.stopPropagation()}
             className='flex-grow bg-transparent'
+            aria-label='Bookmark folder title'
           />
         ) : (
           <span className='font-semibold'>{node.title}</span>
@@ -252,6 +254,7 @@ export default function BookmarksPanelContent() {
         className='w-full p-2 border rounded-md bg-background'
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
+        aria-label='Search bookmarks'
       />
       <div className='space-y-1'>
         {bookmarks.map((bookmark) => (

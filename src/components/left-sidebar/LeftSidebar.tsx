@@ -19,10 +19,7 @@ import { cn } from '@/lib/utils';
 
 export default function LeftSidebar() {
   const setActiveView = useSetActiveView();
-  const activeView = useAppStoreWithDefaults(
-    (state) => state.activeView,
-    'projectDetail'
-  );
+  const activeView = useAppStoreWithDefaults((state) => state.activeView);
   const { open: sidebarOpen, setOpen, toggleSidebar } = useSidebarState();
   const isCollapsed = !sidebarOpen;
 

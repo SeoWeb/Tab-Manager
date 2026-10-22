@@ -4,6 +4,7 @@ import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
 import { bookmarkSyncService } from '@/lib/bookmarkSyncService';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
+import { debugLog } from '@/lib/debugLog';
 import type { StoreApi } from 'zustand';
 
 const generateId = () => nanoid();
@@ -161,7 +162,7 @@ export const createProjectActions = (
             await bookmarkStorage.deleteProject(
               projectToDelete.bookmarkFolderId!
             );
-            console.log(`Bookmark folder for project ${id} deleted.`);
+            debugLog(`Bookmark folder for project ${id} deleted.`);
           } catch (error) {
             console.error(
               `Failed to delete bookmark folder for project ${id}:`,
@@ -184,7 +185,7 @@ export const createProjectActions = (
 
   syncBookmarks: async () => {
     try {
-      console.log('Manual bookmark sync triggered');
+      debugLog('Manual bookmark sync triggered');
       await bookmarkSyncService.performFullSync();
     } catch (error) {
       console.error('Manual bookmark sync failed:', error);

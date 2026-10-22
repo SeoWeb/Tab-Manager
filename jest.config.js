@@ -14,6 +14,9 @@ const config = {
   // next/jest merges this after its own CSS/image/font mocks.
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Shared TS source package (mirrors the `@tabspace/shared/*` tsconfig
+    // paths entry in the root tsconfig).
+    '^@tabspace/shared/(.*)$': '<rootDir>/packages/shared/src/$1',
   },
 };
 

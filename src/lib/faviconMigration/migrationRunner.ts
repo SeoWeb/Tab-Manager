@@ -1,4 +1,5 @@
 import { migrateAllFavicons, type MigrationResult } from './migrationCore';
+import { debugLog } from '@/lib/debugLog';
 
 const MIGRATION_FLAG_KEY = 'favicon-migration-complete';
 const STORAGE_KEY = 'tab-manager-storage';
@@ -30,7 +31,7 @@ export async function executeFaviconMigration(): Promise<MigrationResult> {
     ) {
       await new Promise<void>((resolve) => {
         chrome.storage.local.set({ [STORAGE_KEY]: stateToPersist }, () => {
-          console.log('Favicon migration state persisted to storage');
+          debugLog('Favicon migration state persisted to storage');
           resolve();
         });
       });
@@ -79,11 +80,11 @@ export async function runFaviconMigrationIfNeeded(): Promise<MigrationResult | n
   const migrationComplete = await isMigrationComplete();
 
   if (migrationComplete) {
-    console.log('Favicon migration has already been completed.');
+    debugLog('Favicon migration has already been completed.');
     return null;
   }
 
-  console.log('Running favicon migration...');
+  debugLog('Running favicon migration...');
   const result = await executeFaviconMigration();
 
   // Mark the migration as complete

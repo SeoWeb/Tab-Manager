@@ -1,0 +1,15 @@
+-- Purge every outstanding login code (unconditional wipe).
+--
+-- Why: login codes were previously stored as PLAINTEXT in the `code` column
+-- (0002_login_codes.sql). The login flow now stores a per-row-salted SHA-256
+-- verifier (`<salt>$<digest>`) in that column instead, so any row written by
+-- the old code is a plaintext account credential sitting at rest. The old rows
+-- cannot be upgraded in place — no salt was recorded, so they cannot be
+-- re-hashed — which leaves exactly one safe option: delete them all.
+--
+-- Users simply request a fresh code: codes are single-use, 10-minute-lived,
+-- and re-requesting is the normal flow, so the only cost of this migration is
+-- one extra email for anyone mid sign-in.
+--
+-- (0003 was removed upstream; 0004 exists, so this file is numbered 0005.)
+DELETE FROM login_codes;

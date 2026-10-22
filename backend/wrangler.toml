@@ -11,7 +11,10 @@ custom_domain = true
 local_protocol = "http"
 
 [vars]
-ALLOWED_ORIGINS = "*"
+# Exact-match CORS allow-list, comma-separated. "*" is rejected (fails closed).
+ALLOWED_ORIGINS = "https://tab-manager.ww0.dev"
+# TODO(pre-deploy): add the production extension origin, e.g.
+#   ALLOWED_ORIGINS = "https://tab-manager.ww0.dev,chrome-extension://<EXTENSION_ID>"
 
 # Email sending for the magic-PIN login flow. `remote = true` routes sends
 # through Cloudflare's live email infrastructure, so the sending domain
@@ -28,6 +31,7 @@ remote = true
 binding = "D1_DATABASE"
 database_name = "tab-manager-dev"
 database_id = "f26c3b54-96ff-4d66-a9ca-ae9a308aecf8"
+migrations_dir = "src/db/migrations"
 
 # Phase 5 realtime: one ProjectRoom Durable Object per project id. The DO uses
 # the WebSocket Hibernation API for presence + change fan-out.
@@ -51,3 +55,11 @@ new_sqlite_classes = ["ProjectRoom"]
 [[migrations]]
 tag = "v2-rate-limiter"
 new_sqlite_classes = ["RateLimiter"]
+
+# Nightly maintenance: fires the `scheduled` handler in src/index.ts, routed by
+# the exact cron string (see the handler for the routing table):
+#   "0 3 * * *"  — login-code purge (purgeExpiredLoginCodes)
+#   "30 3 * * *" — sync_changes changelog pruning (runChangelogPruning)
+# Dormant without this block.
+[triggers]
+crons = ["0 3 * * *", "30 3 * * *"]

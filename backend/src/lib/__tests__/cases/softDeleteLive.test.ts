@@ -20,6 +20,7 @@ describe('applyMutation soft-delete basis: live-entity mutations succeed', () =>
         entityType: 'task',
         entityId: 't-live',
         operation: 'update',
+        baseVersion: 2, // mandatory CAS basis (§2.2); matches the live version
         patch: { title: 'updated' },
       })
     );

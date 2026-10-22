@@ -34,12 +34,19 @@ export function getQuotaConfig(env: Env): QuotaConfig {
 }
 
 /**
- * A quota-guarded write. `primary` is the statement that *consumes* the quota
- * (creates the project, adds the member, applies the create mutations). It MUST
- * be an `INSERT ... SELECT ... WHERE (count subquery) < limit` so it only
- * commits when capacity is actually available — this is what makes the check
- * concurrency-safe. `dependents` run only after `primary` succeeds and so never
- * orphan rows when the quota is breached.
+ * A quota-guarded write, executed in TWO PHASES.
+ *
+ * `primary` is the statement that *consumes* the quota (creates the project,
+ * adds the member). It MUST be an `INSERT ... SELECT ... WHERE (count subquery)
+ * < limit` so it only commits when capacity is actually available — this is
+ * what makes the check concurrency-safe.
+ *
+ * `dependents` run as a SEPARATE second batch, only after the primary is known
+ * to have committed. They must never ride in the same batch as the guard: D1
+ * batches execute every statement even when an earlier statement inserts 0
+ * rows, so a guard that trips would still commit the dependents — orphaned
+ * memberships for projects that were never created, invitations marked
+ * accepted without a membership, phantom version bumps and changelog rows.
  */
 export interface QuotaCommit {
   primary: D1PreparedStatement;
@@ -52,11 +59,15 @@ export interface QuotaCommit {
  * When no `commit` is supplied the quota is a plain read check (used where the
  * caller performs the write itself and only needs the pre-flight decision).
  *
- * When `commit` is supplied, the count and the quota-consuming write are run in
- * a single D1 `batch` (one transaction). Because `primary` is guarded by the
- * live count via its `WHERE` clause, concurrent requests cannot both observe
- * available capacity and overshoot the limit — at most one wins the final slot.
- * The error shape is unchanged (`403` quota-exceeded).
+ * When `commit` is supplied the check runs in two phases. Phase 1 executes the
+ * guarded `primary` statement ALONE: because the guard lives in its `WHERE`
+ * clause, the check-and-insert is still atomic and concurrent requests cannot
+ * both observe available capacity and overshoot the limit — at most one wins
+ * the final slot. A 0-row result means the quota is exhausted and the
+ * structured `403` is returned WITHOUT any dependent statement having run.
+ * Phase 2 executes the dependents only once the primary write has definitely
+ * committed, so dependents can never orphan. The error shape is unchanged
+ * (`403` quota-exceeded).
  */
 async function enforceCount(
   env: Env,
@@ -76,15 +87,19 @@ async function enforceCount(
     return null;
   }
 
-  const results = await env.D1_DATABASE.batch([
-    commit.primary,
-    ...(commit.dependents ?? []),
-  ]);
+  // Phase 1: the quota-consuming write alone.
+  const results = await env.D1_DATABASE.batch([commit.primary]);
 
   // The primary statement only inserts when under quota; a 0-row write means
-  // the guard tripped and the request must be rejected.
+  // the guard tripped and the request must be rejected before ANY dependent
+  // statement executes.
   if ((results[0]?.meta?.changes ?? 0) === 0) {
     return quotaExceeded(breachMessage);
+  }
+
+  // Phase 2: dependents run only after the primary has committed.
+  if (commit.dependents && commit.dependents.length > 0) {
+    await env.D1_DATABASE.batch(commit.dependents);
   }
   return null;
 }
@@ -94,7 +109,9 @@ async function enforceCount(
  * Returns `null` when within quota, or a `403` `Response`.
  *
  * When `commit` is provided, the project creation is performed atomically with
- * the count check so concurrent creates cannot both pass and overshoot the cap.
+ * the count check (guarded primary statement, then dependents in a second
+ * batch — see `QuotaCommit`) so concurrent creates cannot both pass and
+ * overshoot the cap.
  */
 export async function checkProjectQuota(
   env: Env,
@@ -118,8 +135,10 @@ export async function checkProjectQuota(
  * Reject when the project already has the maximum number of members. Returns
  * `null` when within quota, or a `403` `Response`.
  *
- * When `commit` is provided, the membership/invitation creation is performed
- * atomically with the count check so concurrent adds cannot overshoot the cap.
+ * When `commit` is provided, the membership creation is performed atomically
+ * with the count check (guarded primary statement, then dependents such as the
+ * invitation's `accepted_at` update in a second batch — see `QuotaCommit`) so
+ * concurrent accepts cannot overshoot the cap.
  */
 export async function checkMemberQuota(
   env: Env,
@@ -139,65 +158,38 @@ export async function checkMemberQuota(
   );
 }
 
+/** Shared live-entity count read (collections + links + tasks + notes + todos). */
+const ENTITY_COUNT_READ_SQL = `
+  SELECT
+    (SELECT COUNT(*) FROM collections WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM links WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM tasks WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM notes WHERE project_id = ? AND deleted_at IS NULL) +
+    (SELECT COUNT(*) FROM todos WHERE project_id = ? AND deleted_at IS NULL)
+  AS n
+`;
+
+/** The fixed client-visible message for an entity-quota breach. */
+export function entityQuotaMessage(cfg: QuotaConfig): string {
+  return `This project has reached the maximum of ${cfg.maxEntitiesPerProject} entities`;
+}
+
 /**
- * Reject when applying `createCount` new entities would push the project past
- * its total-entity cap. Returns `null` when within quota, or a `403` `Response`.
- *
- * When `commit` is provided, the create-mutation application is performed
- * atomically with the count check so concurrent syncs cannot overshoot the cap.
+ * How many new entities the project can still accept before hitting its
+ * total-entity cap (never negative). The sync path reads this up front, applies
+ * creates in request order until it runs out, and rejects the overflow with a
+ * structured `403` — creates applied within capacity stay committed, blocked
+ * creates leave no version bump and no changelog row.
  */
-export async function checkEntityQuotaForMutations(
+export async function getEntityQuotaHeadroom(
   env: Env,
-  projectId: string,
-  createCount: number,
-  commit?: QuotaCommit
-): Promise<Response | null> {
+  projectId: string
+): Promise<number> {
   const cfg = getQuotaConfig(env);
-  if (createCount <= 0) return null;
-
-  const readSql = `
-    SELECT
-      (SELECT COUNT(*) FROM collections WHERE project_id = ? AND deleted_at IS NULL) +
-      (SELECT COUNT(*) FROM links WHERE project_id = ? AND deleted_at IS NULL) +
-      (SELECT COUNT(*) FROM tasks WHERE project_id = ? AND deleted_at IS NULL) +
-      (SELECT COUNT(*) FROM notes WHERE project_id = ? AND deleted_at IS NULL) +
-      (SELECT COUNT(*) FROM todos WHERE project_id = ? AND deleted_at IS NULL)
-    AS n
-  `;
-
-  // When no commit is provided we can decide synchronously from the read.
-  if (!commit) {
-    const row = await env.D1_DATABASE.prepare(readSql)
-      .bind(projectId, projectId, projectId, projectId, projectId)
-      .first<{ n: number }>();
-    if ((row?.n ?? 0) + createCount > cfg.maxEntitiesPerProject) {
-      return quotaExceeded(
-        `This project has reached the maximum of ${cfg.maxEntitiesPerProject} entities`
-      );
-    }
-    return null;
-  }
-
-  // With a commit the guard lives inside the primary write (each create INSERT
-  // carries a `WHERE (existing count + createCount) <= limit` clause), so the
-  // count check and the create application run in a single D1 batch. We still
-  // re-validate here to keep the error message accurate on the fast path.
-  const row = await env.D1_DATABASE.prepare(readSql)
+  const row = await env.D1_DATABASE.prepare(ENTITY_COUNT_READ_SQL)
     .bind(projectId, projectId, projectId, projectId, projectId)
     .first<{ n: number }>();
-  if ((row?.n ?? 0) + createCount > cfg.maxEntitiesPerProject) {
-    return quotaExceeded(
-      `This project has reached the maximum of ${cfg.maxEntitiesPerProject} entities`
-    );
-  }
-  return enforceCount(
-    env,
-    readSql,
-    [projectId, projectId, projectId, projectId, projectId],
-    cfg.maxEntitiesPerProject,
-    `This project has reached the maximum of ${cfg.maxEntitiesPerProject} entities`,
-    commit
-  );
+  return Math.max(0, cfg.maxEntitiesPerProject - (row?.n ?? 0));
 }
 
 /**

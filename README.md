@@ -147,10 +147,10 @@ assets into `build/`). The resulting **`build/`** directory is the loadable exte
 
 ## Loading the extension in Chrome
 
-1. Build the extension (`pnpm build`) so the `out/` folder exists.
+1. Build the extension (`pnpm build`) so the `build/` folder exists.
 2. Open `chrome://extensions`.
 3. Enable **Developer mode** (top-right toggle).
-4. Click **Load unpacked** and select the project's `out/` directory.
+4. Click **Load unpacked** and select the project's `build/` directory.
 5. The extension overrides the **New Tab** page and provides a toolbar **popup**.
    Pin it from the puzzle menu for quick access.
 6. After source changes: rebuild (`pnpm build`) and click the **reload** icon on
@@ -440,10 +440,10 @@ jsdom environment.
 
 ```
 .
-├── public/                 # manifest.json, icons (copied into out/ at build)
+├── public/                 # manifest.json, icons (copied into build/ at build)
 ├── src/
 │   ├── app/                # Next.js app (entry, layout, global styles)
-│   ├── background/         # MV3 service worker source (→ out/background.js)
+│   ├── background/         # MV3 service worker source (→ build/background.js)
 │   ├── components/         # UI: views, panels, modals, cloud-sync, sidebar, …
 │   │   ├── onboarding/     # OnboardingWizard (first-run guided tour)
 │   │   └── views/          # NotesView, TodosView, TasksView, TaskCalendarView, …
@@ -479,11 +479,11 @@ jsdom environment.
 
 ## Build & packaging notes
 
-- The extension is a **static export**; `next build` outputs `out/`, which is the
-  directory you load unpacked.
+- The extension is a **static export**; `next build` outputs `build/` (via
+  `distDir: 'build'` in `next.config.mjs`), which is the directory you load unpacked.
 - The MV3 service worker is bundled separately (`scripts/build-background.mjs`)
-  because Next.js doesn't emit a worker entry; it lands at `out/background.js`.
+  because Next.js doesn't emit a worker entry; it lands at `build/background.js`.
 - `post-build.js` stages `manifest.json`, icons, and other extension assets into
-  `out/` so the folder is self-contained.
+  `build/` so the folder is self-contained.
 - Bookmark-folder ids and Chrome bookmark ids are **device-local** and never sent
   to the cloud — only canonical entity data is synced.

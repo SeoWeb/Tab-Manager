@@ -4,6 +4,12 @@
  * Two entry points: `buildLoginEmail` (used by the backend to send the 8-digit
  * code) and a couple of small helpers for the subject/from. The tone is
  * deliberately casual and friendly — this is a sign-in code, not a legal notice.
+ *
+ * The body is built from derived/neutral copy ONLY. Nothing requester-supplied
+ * (display names, etc.) may be interpolated: the recipient address is
+ * unverified when the code is sent, so any attacker-chosen text would be an
+ * injection/harassment vector. The single dynamic value is the server-generated
+ * numeric code.
  */
 
 export const EMAIL_FROM = 'welcome@support.tabspace.ww0.dev';
@@ -27,16 +33,11 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Build the sign-in email. `displayName` is optional (the user may not have set
- * one yet); when present we greet them by name for a warmer tone.
+ * Build the sign-in email. Takes only the server-generated code — there is no
+ * parameter a caller could use to inject text into the body, and the greeting
+ * is a fixed neutral "Hey there".
  */
-export function buildLoginEmail(
-  code: string,
-  displayName?: string | null
-): LoginEmailContent {
-  const greeting = displayName
-    ? `Hey ${escapeHtml(displayName)}`
-    : 'Hey there';
+export function buildLoginEmail(code: string): LoginEmailContent {
   const subject = 'Your TabSpace login code';
 
   const html = `<!doctype html>
@@ -53,7 +54,7 @@ export function buildLoginEmail(
             </tr>
             <tr>
               <td style="padding:32px;">
-                <p style="margin:0 0 16px;color:#18181b;font-size:16px;line-height:1.5;">${greeting},</p>
+                <p style="margin:0 0 16px;color:#18181b;font-size:16px;line-height:1.5;">Hey there,</p>
                 <p style="margin:0 0 24px;color:#3f3f46;font-size:15px;line-height:1.6;">
                   Here's your one-time login code. Pop it into the app and you're in:
                 </p>
@@ -82,7 +83,7 @@ export function buildLoginEmail(
   </body>
 </html>`;
 
-  const text = `${greeting},
+  const text = `Hey there,
 
 Here's your one-time TabSpace login code:
 

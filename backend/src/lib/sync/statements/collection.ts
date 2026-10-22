@@ -1,9 +1,11 @@
 import type { Env, SyncMutation } from '../../../types';
 import {
   TABLE_COUNT_PLACEHOLDERS,
+  VERSION_GUARD_SQL,
   optionalNumber,
   optionalString,
   requireString,
+  versionGuardBindings,
 } from '../shared';
 
 export function prepareInsertCollection(
@@ -76,24 +78,47 @@ export function prepareInsertCollection(
   return env.D1_DATABASE.prepare(sql).bind(...bound);
 }
 
-export async function prepareUpdateCollection(
+/**
+ * Shape of the current-row read feeding the collection update merge.
+ */
+export interface CollectionRow {
+  name: string;
+  description: string | null;
+  color: string | null;
+  minimized: number;
+  order_index: number | null;
+  bookmark_folder_id: string | null;
+}
+
+/**
+ * Project-scoped current-row read for the update merge. Exported so the
+ * batched apply path can fan one read per mutation through a single shared D1
+ * batch instead of a round-trip per mutation.
+ */
+export function prepareReadCollectionRow(
   env: Env,
   mutation: SyncMutation,
-  now: string
-): Promise<D1PreparedStatement | null> {
-  const existing = await env.D1_DATABASE.prepare(
-    'SELECT name, description, color, minimized, order_index, bookmark_folder_id FROM collections WHERE id = ? AND deleted_at IS NULL'
-  )
-    .bind(mutation.entityId)
-    .first<{
-      name: string;
-      description: string | null;
-      color: string | null;
-      minimized: number;
-      order_index: number | null;
-      bookmark_folder_id: string | null;
-    }>();
+  projectId: string
+): D1PreparedStatement {
+  return env.D1_DATABASE.prepare(
+    'SELECT name, description, color, minimized, order_index, bookmark_folder_id FROM collections WHERE id = ? AND project_id = ? AND deleted_at IS NULL'
+  ).bind(mutation.entityId, projectId);
+}
 
+/**
+ * Build the CAS-guarded (or legacy unguarded) collection UPDATE from an
+ * already-read row. Project-scoped; `project_id` never in the SET list.
+ * Returns null when `existing` is null (row gone — caller maps to the
+ * not-found conflict).
+ */
+export function buildCollectionUpdateStatement(
+  env: Env,
+  mutation: SyncMutation,
+  projectId: string,
+  now: string,
+  baseVersion: number | undefined,
+  existing: CollectionRow | null
+): D1PreparedStatement | null {
   if (!existing) return null;
 
   const name =
@@ -124,12 +149,13 @@ export async function prepareUpdateCollection(
       ? existing.bookmark_folder_id
       : optionalString(mutation.patch.bookmarkFolderId);
 
+  const guardSql = baseVersion === undefined ? '' : ` ${VERSION_GUARD_SQL}`;
   return env.D1_DATABASE.prepare(
     `
     UPDATE collections
     SET name = ?, description = ?, color = ?, minimized = ?, order_index = ?,
         bookmark_folder_id = ?, updated_at = ?
-    WHERE id = ? AND deleted_at IS NULL
+    WHERE id = ? AND project_id = ? AND deleted_at IS NULL${guardSql}
     `
   ).bind(
     name,
@@ -139,6 +165,36 @@ export async function prepareUpdateCollection(
     orderIndex,
     bookmarkFolderId,
     now,
-    mutation.entityId
+    mutation.entityId,
+    projectId,
+    ...(baseVersion === undefined
+      ? []
+      : versionGuardBindings(projectId, mutation.entityType, mutation.entityId, baseVersion))
+  );
+}
+
+/**
+ * Serial path: read the row, then merge + build (see the two functions above).
+ */
+export async function prepareUpdateCollection(
+  env: Env,
+  mutation: SyncMutation,
+  projectId: string,
+  now: string,
+  baseVersion?: number
+): Promise<D1PreparedStatement | null> {
+  const existing = await prepareReadCollectionRow(
+    env,
+    mutation,
+    projectId
+  ).first<CollectionRow>();
+
+  return buildCollectionUpdateStatement(
+    env,
+    mutation,
+    projectId,
+    now,
+    baseVersion,
+    existing
   );
 }

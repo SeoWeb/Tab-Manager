@@ -22,8 +22,48 @@ export type TableKey =
   | 'notes'
   | 'todos';
 
+/**
+ * Thrown by the statement builders for bad client DATA (a patch missing a
+ * required field, an un-mappable entity type). Caught via `instanceof` and
+ * converted into a per-mutation conflict with a FIXED client-safe message.
+ * Everything else — D1 errors, constraint violations, programming bugs —
+ * must propagate to the top-level handler (500 + retryable).
+ */
+export class MutationPatchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MutationPatchError';
+  }
+}
+
+/**
+ * SQL fragment appended to every guarded UPDATE/INSERT ... WHERE so a write
+ * only commits while the entity's version still equals the client's
+ * `baseVersion`. Bind order: (projectId, entityType, entityId, baseVersion).
+ * If the version row is missing the subquery yields NULL and the predicate is
+ * never true — an entity without a version row cannot be mutated through the
+ * CAS path.
+ */
+export const VERSION_GUARD_SQL =
+  'AND (SELECT version FROM entity_versions WHERE project_id = ? AND entity_type = ? AND entity_id = ?) = ?';
+
+/** Bindings for `VERSION_GUARD_SQL`, in order. */
+export function versionGuardBindings(
+  projectId: string,
+  entityType: EntityType,
+  entityId: string,
+  baseVersion: number
+): [string, EntityType, string, number] {
+  return [projectId, entityType, entityId, baseVersion];
+}
+
 export type ApplyMutationResult = {
   conflict?: SyncConflict;
+  /**
+   * The mutation was deterministically NOT attempted. `reason` is echoed into
+   * the per-mutation outcome (`status: 'skipped'`).
+   */
+  skipped?: { reason: 'missing_base_version' };
 };
 
 export function nowIso(): string {
@@ -122,7 +162,7 @@ export function requireString(
 ): string {
   const value = patch[key];
   if (typeof value !== 'string' || !value.trim()) {
-    throw new Error(`${key} must be a non-empty string`);
+    throw new MutationPatchError(`${key} must be a non-empty string`);
   }
   return value;
 }
@@ -153,6 +193,20 @@ export function entityNotFoundConflict(
     entityId: mutation.entityId,
     clientMutationId: mutation.clientMutationId,
     message: 'Entity not found or already deleted',
+    currentVersion,
+    expectedVersion: mutation.baseVersion,
+  };
+}
+
+export function versionConflict(
+  mutation: SyncMutation,
+  currentVersion: number
+): SyncConflict {
+  return {
+    entityType: mutation.entityType,
+    entityId: mutation.entityId,
+    clientMutationId: mutation.clientMutationId,
+    message: 'Entity version conflict',
     currentVersion,
     expectedVersion: mutation.baseVersion,
   };

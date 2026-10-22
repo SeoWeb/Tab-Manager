@@ -1,7 +1,7 @@
 'use client';
 
 import { lazy, Suspense, useEffect } from 'react';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, resolveOnboardingMigration } from '@/stores/appStore';
 import LeftSidebar from '@/components/left-sidebar/LeftSidebar';
 import MainContentArea from '@/components/main-content/MainContentArea';
 import VerticalRightTabsBar from '@/components/right-vertical-tabs/VerticalRightTabsBar';
@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useAppStoreWithDefaults';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import RegionBoundary from '@/components/RegionBoundary';
 import { useChromeTabsMonitoring } from '@/hooks/useChromeTabsMonitoring';
 import {
   deferUntilIdle,
@@ -62,16 +63,11 @@ export default function AppClient() {
   }, [_hasHydrated]);
 
   const isRightContentPanelOpen = useAppStoreWithDefaults(
-    (state) => state.isRightContentPanelOpen,
-    false
+    (state) => state.isRightContentPanelOpen
   );
-  const activeView = useAppStoreWithDefaults(
-    (state) => state.activeView,
-    'projectDetail'
-  );
+  const activeView = useAppStoreWithDefaults((state) => state.activeView);
   const detectSystemTheme = useAppStoreWithDefaults(
-    (state) => state.detectSystemTheme,
-    () => () => {}
+    (state) => state.detectSystemTheme
   );
 
   useEffect(() => {
@@ -132,13 +128,24 @@ export default function AppClient() {
   }, [isDarkMode, _hasHydrated]);
 
   useEffect(() => {
-    // Auto-open the onboarding wizard after hydration for fresh users.
-    // Re-shows on reloads until explicitly completed, per design D3.
+    // Auto-open the onboarding wizard after hydration for fresh users, but
+    // only once the one-time migration marker has resolved (§6 of
+    // fix-cross-context-data-loss): users whose persisted storage predates
+    // first-run onboarding ('upgrading') are skipped, and the wizard re-shows
+    // on every launch for fresh users until they complete or skip it. The
+    // Settings replay path is untouched (it calls openOnboarding directly).
     if (!_hasHydrated) return;
-    const state = useAppStore.getState();
-    if (!state.hasCompletedOnboarding) {
-      state.openOnboarding();
-    }
+    let cancelled = false;
+    void resolveOnboardingMigration().then((migration) => {
+      if (cancelled) return;
+      const state = useAppStore.getState();
+      if (!migration.upgrading && !state.hasCompletedOnboarding) {
+        state.openOnboarding();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [_hasHydrated]);
 
   useEffect(() => {
@@ -155,28 +162,27 @@ export default function AppClient() {
     }
   }, [projects, activeProjectId, setActiveProject]);
 
-  // Initialize tab session monitoring and restore
+  // Tab-session ownership lives in the background service worker (§4 of
+  // fix-cross-context-data-loss): pages must NOT register tab listeners or
+  // write `current_tab_session` — the worker is the single auto-saver. The
+  // page only nudges the worker to run the session-restore eligibility check;
+  // `checkForSessionRestore` delegates via message and no-ops (logs) when the
+  // worker is unreachable.
   useEffect(() => {
     if (!_hasHydrated) return;
-
-    let cleanup: (() => void) | null = null;
 
     const initTabSessions = async () => {
       try {
         // Use performance utility to defer tab session operations
         deferUntilIdle(async () => {
           try {
-            const { checkForSessionRestore, startAutoSaveMonitoring } =
-              await lazyImport(
-                () => import('@/lib/tabSessionService'),
-                'tabSessionService'
-              );
+            const { checkForSessionRestore } = await lazyImport(
+              () => import('@/lib/tabSessionService'),
+              'tabSessionService'
+            );
 
-            // Check for session restore on startup
+            // Delegate the restore check to the background worker.
             await checkForSessionRestore();
-
-            // Start auto-save monitoring
-            cleanup = startAutoSaveMonitoring();
           } catch (error) {
             console.error('Error initializing tab sessions:', error);
           }
@@ -186,66 +192,70 @@ export default function AppClient() {
       }
     };
 
-    initTabSessions();
-
-    return () => {
-      if (cleanup) {
-        cleanup();
-      }
-    };
+    void initTabSessions();
   }, [_hasHydrated]);
 
   return (
     <>
       <GlobalDragDropProvider>
         <div className='flex h-screen bg-background w-full'>
-          <LeftSidebar />
+          <RegionBoundary name='left sidebar'>
+            <LeftSidebar />
+          </RegionBoundary>
           <div
             className={cn(
               'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out mr-0'
             )}
           >
             <main className='flex-1 w-full'>
-              {activeView === 'settings' ? (
-                <Suspense fallback={<Skeleton className='h-full w-full' />}>
-                  <SettingsView />
-                </Suspense>
-              ) : activeView === 'tasks' ? (
-                <Suspense fallback={<Skeleton className='h-full w-full' />}>
-                  <TasksView showHeader={true} />
-                </Suspense>
-              ) : (
-                <MainContentArea />
-              )}
+              <RegionBoundary name='main content'>
+                {activeView === 'settings' ? (
+                  <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                    <SettingsView />
+                  </Suspense>
+                ) : activeView === 'tasks' ? (
+                  <Suspense fallback={<Skeleton className='h-full w-full' />}>
+                    <TasksView showHeader={true} />
+                  </Suspense>
+                ) : (
+                  <MainContentArea />
+                )}
+              </RegionBoundary>
             </main>
           </div>
           {isRightContentPanelOpen && (
             <div className='h-full z-20'>
-              <RightContentPanel />
+              <RegionBoundary name='right panel'>
+                <RightContentPanel />
+              </RegionBoundary>
             </div>
           )}
           <div className='h-full z-30'>
-            <VerticalRightTabsBar />
+            <RegionBoundary name='right panel'>
+              <VerticalRightTabsBar />
+            </RegionBoundary>
           </div>
         </div>
       </GlobalDragDropProvider>
-      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
-        <AddProjectModal>
-          <div />
-        </AddProjectModal>
-      </Suspense>
-      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
-        <AddCollectionModal />
-      </Suspense>
-      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
-        <AddLinkModal />
-      </Suspense>
-      <Suspense fallback={<Skeleton className='h-8 w-8' />}>
-        <EditLinkModal />
-      </Suspense>
-      <Suspense fallback={null}>
-        <OnboardingWizard />
-      </Suspense>
+      <RegionBoundary name='modals'>
+        <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+          <AddProjectModal>
+            <div />
+          </AddProjectModal>
+        </Suspense>
+        <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+          <AddCollectionModal />
+        </Suspense>
+        <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+          <AddLinkModal />
+        </Suspense>
+        <Suspense fallback={<Skeleton className='h-8 w-8' />}>
+          <EditLinkModal />
+        </Suspense>
+        <Suspense fallback={null}>
+          <OnboardingWizard />
+        </Suspense>
+      </RegionBoundary>
     </>
   );
 }

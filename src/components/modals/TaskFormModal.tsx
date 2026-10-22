@@ -27,7 +27,6 @@ import { fetchProjectMembers } from '@/lib/cloudflareSync';
 import { useFieldEditPresence } from '@/lib/cloudflareSync/useFieldLock';
 import type {
   CloudMember,
-  CloudAccount,
   CloudPresenceUser,
 } from '@/lib/cloudflareSync/types';
 
@@ -58,24 +57,10 @@ export default function TaskFormModal({
   const [assignee, setAssignee] = useState<string | undefined>(undefined);
 
   const activeProjectId = useAppStoreWithDefaults(
-    (state) => state.activeProjectId,
-    null
+    (state) => state.activeProjectId
   );
-  const projects = useAppStoreWithDefaults((state) => state.projects, []);
-  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync, {
-    enabled: false,
-    status: 'idle' as const,
-    lastSyncedAt: null,
-    lastReconciledAt: null,
-    lastError: null,
-    pendingMutationCount: 0,
-    account: null as CloudAccount | null,
-    apiBaseUrl: '',
-    cursors: {},
-    realtimeConnected: false,
-    onlinePresence: [],
-    pendingEdits: {},
-  });
+  const projects = useAppStoreWithDefaults((state) => state.projects);
+  const cloudSync = useAppStoreWithDefaults((state) => state.cloudSync);
   const currentUser = cloudSync.account;
 
   const currentProjectId =

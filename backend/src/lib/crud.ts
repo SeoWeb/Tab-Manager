@@ -1,4 +1,9 @@
 import { badRequest, notFound } from './response';
+import {
+  parseBody,
+  projectCreateSchema,
+  projectUpdateSchema,
+} from './validation';
 import { checkProjectQuota, getQuotaConfig } from './quotas';
 import { getLatestChange } from './sync/changelog';
 import { notifyRealtime } from './realtime';
@@ -14,40 +19,34 @@ import {
 } from './projectChanges';
 import type { Env, Project } from '../types';
 
-function parseOptionalString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
-
 export async function createProject(
   env: Env,
   owner: { id: string },
   body: unknown
 ): Promise<Response> {
-  const input = body as {
-    name?: unknown;
-    description?: unknown;
-    color?: unknown;
-    icon?: unknown;
-  };
-
-  const name = typeof input.name === 'string' ? input.name.trim() : '';
-  if (!name) {
-    return badRequest('Project name is required');
+  const parsed = parseBody(projectCreateSchema, body);
+  if (!parsed.ok) {
+    return badRequest('Invalid request', parsed.details);
   }
+  const { name } = parsed.data;
+  const description = parsed.data.description ?? null;
+  const color = parsed.data.color ?? null;
+  const icon = parsed.data.icon ?? null;
 
   const now = nowIso();
   const id = crypto.randomUUID();
-  const description = parseOptionalString(input.description);
-  const color = parseOptionalString(input.color);
-  const icon = parseOptionalString(input.icon);
   const patch = { id, name, description, color, icon, owner_id: owner.id };
 
   // The project row is the quota-consuming write. It is inserted via an
-  // `INSERT ... SELECT ... WHERE (count) < limit` guard so the count check and
-  // the insert run inside a single D1 batch (one transaction). Concurrent
-  // creates therefore cannot both observe capacity and overshoot the cap — at
-  // most one wins the final slot. The owner membership, version seed, and
-  // change log only run once the project insert succeeds.
+  // `INSERT ... SELECT ... WHERE (count) < limit` guard and runs as PHASE 1 of
+  // a two-phase commit — alone, so when the guard trips (cap reached) the
+  // request is answered with a structured 403 and NO dependent statement ever
+  // executes (D1 batches would otherwise run them all). PHASE 2 — the owner
+  // membership, version seed, and change log — runs only once the project row
+  // is known to exist, so a quota breach can never orphan rows. Concurrent
+  // creates still cannot both observe capacity and overshoot the cap: the
+  // guard lives in the insert's WHERE clause, so at most one wins the final
+  // slot.
   const maxProjects = getQuotaConfig(env).maxProjectsPerUser;
   const primary = env.D1_DATABASE.prepare(
     `
@@ -108,12 +107,11 @@ export async function updateProject(
   const access = await requireProjectAccess(env, user.id, projectId, 'admin');
   if (access instanceof Response) return access;
 
-  const input = body as {
-    name?: unknown;
-    description?: unknown;
-    color?: unknown;
-    icon?: unknown;
-  };
+  const parsed = parseBody(projectUpdateSchema, body);
+  if (!parsed.ok) {
+    return badRequest('Invalid request', parsed.details);
+  }
+  const input = parsed.data;
 
   const existing = await env.D1_DATABASE.prepare(
     'SELECT id, name, description, color, icon FROM projects WHERE id = ? AND deleted_at IS NULL'
@@ -125,22 +123,18 @@ export async function updateProject(
     return notFound('Project not found');
   }
 
-  const name =
-    input.name === undefined ? existing.name : parseOptionalString(input.name);
+  // The schema trims and length-validates `name` identically to create, so the
+  // value applied here is the trimmed one (a whitespace-only name 400s before
+  // this point). Absent fields fall back to the stored values.
+  const name = input.name === undefined ? existing.name : input.name;
   if (!name) {
     return badRequest('Project name cannot be empty');
   }
 
   const description =
-    input.description === undefined
-      ? existing.description
-      : parseOptionalString(input.description);
-  const color =
-    input.color === undefined
-      ? existing.color
-      : parseOptionalString(input.color);
-  const icon =
-    input.icon === undefined ? existing.icon : parseOptionalString(input.icon);
+    input.description === undefined ? existing.description : input.description;
+  const color = input.color === undefined ? existing.color : input.color;
+  const icon = input.icon === undefined ? existing.icon : input.icon;
   const now = nowIso();
 
   await env.D1_DATABASE.batch([
@@ -178,7 +172,9 @@ export async function deleteProject(
   user: { id: string },
   projectId: string
 ): Promise<Response> {
-  const access = await requireProjectAccess(env, user.id, projectId, 'admin');
+  // Deletion is owner-only: an admin (non-owner) must not be able to destroy
+  // the project. Mirrors the sync-driven deletion path in sync/mutations.ts.
+  const access = await requireProjectAccess(env, user.id, projectId, 'owner');
   if (access instanceof Response) return access;
 
   const existing = await env.D1_DATABASE.prepare(

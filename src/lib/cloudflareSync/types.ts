@@ -57,6 +57,16 @@ export interface CloudMutation {
   baseVersion?: number;
   clientId: string;
   createdAt: string;
+  /**
+   * Set when the server rejected this mutation via CAS (a `conflict` outcome).
+   * Conflicted mutations are NOT removed from the queue
+   * (fix-cross-context-data-loss 7.1): the local edit they carry stays queued —
+   * flagged — until the user's resolution is applied (which enqueues a fresh
+   * mutation and releases this entry) or the user explicitly discards the
+   * conflict. Flagged entries are excluded from pushes (retrying a CAS
+   * rejection can never succeed) via `getPushableQueueForProject`.
+   */
+  conflicted?: boolean;
 }
 
 /** One row from the server's append-only change log. */
@@ -86,6 +96,38 @@ export interface CloudSyncConflict {
   message: string;
   currentVersion: number;
   expectedVersion?: number;
+}
+
+/**
+ * Per-mutation verdict from the sync endpoint. Exactly one outcome is returned
+ * per submitted mutation, in submission order:
+ * - `applied`  — committed (idempotent replays of our own mutations included).
+ * - `conflict` — deterministic rejection the client reconciles; also listed in
+ *                the legacy top-level `conflicts` array.
+ * - `skipped`  — not attempted at all; `reason` is machine-readable.
+ * - `error`    — per-mutation failure worth retrying later. Infrastructure
+ *                failures are HTTP 5xx instead and never appear as outcomes.
+ */
+export type SyncMutationOutcomeStatus =
+  | 'applied'
+  | 'conflict'
+  | 'skipped'
+  | 'error';
+
+/** Machine-readable reason accompanying a `skipped` outcome. */
+export type SyncMutationSkipReason =
+  | 'missing_base_version'
+  | 'project_mismatch'
+  | 'invalid_mutation';
+
+/** The server's verdict for one submitted mutation, keyed by `clientMutationId`. */
+export interface SyncMutationOutcome {
+  clientMutationId: string;
+  status: SyncMutationOutcomeStatus;
+  /** Fixed, client-safe message. Only present for `conflict`. */
+  message?: string;
+  /** Machine-readable reason. Only present for `skipped`. */
+  reason?: SyncMutationSkipReason;
 }
 
 /**
@@ -120,7 +162,21 @@ export type DirtyFields = Record<string, string[]>;
 export interface CloudSyncResponse {
   cursor: number;
   changes: CloudSyncChange[];
+  /**
+   * Legacy top-level conflict list; every `conflict` outcome also appears here
+   * so the existing reconcile/status flow keeps working.
+   */
   conflicts: CloudSyncConflict[];
+  /** Exactly one entry per submitted mutation, in submission order. */
+  outcomes: SyncMutationOutcome[];
+  /**
+   * Lagging-client flag (scale-sync-backend, change-log-retention). True only
+   * when our incremental cursor predates the server's pruned change-log
+   * window: the delta in this response is empty BY DESIGN and the client must
+   * converge via the full snapshot reconcile instead. Absent on healthy
+   * incremental responses.
+   */
+  reconcileRequired?: boolean;
 }
 
 /**
@@ -231,6 +287,38 @@ export interface SnapshotJsonEntity extends SnapshotEntity {
   payload_json: string;
 }
 
+/**
+ * The five snapshot response array keys that paginate independently
+ * (scale-sync-backend). Each type gets its own keyset cursor.
+ */
+export type SnapshotEntityTypeName =
+  | 'collections'
+  | 'links'
+  | 'tasks'
+  | 'notes'
+  | 'todos';
+
+/**
+ * Per-type continuation cursors from a paginated snapshot response. A cursor
+ * value is an opaque string (server-side base64url keyset token); it is present
+ * only for entity types that have more rows beyond the current page.
+ */
+export interface SnapshotNextCursors {
+  collections?: string;
+  links?: string;
+  tasks?: string;
+  notes?: string;
+  todos?: string;
+}
+
+/** Query params for `GET /projects/:id/snapshot` (both optional). */
+export interface SnapshotPaginationParams {
+  /** Opaque continuation cursor taken from a previous `nextCursor` value. */
+  cursor?: string | null;
+  /** Requested page size. May lower the server's configured cap, never raise it. */
+  pageSize?: number | string | null;
+}
+
 /** Response shape of `GET /projects/:id/snapshot`. */
 export interface SnapshotResponse {
   collections: SnapshotCollection[];
@@ -238,6 +326,12 @@ export interface SnapshotResponse {
   tasks: SnapshotJsonEntity[];
   notes: SnapshotJsonEntity[];
   todos: SnapshotJsonEntity[];
+  /**
+   * Additive (scale-sync-backend): per-type cursors when the response is one
+   * page of a larger snapshot. Absent when every type fit in the page — old
+   * clients never see it, and fully-merged client responses omit it.
+   */
+  nextCursor?: SnapshotNextCursors;
 }
 
 /** Non-secret account info mirrored into the Zustand store for the UI. */
@@ -283,6 +377,13 @@ export interface CloudSyncState {
   lastReconciledAt: string | null;
   lastError: string | null;
   pendingMutationCount: number;
+  /**
+   * Queued mutations currently flagged `conflicted` (server CAS rejection) and
+   * retained until resolution/discard (fix-cross-context-data-loss 7.1).
+   * Surfaced by the sync status badge. Optional so persisted state written
+   * before this field existed rehydrates unchanged.
+   */
+  conflictedMutationCount?: number;
   account: CloudAccount | null;
   apiBaseUrl: string;
   /** Per-project change-log cursors, keyed by project id. */

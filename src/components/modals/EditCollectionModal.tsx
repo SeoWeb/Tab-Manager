@@ -18,6 +18,7 @@ import { Collection } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import CollectionForm from './CollectionForm';
 import DeleteCollectionConfirmation from './DeleteCollectionConfirmation';
+import { RelinkBookmarkFolder } from '@/components/sync/RelinkBookmarkFolder';
 
 interface EditCollectionModalProps {
   collection: Collection;
@@ -103,6 +104,17 @@ const EditCollectionModal: React.FC<EditCollectionModalProps> = ({
           onDescriptionChange={setCollectionDescription}
           collectionId={collection.id}
         />
+
+        {collection.mirrorRemoved && (
+          <RelinkBookmarkFolder
+            kind='collection'
+            entityId={collection.id}
+            projectId={projectId}
+            onRelinked={() => {
+              if (onOpenChange) onOpenChange(false);
+            }}
+          />
+        )}
 
         <DialogFooter className='sm:justify-between'>
           <DeleteCollectionConfirmation

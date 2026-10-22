@@ -3,7 +3,8 @@ import {
   writeJson,
   removeKey,
   CLOUD_SYNC_STORAGE_KEYS,
-} from '@/lib/cloudflareSync/storage';
+  type CloudSyncStorageKey,
+} from '@tabspace/shared/lib/cloudflareSync/storage';
 import type { CloudAccount } from './types';
 
 /**
@@ -35,4 +36,37 @@ export async function setAccount(account: CloudAccount): Promise<void> {
 export async function clearAuth(): Promise<void> {
   await removeKey(CLOUD_SYNC_STORAGE_KEYS.token);
   await removeKey(CLOUD_SYNC_STORAGE_KEYS.account);
+}
+
+// --- Token renewal backoff state (harden-auth-tokens, task 4.2) -------------
+
+/** Persisted retry schedule for the background renewal alarm. */
+export interface RenewalRetryState {
+  /** Failed renewal attempts so far (drives the backoff step). */
+  failures: number;
+  /** Epoch ms of the next scheduled renewal attempt. */
+  nextAttemptAt: number;
+}
+
+/**
+ * Backoff state for `tokenRenewal` lives beside the token so a restarted
+ * service worker resumes the retry schedule instead of re-hammering the renew
+ * endpoint. The key is namespaced like the shared table in storage.ts but
+ * declared (and only used) here — the shared table itself is outside this
+ * change's file scope.
+ */
+const RENEWAL_RETRY_KEY = 'cloud-sync-renewal-retry' as CloudSyncStorageKey;
+
+export async function getRenewalRetryState(): Promise<RenewalRetryState | null> {
+  return readJson<RenewalRetryState | null>(RENEWAL_RETRY_KEY, null);
+}
+
+export async function setRenewalRetryState(
+  state: RenewalRetryState
+): Promise<void> {
+  await writeJson(RENEWAL_RETRY_KEY, state);
+}
+
+export async function clearRenewalRetryState(): Promise<void> {
+  await removeKey(RENEWAL_RETRY_KEY);
 }

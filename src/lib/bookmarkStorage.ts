@@ -2,8 +2,30 @@
 
 import { bookmarkService } from './bookmarkService';
 import { bookmarkSyncService } from './bookmarkSyncService';
+import { debugLog } from '@/lib/debugLog';
 
 const ROOT_FOLDER_NAME = 'TabManager Root';
+
+/**
+ * Runs an extension-initiated bookmark write with self-triggered bookmark-event
+ * suppression enabled, and guarantees the suppression flag is restored.
+ *
+ * The flag is managed with try/finally so a mid-write failure can never leave
+ * bookmark sync permanently disabled (the previous implementation restored the
+ * flag on a `setTimeout(…, 100)`, which both leaked the flag when Chrome echoed
+ * events past the timer and kept sync muted for 100 ms after every write).
+ * Bookmark events arriving while the flag is up are dropped as echoes of our
+ * own write; the window is exactly the duration of the write.
+ */
+async function withSuppressedSyncEcho<T>(write: () => Promise<T>): Promise<T> {
+  const previous = bookmarkSyncService.suppressEchoes;
+  bookmarkSyncService.suppressEchoes = true;
+  try {
+    return await write();
+  } finally {
+    bookmarkSyncService.suppressEchoes = previous;
+  }
+}
 
 /**
  * Manages the application's data storage within Chrome bookmarks.
@@ -22,7 +44,7 @@ export const bookmarkStorage = {
     }
     let rootFolder = await this.findRootFolder();
     if (!rootFolder) {
-      console.log(`Root folder not found, creating...`);
+      debugLog('Root folder not found, creating...');
       // Create in "Other Bookmarks" (ID: '2')
       rootFolder = await bookmarkService.createBookmarkFolder(
         ROOT_FOLDER_NAME,
@@ -68,22 +90,11 @@ export const bookmarkStorage = {
     projectName: string,
     rootFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    // Temporarily disable sync to prevent feedback loop
-    const wasInProgress = bookmarkSyncService.syncInProgress;
-    bookmarkSyncService.syncInProgress = true;
-
-    try {
-      const result = await bookmarkService.createBookmarkFolder(
-        projectName,
-        rootFolderId
-      );
-      return result;
-    } finally {
-      // Restore sync state after a short delay to allow the operation to complete
-      setTimeout(() => {
-        bookmarkSyncService.syncInProgress = wasInProgress;
-      }, 100);
-    }
+    // Suppress the self-triggered echo for the exact duration of the write;
+    // restored in a finally block even if the write throws.
+    return withSuppressedSyncEcho(() =>
+      bookmarkService.createBookmarkFolder(projectName, rootFolderId)
+    );
   },
 
   /**
@@ -92,7 +103,9 @@ export const bookmarkStorage = {
    * @param newName The new name for the project
    */
   async updateProject(projectFolderId: string, newName: string): Promise<void> {
-    await bookmarkService.updateBookmark(projectFolderId, { title: newName });
+    await withSuppressedSyncEcho(() =>
+      bookmarkService.updateBookmark(projectFolderId, { title: newName })
+    );
   },
 
   /**
@@ -100,7 +113,9 @@ export const bookmarkStorage = {
    * @param projectFolderId The ID of the project folder
    */
   async deleteProject(projectFolderId: string): Promise<void> {
-    await bookmarkService.deleteBookmarkTree(projectFolderId);
+    await withSuppressedSyncEcho(() =>
+      bookmarkService.deleteBookmarkTree(projectFolderId)
+    );
   },
 
   /**
@@ -113,22 +128,10 @@ export const bookmarkStorage = {
     collectionName: string,
     projectFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    // Temporarily disable sync to prevent feedback loop
-    const wasInProgress = bookmarkSyncService.syncInProgress;
-    bookmarkSyncService.syncInProgress = true;
-
-    try {
-      const result = await bookmarkService.createBookmarkFolder(
-        collectionName,
-        projectFolderId
-      );
-      return result;
-    } finally {
-      // Restore sync state after a short delay to allow the operation to complete
-      setTimeout(() => {
-        bookmarkSyncService.syncInProgress = wasInProgress;
-      }, 100);
-    }
+    // Suppress the self-triggered echo for the exact duration of the write.
+    return withSuppressedSyncEcho(() =>
+      bookmarkService.createBookmarkFolder(collectionName, projectFolderId)
+    );
   },
 
   /**
@@ -140,9 +143,11 @@ export const bookmarkStorage = {
     collectionFolderId: string,
     newName: string
   ): Promise<void> {
-    await bookmarkService.updateBookmark(collectionFolderId, {
-      title: newName,
-    });
+    await withSuppressedSyncEcho(() =>
+      bookmarkService.updateBookmark(collectionFolderId, {
+        title: newName,
+      })
+    );
   },
 
   /**
@@ -150,7 +155,9 @@ export const bookmarkStorage = {
    * @param collectionFolderId The ID of the collection folder
    */
   async deleteCollection(collectionFolderId: string): Promise<void> {
-    await bookmarkService.deleteBookmarkTree(collectionFolderId);
+    await withSuppressedSyncEcho(() =>
+      bookmarkService.deleteBookmarkTree(collectionFolderId)
+    );
   },
 
   /**
@@ -165,23 +172,10 @@ export const bookmarkStorage = {
     linkUrl: string,
     collectionFolderId: string
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    // Temporarily disable sync to prevent feedback loop
-    const wasInProgress = bookmarkSyncService.syncInProgress;
-    bookmarkSyncService.syncInProgress = true;
-
-    try {
-      const result = await bookmarkService.createBookmark(
-        collectionFolderId,
-        linkTitle,
-        linkUrl
-      );
-      return result;
-    } finally {
-      // Restore sync state after a short delay to allow the operation to complete
-      setTimeout(() => {
-        bookmarkSyncService.syncInProgress = wasInProgress;
-      }, 100);
-    }
+    // Suppress the self-triggered echo for the exact duration of the write.
+    return withSuppressedSyncEcho(() =>
+      bookmarkService.createBookmark(collectionFolderId, linkTitle, linkUrl)
+    );
   },
 
   /**
@@ -193,7 +187,9 @@ export const bookmarkStorage = {
     linkId: string,
     updates: { title?: string; url?: string }
   ): Promise<void> {
-    await bookmarkService.updateBookmark(linkId, updates);
+    await withSuppressedSyncEcho(() =>
+      bookmarkService.updateBookmark(linkId, updates)
+    );
   },
 
   /**
@@ -201,7 +197,7 @@ export const bookmarkStorage = {
    * @param linkId The ID of the link bookmark
    */
   async deleteLink(linkId: string): Promise<void> {
-    await bookmarkService.deleteBookmark(linkId);
+    await withSuppressedSyncEcho(() => bookmarkService.deleteBookmark(linkId));
   },
 
   /**
@@ -249,6 +245,8 @@ export const bookmarkStorage = {
     linkId: string,
     destination: { parentId?: string; index?: number }
   ): Promise<chrome.bookmarks.BookmarkTreeNode> {
-    return await bookmarkService.moveBookmark(linkId, destination);
+    return withSuppressedSyncEcho(() =>
+      bookmarkService.moveBookmark(linkId, destination)
+    );
   },
 };

@@ -3,7 +3,7 @@ import { DragOverlay as DndKitDragOverlay } from '@dnd-kit/core';
 import { Card, CardContent } from '@/components/ui/card';
 import { ExternalLink, GripVertical } from 'lucide-react';
 import type { DragItem } from '@/hooks/useDragAndDrop';
-import { convertChromeFaviconUrl } from '@/lib/faviconService';
+import { convertChromeFaviconUrl } from '@tabspace/shared/lib/faviconService';
 
 interface DragOverlayProps {
   activeItem: DragItem | null;

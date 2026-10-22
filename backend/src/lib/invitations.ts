@@ -1,4 +1,5 @@
 import { badRequest, forbidden, notFound } from './response';
+import { invitationCreateSchema, parseBody } from './validation';
 import { checkMemberQuota, getQuotaConfig } from './quotas';
 import {
   getProjectMember,
@@ -6,25 +7,6 @@ import {
 } from './membership';
 import { nowIso } from './membership';
 import type { Env, Role } from '../types';
-
-const roleRank: Record<Role, number> = {
-  viewer: 1,
-  editor: 2,
-  admin: 3,
-  owner: 4,
-};
-
-const validRoles = new Set<string>(Object.keys(roleRank));
-
-function normalizeRole(value: unknown): Role | null {
-  return typeof value === 'string' && validRoles.has(value)
-    ? (value as Role)
-    : null;
-}
-
-function parseOptionalString(value: unknown): string | null {
-  return typeof value === 'string' ? value : null;
-}
 
 export async function createInvitation(
   env: Env,
@@ -35,22 +17,16 @@ export async function createInvitation(
   const access = await requireProjectAccess(env, user.id, projectId, 'admin');
   if (access instanceof Response) return access;
 
-  const input = body as {
-    email?: unknown;
-    role?: unknown;
-    expiresInDays?: unknown;
-  };
-
-  const email = parseOptionalString(input.email)?.trim().toLowerCase();
-  const role = normalizeRole(input.role) ?? 'editor';
+  const parsed = parseBody(invitationCreateSchema, body);
+  if (!parsed.ok) {
+    return badRequest('Invalid request', parsed.details);
+  }
+  const email = parsed.data.email ?? null;
+  const role = parsed.data.role;
   if (role === 'owner') {
     return badRequest('Invitations cannot grant the owner role');
   }
-  const expiresInDays =
-    typeof input.expiresInDays === 'number' &&
-    Number.isFinite(input.expiresInDays)
-      ? input.expiresInDays
-      : 7;
+  const { expiresInDays } = parsed.data;
   const expiresAt = new Date(
     Date.now() + expiresInDays * 24 * 60 * 60 * 1000
   ).toISOString();
@@ -59,8 +35,9 @@ export async function createInvitation(
   const code = crypto.randomUUID();
 
   // The invitation is the quota-consuming write. It is inserted via an
-  // `INSERT ... SELECT ... WHERE (member count) < limit` guard so the count
-  // check and the insert run in a single D1 batch. Concurrent invites therefore
+  // `INSERT ... SELECT ... WHERE (member count) < limit` guard and runs as
+  // PHASE 1 of a two-phase commit — alone — so a tripped guard answers with a
+  // structured 403 and nothing else is written. Concurrent invites therefore
   // cannot both observe capacity and overshoot the member cap.
   const maxMembers = getQuotaConfig(env).maxMembersPerProject;
   const primary = env.D1_DATABASE.prepare(
@@ -173,10 +150,12 @@ export async function acceptInvitation(
   }
 
   // The membership insert is the quota-consuming write. It is inserted via an
-  // `INSERT ... SELECT ... WHERE (member count) < limit` guard so the count
-  // check and the insert run in a single D1 batch. Concurrent accepts therefore
-  // cannot both observe capacity and overshoot the member cap. The invitation's
-  // accepted_at is updated only after the membership insert succeeds.
+  // `INSERT ... SELECT ... WHERE (member count) < limit` guard and runs as
+  // PHASE 1 of a two-phase commit — alone — so concurrent accepts cannot both
+  // observe capacity and overshoot the member cap. When the guard trips, the
+  // structured 403 is returned and PHASE 2 (the invitation's accepted_at
+  // update) NEVER runs: the invitation row stays unaccepted and remains
+  // retryable once capacity frees up.
   const maxMembers = getQuotaConfig(env).maxMembersPerProject;
   const primary = env.D1_DATABASE.prepare(
     `
