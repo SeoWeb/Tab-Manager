@@ -204,10 +204,10 @@ export default function AppClient() {
           </RegionBoundary>
           <div
             className={cn(
-              'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out mr-0'
+              'flex-1 flex flex-col h-full min-w-0 overflow-y-auto transition-all duration-300 ease-in-out mr-0'
             )}
           >
-            <main className='flex-1 w-full'>
+            <main className='flex-1 w-full min-w-0'>
               <RegionBoundary name='main content'>
                 {activeView === 'settings' ? (
                   <Suspense fallback={<Skeleton className='h-full w-full' />}>

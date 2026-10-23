@@ -167,10 +167,10 @@ export default function AppClient() {
           <LeftSidebar />
           <div
             className={cn(
-              'flex-1 flex flex-col h-full overflow-y-auto transition-all duration-300 ease-in-out'
+              'flex-1 flex flex-col h-full min-w-0 overflow-y-auto transition-all duration-300 ease-in-out'
             )}
           >
-            <main className='flex-1 w-full'>
+            <main className='flex-1 w-full min-w-0'>
               {activeView === 'settings' ? (
                 <SettingsView />
               ) : activeView === 'tasks' ? (

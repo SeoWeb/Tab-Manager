@@ -66,7 +66,7 @@ export default function TaskKanbanView({
     useKanbanDnd({ tasks: filteredTasks, onStatusChange });
 
   const columns = (
-    <div className='flex flex-row overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full w-full pb-4 scrollbar-thin snap-x snap-mandatory'>
+    <div className='flex flex-row overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 h-full min-h-0 w-full min-w-0 pb-4 scrollbar-thin snap-x snap-proximity'>
       {kanbanColumns.map((column) => (
         <KanbanColumn
           key={column.status}
@@ -86,11 +86,11 @@ export default function TaskKanbanView({
   );
 
   if (isMobile) {
-    return <div className='h-full'>{columns}</div>;
+    return <div className='h-full min-h-0 min-w-0'>{columns}</div>;
   }
 
   return (
-    <div className='h-full'>
+    <div className='h-full min-h-0 min-w-0'>
       <DragContext
         sensors={sensors}
         onDragStart={handleDragStart}

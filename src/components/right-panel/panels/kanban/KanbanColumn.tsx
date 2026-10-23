@@ -48,7 +48,7 @@ export const KanbanColumn = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col h-full rounded-lg border-2 border-dashed w-[280px] shrink-0 md:w-auto md:shrink snap-center',
+        'flex flex-col h-full rounded-lg border-2 border-dashed w-[min(280px,85vw)] shrink-0 md:w-auto md:shrink snap-center',
         column.color
       )}
     >
