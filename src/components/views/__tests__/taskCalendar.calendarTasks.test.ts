@@ -1,14 +1,16 @@
 import { startOfDay } from 'date-fns';
 import {
+  AGENDA_WINDOW_DAYS,
   TASK_DND_MIME,
   WEEK_STARTS_ON,
   dayKey,
+  getAgendaDayGroups,
   getWeekDays,
   groupTasksByDay,
   isVisibleCalendarTask,
   visibleCalendarTasks,
 } from '@/components/views/task-calendar/calendarTasks';
-import { MARCH, makeTask } from './calendarTestUtils';
+import { APRIL, MARCH, makeTask } from './calendarTestUtils';
 
 describe('calendarTasks', () => {
   describe('isVisibleCalendarTask (legacy filter parity)', () => {
@@ -92,6 +94,53 @@ describe('calendarTasks', () => {
 
     it('uses the shared Sunday-first default', () => {
       expect(WEEK_STARTS_ON).toBe(0);
+    });
+  });
+
+  describe('getAgendaDayGroups', () => {
+    it('spans a 30-day window starting at (and including) the anchor day', () => {
+      expect(AGENDA_WINDOW_DAYS).toBe(30);
+      // Anchor 2026-03-15 → window Mar 15 … Apr 13 (29 days later).
+      const byDay = groupTasksByDay([
+        makeTask({ dueDate: MARCH(15, 9) }),
+        makeTask({ dueDate: APRIL(13, 18) }),
+      ]);
+      const groups = getAgendaDayGroups(byDay, MARCH(15, 12));
+      expect(groups).toHaveLength(2);
+      expect(groups[0].date.toDateString()).toBe(MARCH(15, 0).toDateString());
+      expect(groups[1].date.toDateString()).toBe(APRIL(13, 0).toDateString());
+    });
+
+    it('groups ascending by day and keeps the input order inside a day', () => {
+      const first = makeTask({ title: 'First', dueDate: MARCH(16, 8) });
+      const second = makeTask({ title: 'Second', dueDate: MARCH(16, 20) });
+      const earlier = makeTask({ title: 'Earlier', dueDate: MARCH(15) });
+      const byDay = groupTasksByDay([first, second, earlier]);
+
+      const groups = getAgendaDayGroups(byDay, MARCH(15, 12));
+
+      expect(groups.map((group) => group.date.getDate())).toEqual([15, 16]);
+      expect(groups[0].tasks).toEqual([earlier]);
+      expect(groups[1].tasks).toEqual([first, second]);
+    });
+
+    it('drops tasks outside the window and days without tasks', () => {
+      const byDay = groupTasksByDay([
+        makeTask({ title: 'Day before', dueDate: MARCH(14) }),
+        makeTask({ title: 'Mid window', dueDate: MARCH(20) }),
+        makeTask({ title: 'Day after', dueDate: APRIL(14) }),
+      ]);
+
+      const groups = getAgendaDayGroups(byDay, MARCH(15, 12));
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0].tasks.map((task) => task.title)).toEqual(['Mid window']);
+    });
+
+    it('returns an empty list when no task falls in the window', () => {
+      const byDay = groupTasksByDay([makeTask({ dueDate: MARCH(14) })]);
+      expect(getAgendaDayGroups(byDay, MARCH(15, 12))).toEqual([]);
+      expect(getAgendaDayGroups(new Map(), MARCH(15, 12))).toEqual([]);
     });
   });
 

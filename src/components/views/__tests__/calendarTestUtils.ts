@@ -33,6 +33,11 @@ export function MARCH(day: number, hours = 12): Date {
   return new Date(2026, 2, day, hours, 0, 0, 0);
 }
 
+/** Local-time date helper: APRIL(13) is 2026-04-13 at noon. */
+export function APRIL(day: number, hours = 12): Date {
+  return new Date(2026, 3, day, hours, 0, 0, 0);
+}
+
 /**
  * A controllable DataTransfer for jsdom drag events: `setData` writes into a
  * shared payload that `getData` reads back, mirroring the browser contract

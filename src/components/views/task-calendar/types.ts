@@ -1,7 +1,7 @@
 import type { AdvancedTask } from '@/types/tasks';
 
-/** The two layouts the reworked calendar supports. */
-export type CalendarViewMode = 'month' | 'week';
+/** The three layouts the reworked calendar supports. */
+export type CalendarViewMode = 'month' | 'week' | 'agenda';
 
 export interface TaskCalendarViewProps {
   tasks: AdvancedTask[];

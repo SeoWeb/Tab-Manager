@@ -71,6 +71,12 @@ interface DayCellProps {
   onRescheduleTask: (taskId: string, newDate: Date) => void;
   /** Day belongs to the adjacent month (month-grid outside days). */
   isOutside?: boolean;
+  /**
+   * Cap on the chips rendered per cell (month grid keeps rows short).
+   * Extra tasks collapse into a non-interactive "+N more" hint whose
+   * `title` lists their names. Omit to render every chip (week strip).
+   */
+  maxChips?: number;
 }
 
 /**
@@ -84,8 +90,11 @@ export function DayCell({
   onTaskClick,
   onRescheduleTask,
   isOutside = false,
+  maxChips,
 }: DayCellProps) {
   const today = isToday(date);
+  const shownTasks = maxChips === undefined ? tasks : tasks.slice(0, maxChips);
+  const hiddenTasks = maxChips === undefined ? [] : tasks.slice(maxChips);
   return (
     <div
       data-testid='calendar-day'
@@ -99,7 +108,7 @@ export function DayCell({
         if (taskId) onRescheduleTask(taskId, startOfDay(date));
       }}
       className={cn(
-        'flex h-full min-h-24 flex-col gap-1 p-1',
+        'flex h-full min-h-20 flex-col gap-1 p-1',
         today && 'bg-primary/5 dark:bg-primary/10'
       )}
     >
@@ -117,11 +126,20 @@ export function DayCell({
       </div>
       {tasks.length > 0 && (
         <ul className='flex flex-col gap-0.5'>
-          {tasks.map((task) => (
+          {shownTasks.map((task) => (
             <li key={task.id}>
               <TaskChip task={task} onTaskClick={onTaskClick} />
             </li>
           ))}
+          {hiddenTasks.length > 0 && (
+            <li
+              data-testid='calendar-day-more'
+              title={hiddenTasks.map((task) => task.title).join(', ')}
+              className='px-1.5 text-[10px] text-muted-foreground'
+            >
+              +{hiddenTasks.length} more
+            </li>
+          )}
         </ul>
       )}
     </div>

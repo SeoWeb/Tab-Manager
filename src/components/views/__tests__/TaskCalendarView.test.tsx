@@ -4,10 +4,11 @@
  * previous/today/next navigation and a Month/Week view switch, per-day task
  * lists built from tasks with a due date, click-to-view, and dark-mode
  * styling. These tests pin the react-day-picker rework to the same contract —
- * plus drag-to-reschedule, which the rework adds.
+ * plus drag-to-reschedule, which the rework adds, the restored agenda list,
+ * and the month grid's chip cap that keeps busy days from stretching rows.
  *
- * The suite pins the clock to Sunday 2026-03-15 so month/week navigation has
- * deterministic labels.
+ * The suite pins the clock to Sunday 2026-03-15 so month/week/agenda
+ * navigation has deterministic labels.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import TaskCalendarModern from '@/components/views/task-calendar/TaskCalendarModern';
@@ -15,7 +16,12 @@ import { TASK_DND_MIME } from '@/components/views/task-calendar/calendarTasks';
 import type { TaskCalendarViewProps } from '@/components/views/task-calendar/types';
 import type { AdvancedTask } from '@/types/tasks';
 import TaskCalendarView from '@/components/views/TaskCalendarView';
-import { MARCH, createDataTransfer, makeTask } from './calendarTestUtils';
+import {
+  APRIL,
+  MARCH,
+  createDataTransfer,
+  makeTask,
+} from './calendarTestUtils';
 
 const mockOnViewTask = jest.fn();
 const mockOnRescheduleTask = jest.fn();
@@ -251,6 +257,161 @@ describe('TaskCalendarModern parity', () => {
     expect(getCell('2026-03-16')).not.toHaveAttribute('data-today');
     expect(getCell('2026-04-02')).toHaveAttribute('data-outside', 'true');
     expect(getCell('2026-03-25')).not.toHaveAttribute('data-outside');
+  });
+});
+
+describe('Compact month grid', () => {
+  it('caps month cells at 3 chips with a "+N more" hint, and shows every chip in the week view', () => {
+    const titles = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'];
+    // 2026-03-18 sits in both the month grid and the anchor week (Mar 15–21).
+    renderModern({
+      tasks: titles.map((title, index) =>
+        makeTask({ title, dueDate: MARCH(18, 9 + index) })
+      ),
+    });
+
+    const monthCell = getCell('2026-03-18');
+    const monthChips = within(monthCell).getAllByTestId('task-chip');
+    expect(monthChips).toHaveLength(3);
+    expect(monthChips.map((chip) => chip.textContent)).toEqual([
+      'Alpha',
+      'Bravo',
+      'Charlie',
+    ]);
+
+    const moreHint = within(monthCell).getByTestId('calendar-day-more');
+    expect(moreHint).toHaveTextContent('+2 more');
+    expect(moreHint).toHaveAttribute('title', 'Delta, Echo');
+    // The hint is display-only: no button role, not focusable.
+    expect(moreHint).not.toHaveAttribute('role');
+    expect(moreHint).not.toHaveAttribute('tabindex');
+
+    fireEvent.click(screen.getByTestId('calendar-view-week'));
+    const weekCell = getCell('2026-03-18');
+    expect(within(weekCell).getAllByTestId('task-chip')).toHaveLength(5);
+    expect(
+      within(weekCell).queryByTestId('calendar-day-more')
+    ).not.toBeInTheDocument();
+    for (const title of titles) {
+      expect(within(weekCell).getByText(title)).toBeVisible();
+    }
+  });
+});
+
+describe('Agenda view', () => {
+  it('toggles to the agenda view and back to month via the toolbar', () => {
+    renderModern();
+
+    fireEvent.click(screen.getByTestId('calendar-view-agenda'));
+    expect(screen.getByTestId('calendar-view-agenda')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('calendar-grid-agenda')).toBeInTheDocument();
+    expect(screen.queryByTestId('calendar-grid-month')).not.toBeInTheDocument();
+    // Anchor 2026-03-15 → the 30-day window is Mar 15 – Apr 13.
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'Mar 15 – Apr 13, 2026'
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-view-month'));
+    expect(screen.getByTestId('calendar-grid-month')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('calendar-grid-agenda')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'March 2026'
+    );
+  });
+
+  it('groups tasks by ascending day inside the window and drops tasks outside it', () => {
+    renderModern({
+      tasks: [
+        makeTask({ title: 'Day after', dueDate: APRIL(14) }),
+        makeTask({ title: 'Last window day', dueDate: APRIL(13) }),
+        makeTask({ title: 'Mid window', dueDate: MARCH(25) }),
+        makeTask({ title: 'Second day', dueDate: MARCH(16, 8) }),
+        makeTask({ title: 'Anchor day', dueDate: MARCH(15, 20) }),
+        makeTask({ title: 'Day before', dueDate: MARCH(14) }),
+      ],
+    });
+    fireEvent.click(screen.getByTestId('calendar-view-agenda'));
+
+    const agenda = screen.getByTestId('calendar-grid-agenda');
+    const days = within(agenda).getAllByTestId('agenda-day');
+    expect(days.map((day) => day.getAttribute('data-date'))).toEqual([
+      '2026-03-15',
+      '2026-03-16',
+      '2026-03-25',
+      '2026-04-13',
+    ]);
+    expect(days[0]).toHaveTextContent('Sun, Mar 15, 2026');
+
+    // Only days with tasks render, and out-of-window tasks are gone.
+    expect(within(agenda).queryByText('Day before')).not.toBeInTheDocument();
+    expect(within(agenda).queryByText('Day after')).not.toBeInTheDocument();
+
+    // Each task lives in the day group of its due date.
+    const secondDayGroup = within(agenda)
+      .getByText('Second day')
+      .closest('section');
+    expect(
+      secondDayGroup?.querySelector('[data-testid="agenda-day"]')
+    ).toHaveAttribute('data-date', '2026-03-16');
+    const lastDayGroup = within(agenda)
+      .getByText('Last window day')
+      .closest('section');
+    expect(
+      lastDayGroup?.querySelector('[data-testid="agenda-day"]')
+    ).toHaveAttribute('data-date', '2026-04-13');
+  });
+
+  it('navigates the window in 30-day steps and returns to today', () => {
+    renderModern();
+    fireEvent.click(screen.getByTestId('calendar-view-agenda'));
+
+    fireEvent.click(screen.getByTestId('calendar-next'));
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'Apr 14 – May 13, 2026'
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-prev'));
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'Mar 15 – Apr 13, 2026'
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-prev'));
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'Feb 13 – Mar 14, 2026'
+    );
+
+    fireEvent.click(screen.getByTestId('calendar-today'));
+    expect(screen.getByTestId('calendar-label')).toHaveTextContent(
+      'Mar 15 – Apr 13, 2026'
+    );
+  });
+
+  it('shows the empty-state message when no task falls in the window', () => {
+    renderModern({
+      tasks: [makeTask({ title: 'Out of range', dueDate: APRIL(20) })],
+    });
+    fireEvent.click(screen.getByTestId('calendar-view-agenda'));
+
+    expect(screen.getByTestId('agenda-empty')).toHaveTextContent(
+      'No tasks due in this period.'
+    );
+    expect(screen.queryByTestId('agenda-day')).not.toBeInTheDocument();
+  });
+
+  it('opens a task via onViewTask when its agenda row is clicked', () => {
+    const task = makeTask({ title: 'Agenda click', dueDate: MARCH(16) });
+    renderModern({ tasks: [task] });
+    fireEvent.click(screen.getByTestId('calendar-view-agenda'));
+
+    fireEvent.click(screen.getByText('Agenda click'));
+
+    expect(mockOnViewTask).toHaveBeenCalledTimes(1);
+    expect(mockOnViewTask).toHaveBeenCalledWith(task);
   });
 });
 

@@ -23,8 +23,8 @@ const buttonClass = cn(
 
 /**
  * Toolbar with the same affordances as the pre-rework calendar
- * toolbar: previous / today / next navigation and a Month / Week view
- * switch.
+ * toolbar: previous / today / next navigation and a Month / Week /
+ * Agenda view switch.
  */
 export function CalendarToolbar({
   viewMode,
@@ -96,6 +96,15 @@ export function CalendarToolbar({
           onClick={() => onViewModeChange('week')}
         >
           Week
+        </button>
+        <button
+          type='button'
+          data-testid='calendar-view-agenda'
+          aria-pressed={viewMode === 'agenda'}
+          className={cn(buttonClass, viewMode === 'agenda' && 'bg-muted')}
+          onClick={() => onViewModeChange('agenda')}
+        >
+          Agenda
         </button>
       </div>
     </div>

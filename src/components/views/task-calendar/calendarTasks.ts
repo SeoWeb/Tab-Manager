@@ -71,3 +71,34 @@ export function getWeekDays(
   const start = startOfWeek(anchor, { weekStartsOn });
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));
 }
+
+/** Days the agenda view spans, counting the anchor day (30-day window). */
+export const AGENDA_WINDOW_DAYS = 30;
+
+/** Tasks of one agenda day: the day plus the tasks due on it. */
+export interface AgendaDayGroup {
+  date: Date;
+  tasks: AdvancedTask[];
+}
+
+/**
+ * The agenda list for the window `[anchor, anchor + AGENDA_WINDOW_DAYS - 1]`:
+ * day groups ascending by day, each carrying the tasks due that day, days
+ * without tasks omitted. `tasksByDay` is the grouped map produced by
+ * `groupTasksByDay` (already filtered through `visibleCalendarTasks`).
+ */
+export function getAgendaDayGroups(
+  tasksByDay: Map<number, AdvancedTask[]>,
+  anchor: Date
+): AgendaDayGroup[] {
+  const start = startOfDay(anchor);
+  const groups: AgendaDayGroup[] = [];
+  for (let index = 0; index < AGENDA_WINDOW_DAYS; index += 1) {
+    const date = addDays(start, index);
+    const tasks = tasksByDay.get(date.getTime());
+    if (tasks) {
+      groups.push({ date, tasks });
+    }
+  }
+  return groups;
+}
