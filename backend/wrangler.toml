@@ -12,9 +12,9 @@ local_protocol = "http"
 
 [vars]
 # Exact-match CORS allow-list, comma-separated. "*" is rejected (fails closed).
-ALLOWED_ORIGINS = "https://tab-manager.ww0.dev,chrome-extension://ibookhginldlbchkmobhjmmmgkocjkhh"
+ALLOWED_ORIGINS = "https://tabspace.ww0.dev,chrome-extension://ibookhginldlbchkmobhjmmmgkocjkhh"
 # TODO(pre-deploy): add the production extension origin, e.g.
-#   ALLOWED_ORIGINS = "https://tab-manager.ww0.dev,chrome-extension://<EXTENSION_ID>"
+#   ALLOWED_ORIGINS = "https://tabspace.ww0.dev,chrome-extension://<EXTENSION_ID>"
 
 # Email sending for the magic-PIN login flow. `remote = true` routes sends
 # through Cloudflare's live email infrastructure, so the sending domain

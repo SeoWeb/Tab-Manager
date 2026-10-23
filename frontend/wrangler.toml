@@ -14,3 +14,10 @@ compatibility_date = "2025-01-01"
 
 [assets]
 directory = "./build"
+
+# Custom domain for the rebranded "TabSpace" web app. Also pinned in the
+# Cloudflare dashboard; declaring it here keeps it durable in config. The
+# backend's ALLOWED_ORIGINS must list this origin (see backend/wrangler.toml).
+[[routes]]
+pattern = "tabspace.ww0.dev"
+custom_domain = true

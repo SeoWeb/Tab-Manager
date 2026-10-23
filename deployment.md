@@ -176,7 +176,7 @@ npx wrangler secret put JWT_SECRET
 
 ```toml
 [vars]
-ALLOWED_ORIGINS = "https://tab-manager.ww0.dev,chrome-extension://<EXTENSION_ID>"
+ALLOWED_ORIGINS = "https://tabspace.ww0.dev,chrome-extension://<EXTENSION_ID>"
 ```
 
 `<EXTENSION_ID>` is the extension's ID in the Chrome Web Store — read it from
@@ -246,7 +246,7 @@ npx wrangler deploy
 > backend pins `wrangler` in its own devDependencies; do the same here if you
 > prefer a local install.
 
-A custom domain (e.g. `tab-manager.ww0.dev`) can be attached in the Cloudflare
+A custom domain (e.g. `tabspace.ww0.dev`) can be attached in the Cloudflare
 dashboard under Workers & Pages → `tab-manager` → Settings → Domains & Routes.
 If you add one, update the backend's `ALLOWED_ORIGINS` to include it.
 

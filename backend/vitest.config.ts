@@ -107,7 +107,7 @@ const integrationProject: ViteUserConfig = {
       miniflare: {
         bindings: {
           JWT_SECRET: 'integration-test-only-secret',
-          ALLOWED_ORIGINS: 'https://tab-manager.ww0.dev',
+          ALLOWED_ORIGINS: 'https://tabspace.ww0.dev',
         },
       },
     }),

@@ -60,7 +60,7 @@ d('integration harness smoke (pool-workers + migrations-applied D1)', () => {
     expect(env.RATE_LIMITER).toBeDefined();
     expect(env.JWT_SECRET).toBe(TEST_JWT_SECRET);
     // wrangler.toml [vars] flowed through.
-    expect(env.ALLOWED_ORIGINS).toBe('https://tab-manager.ww0.dev');
+    expect(env.ALLOWED_ORIGINS).toBe('https://tabspace.ww0.dev');
   });
 
   it('applied every wrangler.toml migration, tracked in d1_migrations', async () => {
