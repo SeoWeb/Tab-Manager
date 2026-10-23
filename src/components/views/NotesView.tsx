@@ -75,7 +75,7 @@ export default function NotesView() {
   const unpinnedNotes = filteredNotes.filter((note) => !note.isPinned);
 
   return (
-    <div className='space-y-4'>
+    <div className='space-y-4 mx-auto w-full max-w-5xl'>
       <div className='flex items-center justify-between'>
         <h3 className='text-lg font-semibold text-foreground'>Notes</h3>
         <Button size='sm' onClick={() => setIsCreating(true)} className='h-8'>
@@ -165,7 +165,7 @@ export default function NotesView() {
               <Pin className='h-3 w-3 mr-1' />
               Pinned
             </h4>
-            <div className='grid gap-3'>
+            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
               {pinnedNotes.map((note) => (
                 <NoteCard
                   key={note.id}
@@ -186,7 +186,7 @@ export default function NotesView() {
             {pinnedNotes.length > 0 && (
               <h4 className='text-sm font-medium text-gray-600 mb-2'>Others</h4>
             )}
-            <div className='grid gap-3'>
+            <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
               {unpinnedNotes.map((note) => (
                 <NoteCard
                   key={note.id}

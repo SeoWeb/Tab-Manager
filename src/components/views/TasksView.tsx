@@ -186,7 +186,7 @@ export default function TasksView({
 
           <div className='flex-1 mt-6'>
             <TabsContent value='kanban' className='h-full m-0'>
-              <div className='h-full'>
+              <div className='h-full mx-auto w-full max-w-7xl'>
                 <Suspense fallback={<Skeleton className='h-full w-full' />}>
                   <TaskKanbanView
                     tasks={tasks}
@@ -205,11 +205,13 @@ export default function TasksView({
             </TabsContent>
 
             <TabsContent value='calendar' className='h-full m-0'>
-              <TaskCalendarView tasks={tasks} onViewTask={handleViewTask} />
+              <div className='h-full mx-auto w-full max-w-5xl'>
+                <TaskCalendarView tasks={tasks} onViewTask={handleViewTask} />
+              </div>
             </TabsContent>
 
             <TabsContent value='analytics' className='h-full m-0'>
-              <div className='h-full max-w-4xl'>
+              <div className='h-full mx-auto w-full max-w-4xl'>
                 <Suspense fallback={<Skeleton className='h-full w-full' />}>
                   <TaskAnalyticsDashboard tasks={tasks} stats={taskStats} />
                 </Suspense>
@@ -217,7 +219,9 @@ export default function TasksView({
             </TabsContent>
 
             <TabsContent value='archived' className='h-full m-0'>
-              <ArchivedTasksView tasks={tasks} />
+              <div className='h-full mx-auto w-full max-w-4xl'>
+                <ArchivedTasksView tasks={tasks} />
+              </div>
             </TabsContent>
           </div>
         </Tabs>

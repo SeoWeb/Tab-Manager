@@ -32,7 +32,7 @@ const TodosView = () => {
   };
 
   return (
-    <div>
+    <div className='mx-auto w-full max-w-4xl'>
       <h1 className='text-2xl font-bold mb-4'>Todos</h1>
       <div className='flex space-x-2 mb-4'>
         <Input
