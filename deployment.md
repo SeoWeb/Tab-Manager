@@ -456,6 +456,11 @@ The response returns the next `cursor`, the `changes` log since `lastCursor`
 
 ## Token expiry cutover (harden-auth-tokens)
 
+> **Status:** migration window opened **2026-10-23** (deploy that switched minting
+> to short-lived tokens). Strict flip (`REQUIRE_EXP_ON_ALL_TOKENS=1`, step 3) is
+> eligible on/after **2026-11-22**, and only once the legacy-use log below
+> approaches zero.
+
 Access tokens used to be minted with a 30-day expiry (and the earliest tokens
 with no expiry at all). This deployment switches minting to short-lived tokens
 while tolerating the old ones for one migration window:
