@@ -3,6 +3,17 @@ import { showErrorToast } from './toast';
 // src/lib/bookmarkService.ts
 
 /**
+ * Chrome rejects bookmark lookups and writes for ids that are absent from the
+ * tree with a "not found" error (e.g. "Can't find bookmark for id."). Such a
+ * rejection means "already deleted", not "operation failed", so delete paths
+ * can treat it as idempotent success.
+ */
+function isBookmarkNotFoundError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /can't find bookmark|not found/i.test(message);
+}
+
+/**
  * A wrapper around the chrome.bookmarks API for easier use and error handling.
  */
 export const bookmarkService = {
@@ -135,6 +146,11 @@ export const bookmarkService = {
 
   /**
    * Deletes a bookmark or an empty bookmark folder.
+   *
+   * Deletion is idempotent: a bookmark id that is already absent from the tree
+   * (stale mirror reference, orphan cleanup, double delete) resolves as
+   * success instead of surfacing Chrome's "Can't find bookmark for id."
+   * rejection as an error toast.
    * @param id The ID of the bookmark/folder to delete.
    */
   async deleteBookmark(id: string): Promise<void> {
@@ -142,8 +158,19 @@ export const bookmarkService = {
       if (!id) {
         throw new Error('Bookmark ID is required for deletion.');
       }
+      // Idempotency pre-check: a missing bookmark is already deleted.
+      const node = await this.getBookmarkNode(id);
+      if (!node) {
+        return;
+      }
       await chrome.bookmarks.remove(id);
     } catch (error) {
+      // Race safety net: the bookmark vanished between the pre-check and the
+      // remove call — treat not-found as already-deleted. Any other error
+      // keeps propagating to the toast path below.
+      if (isBookmarkNotFoundError(error)) {
+        return;
+      }
       // API throws error if folder is not empty. Use deleteBookmarkTree for that.
       console.error(`Error deleting bookmark/empty folder ID "${id}":`, error);
       if (error instanceof Error) {
@@ -159,6 +186,10 @@ export const bookmarkService = {
 
   /**
    * Deletes a bookmark folder and all its contents (recursively).
+   *
+   * Idempotent like {@link bookmarkService.deleteBookmark}: a root that is
+   * already absent from the tree is treated as already-deleted and succeeds
+   * silently.
    * @param id The ID of the folder to delete.
    */
   async deleteBookmarkTree(id: string): Promise<void> {
@@ -168,8 +199,18 @@ export const bookmarkService = {
           'Bookmark folder ID is required for recursive deletion.'
         );
       }
+      // Idempotency pre-check: an absent root is already deleted.
+      const node = await this.getBookmarkNode(id);
+      if (!node) {
+        return;
+      }
       await chrome.bookmarks.removeTree(id);
     } catch (error) {
+      // Race safety net: the root vanished between the pre-check and the
+      // removeTree call — treat not-found as already-deleted.
+      if (isBookmarkNotFoundError(error)) {
+        return;
+      }
       console.error(`Error deleting bookmark tree ID "${id}":`, error);
       if (error instanceof Error) {
         showErrorToast(`Error deleting bookmark folder: ${error.message}`);
@@ -197,6 +238,11 @@ export const bookmarkService = {
       const results = await chrome.bookmarks.get(id);
       return results && results.length > 0 ? results[0] : null;
     } catch (error) {
+      // A missing id rejects with Chrome's "Can't find bookmark for id." —
+      // that is an absence, not a failure, so resolve to null silently.
+      if (isBookmarkNotFoundError(error)) {
+        return null;
+      }
       console.error(`Error retrieving bookmark node ID "${id}":`, error);
       showErrorToast('Error retrieving bookmark.');
       // This error occurs if the ID doesn't exist.

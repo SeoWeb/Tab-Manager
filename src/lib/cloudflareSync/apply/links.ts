@@ -94,7 +94,9 @@ export function buildLink(
     tags: pickStringArray([patch.tags]),
     notes: pickString([patch.notes]),
     order: pickNumber([patch.order, patch.orderIndex]),
-    bookmarkId: pickString([patch.bookmarkId]) ?? null,
+    // Bookmark ids are device-local and never synced: a created link starts
+    // unmirrored until this device's own bookmark logic assigns an id.
+    bookmarkId: null,
     createdAt: parseDate(createdAt) ?? new Date(),
     updatedAt,
   };
@@ -117,7 +119,9 @@ export function mergeLink(link: Link, patch: Record<string, unknown>): Link {
         : link.tags,
     notes: 'notes' in patch ? pickString([patch.notes]) : link.notes,
     order: pickNumber([patch.order, patch.orderIndex]) ?? link.order,
-    bookmarkId: pickString([patch.bookmarkId]) ?? link.bookmarkId ?? null,
+    // Bookmark ids are device-local and never synced: ignore `patch.bookmarkId`
+    // (a remote id belongs to another device's tree) and keep the local value.
+    bookmarkId: link.bookmarkId ?? null,
     // Reconcile pulls preserve the server `updated_at`; local updates leave the
     // existing value untouched.
     updatedAt,

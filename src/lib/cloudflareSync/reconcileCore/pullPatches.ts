@@ -18,6 +18,9 @@ function collectionPullPatch(row: SnapshotCollection): Record<string, unknown> {
   };
 }
 
+/** Pull patch for a link. Bookmark ids are excluded (device-local): the
+ * server's `bookmark_id` belongs to whichever device pushed it and must never
+ * enter local state (it would make deletes target a nonexistent bookmark). */
 function linkPullPatch(row: SnapshotLink): Record<string, unknown> {
   return {
     collectionId: row.collection_id,
@@ -27,7 +30,6 @@ function linkPullPatch(row: SnapshotLink): Record<string, unknown> {
     notes: row.notes,
     tags: parseTags(row.tags_json),
     order: row.order_index,
-    bookmarkId: row.bookmark_id,
     updated_at: row.updated_at,
   };
 }

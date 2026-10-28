@@ -3,7 +3,7 @@
 import { bookmarkStorage } from './bookmarkStorage';
 
 /**
- * Sequenced bookmark mirroring for link moves.
+ * Sequenced bookmark mirroring for link moves and removals.
  *
  * Moving a link between collections mirrors the change in the Chrome bookmark
  * tree (create in the target folder, delete the previous bookmark) and commits
@@ -15,10 +15,16 @@ import { bookmarkStorage } from './bookmarkStorage';
  * that had not moved whenever a write failed, and let concurrent moves
  * interleave their create/delete for the same link).
  *
+ * Deleting a link mirrors the removal of its bookmark through the same
+ * per-link chain (`queueLinkBookmarkRemoval`, called from
+ * `linkActions.deleteLink`), so an overlapping move + delete for one link
+ * cannot both remove the same bookmark id. The store-level link removal
+ * stays immediate — only the bookmark-tree side of the deletion is queued.
+ *
  * Guarantees:
- * - Per-link serialization: mirror ops for the same link run strictly one
- *   after another, in submission order. Ops for different links are
- *   independent and may run in parallel.
+ * - Per-link serialization: mirror ops (moves and removals) for the same
+ *   link run strictly one after another, in submission order. Ops for
+ *   different links are independent and may run in parallel.
  * - Late binding: each op resolves the link's CURRENT bookmark id when it
  *   reaches the front of its chain (an earlier op in the chain may have
  *   already replaced the mirror), so it never acts on a stale id.
@@ -64,6 +70,19 @@ export interface LinkBookmarkMirrorRequest {
   retryDelayMs?: number;
 }
 
+export interface LinkBookmarkRemovalRequest {
+  /** Stable per-link key: mirror ops for one link are strictly serialized. */
+  linkId: string;
+  /**
+   * Resolve the bookmark id to remove when the op reaches the front of its
+   * chain. Returning null (nothing mirrored) skips the op without writing
+   * anything. The delete-side caller resolves the id captured at submission
+   * time: the store row is already gone when the op runs, so the captured id
+   * is the authoritative mirror to remove.
+   */
+  resolveBookmarkId: () => string | null;
+}
+
 const MAX_ATTEMPTS = 2;
 const DEFAULT_RETRY_DELAY_MS = 250;
 
@@ -102,6 +121,9 @@ async function runMirrorMoveAttempt(
   } catch (error) {
     // Compensation: the move did not complete, so do not leave the freshly
     // created bookmark behind as an orphan duplicate of `oldBookmarkId`.
+    // This runs INLINE inside the current chain op — re-enqueueing a chain
+    // op for the same link from within a running one would wait on the
+    // chain tail and deadlock.
     try {
       await bookmarkStorage.deleteLink(created.id);
     } catch {
@@ -142,31 +164,72 @@ async function runMirrorMoveWithRetry(
 }
 
 /**
- * Queue a bookmark-mirror move for a link. The returned promise settles when
- * this op — and every op queued before it for the same link — has settled; it
- * never rejects (failures are compensated and reported inside the chain).
+ * One mirror-removal op: delete the bookmark the link maps to. A removal
+ * whose target was already deleted by an earlier op in the same chain (the
+ * delete-old step of an overlapping move) settles as idempotent success —
+ * `bookmarkStorage.deleteLink` treats an absent bookmark as already
+ * removed — so the same id is never removed twice.
+ */
+async function runMirrorRemoval(
+  request: LinkBookmarkRemovalRequest
+): Promise<void> {
+  const bookmarkId = request.resolveBookmarkId();
+  if (!bookmarkId) return; // nothing mirrored: nothing to remove
+  await bookmarkStorage.deleteLink(bookmarkId);
+}
+
+/**
+ * Append an op to a link's mirror chain. Moves AND removals share the same
+ * chain, so a removal queued while a move for the same link is still in
+ * flight runs after that move instead of racing it to delete the same
+ * bookmark id. The returned promise settles when this op — and every op
+ * queued before it for the same link — has settled; it never rejects
+ * (failures are reported inside the chain).
+ */
+function enqueueLinkMirrorOp(
+  linkId: string,
+  run: () => Promise<void>
+): Promise<void> {
+  const previous = chains.get(linkId) ?? Promise.resolve();
+  const tail = previous.then(run).catch((error) => {
+    // Ops report their own failures; this guard only keeps an unexpected
+    // crash from poisoning the rest of the chain or surfacing as an
+    // unhandled rejection.
+    console.error('[linkBookmarkMirror] Unexpected mirror failure:', error);
+  });
+  chains.set(linkId, tail);
+  void tail.then(() => {
+    // Drop the chain once the tail settles so the map does not grow without
+    // bound; a concurrently queued op has by then replaced the entry.
+    if (chains.get(linkId) === tail) {
+      chains.delete(linkId);
+    }
+  });
+  return tail;
+}
+
+/**
+ * Queue a bookmark-mirror move for a link. See {@link enqueueLinkMirrorOp}
+ * for the serialization contract.
  */
 export function queueLinkBookmarkMove(
   request: LinkBookmarkMirrorRequest
 ): Promise<void> {
-  const previous = chains.get(request.linkId) ?? Promise.resolve();
-  const tail = previous
-    .then(() => runMirrorMoveWithRetry(request))
-    .catch((error) => {
-      // runMirrorMoveWithRetry reports its own failures; this guard only
-      // keeps an unexpected crash from poisoning the rest of the chain or
-      // surfacing as an unhandled rejection.
-      console.error('[linkBookmarkMirror] Unexpected mirror failure:', error);
-    });
-  chains.set(request.linkId, tail);
-  void tail.then(() => {
-    // Drop the chain once the tail settles so the map does not grow without
-    // bound; a concurrently queued op has by then replaced the entry.
-    if (chains.get(request.linkId) === tail) {
-      chains.delete(request.linkId);
-    }
-  });
-  return tail;
+  return enqueueLinkMirrorOp(request.linkId, () =>
+    runMirrorMoveWithRetry(request)
+  );
+}
+
+/**
+ * Queue a bookmark-mirror removal for a link (the delete-side mirror cleanup
+ * of `linkActions.deleteLink`). Shares the move chain — see
+ * {@link enqueueLinkMirrorOp} — so it can never run concurrently with (and
+ * double-remove the target of) an in-flight move for the same link.
+ */
+export function queueLinkBookmarkRemoval(
+  request: LinkBookmarkRemovalRequest
+): Promise<void> {
+  return enqueueLinkMirrorOp(request.linkId, () => runMirrorRemoval(request));
 }
 
 /**

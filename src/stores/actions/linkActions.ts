@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 import type { Link, Project, Collection } from '@/types';
 import type { AppState } from '../types';
 import { bookmarkStorage } from '@/lib/bookmarkStorage';
+import { queueLinkBookmarkRemoval } from '@/lib/linkBookmarkMirror';
 import { preloadFavicon } from '@/lib/utils';
 import { enqueueCloudChange } from '@/lib/cloudflareSync/orchestrator';
 import { debugLog } from '@/lib/debugLog';
@@ -259,17 +260,16 @@ export const createLinkActions = (
       });
 
       if (linkToDelete && linkToDelete.bookmarkId) {
-        (async () => {
-          try {
-            await bookmarkStorage.deleteLink(linkToDelete.bookmarkId!);
-            debugLog(`Bookmark for link ${linkId} deleted.`);
-          } catch (error) {
-            console.error(
-              `Failed to delete bookmark for link ${linkId}:`,
-              error
-            );
-          }
-        })();
+        const { bookmarkId } = linkToDelete;
+        // Mirror removal goes through the same per-link chain as moves
+        // (`queueLinkBookmarkRemoval`) so an overlapping cross-collection
+        // move and delete cannot both remove the same bookmark id. Only the
+        // bookmark-tree side is sequenced — the store removal above stays
+        // immediate for UI responsiveness.
+        void queueLinkBookmarkRemoval({
+          linkId,
+          resolveBookmarkId: () => bookmarkId,
+        });
       }
       return { projects: updatedProjects };
     });

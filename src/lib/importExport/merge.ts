@@ -63,12 +63,16 @@ export function mergeCollections(
       const linkById = new Map(existing.links.map((l) => [l.id, l]));
       const linkByUrl = new Map(existing.links.map((l) => [l.url, l]));
       const links = existing.links.map((l) => ({ ...l }));
+      // Bookmark ids are device-local: an imported id belongs to the exporting
+      // device's tree, so imported links start unmirrored (full sync
+      // re-mirrors them from this device's bookmarks).
       for (const il of ic.links) {
         if (linkById.has(il.id)) {
           c.links.updated++;
           const idx = links.findIndex((l) => l.id === il.id);
           links[idx] = {
             ...il,
+            bookmarkId: null,
             createdAt: ensureDate(il.createdAt),
             updatedAt: ensureDate(il.updatedAt),
           };
@@ -78,6 +82,7 @@ export function mergeCollections(
           c.links.added++;
           links.push({
             ...il,
+            bookmarkId: null,
             createdAt: ensureDate(il.createdAt),
             updatedAt: ensureDate(il.updatedAt),
           });
@@ -100,6 +105,7 @@ export function mergeCollections(
         ...ic,
         links: ic.links.map((l) => ({
           ...l,
+          bookmarkId: null,
           createdAt: ensureDate(l.createdAt),
           updatedAt: ensureDate(l.updatedAt),
         })),
@@ -174,10 +180,13 @@ export function computeImport(
       cloudRole: undefined,
       createdAt: ensureDate(bundle.project.createdAt),
       updatedAt: new Date(),
+      // Bookmark ids are device-local: strip imported ids so full sync
+      // re-mirrors the links from this device's bookmark tree.
       collections: bundle.project.collections.map((c) => ({
         ...c,
         links: c.links.map((l) => ({
           ...l,
+          bookmarkId: null,
           createdAt: ensureDate(l.createdAt),
           updatedAt: ensureDate(l.updatedAt),
         })),
