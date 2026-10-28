@@ -1,7 +1,6 @@
 import React from 'react';
 import { Project } from '@/types';
 import SearchBar from './SearchBar';
-import ThemeToggle from './ThemeToggle';
 import ProjectActionsMenu from './ProjectActionsMenu';
 import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -92,7 +91,6 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
 
           {/* Quick actions for mobile only */}
           <div className='flex items-center gap-1.5 md:hidden'>
-            <ThemeToggle />
             <ProjectActionsMenu project={project} />
           </div>
         </div>
@@ -205,7 +203,6 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <ThemeToggle />
           <ProjectActionsMenu project={project} />
         </div>
       </header>

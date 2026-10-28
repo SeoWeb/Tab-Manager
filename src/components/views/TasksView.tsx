@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, Grid3X3, Calendar, Archive, Menu } from 'lucide-react';
 import type { TaskStatus } from '@/types/tasks';
 import { Button } from '@/components/ui/button';
-import ThemeToggle from '@/components/main-content/ThemeToggle';
 import { useSidebarState } from '@/hooks/useSidebarState';
 
 // Import the enhanced components
@@ -152,9 +151,6 @@ export default function TasksView({
             <h1 className='text-xl md:text-2xl font-semibold text-foreground truncate'>
               Tasks
             </h1>
-          </div>
-          <div className='flex items-center gap-2'>
-            <ThemeToggle />
           </div>
         </header>
       )}

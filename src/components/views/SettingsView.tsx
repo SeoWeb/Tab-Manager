@@ -4,6 +4,7 @@ import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { CloudSyncSettingsPanel } from '@/components/cloud-sync/CloudSyncSettingsPanel';
@@ -11,13 +12,22 @@ import { CloudSyncMyProjectsCard } from '@/components/cloud-sync/CloudSyncMyProj
 import { CloudSyncInvitesCard } from '@/components/cloud-sync/CloudSyncInvitesCard';
 import { useSidebarState } from '@/hooks/useSidebarState';
 import { Menu, GraduationCap } from 'lucide-react';
-import ThemeToggle from '@/components/main-content/ThemeToggle';
 
 export default function SettingsView() {
-  const { themeColor, setThemeColor, openOnboarding } = useAppStore(
+  const {
+    themeColor,
+    setThemeColor,
+    isDarkMode,
+    toggleDarkMode,
+    hasHydrated,
+    openOnboarding,
+  } = useAppStore(
     useShallow((state) => ({
       themeColor: state.themeColor,
       setThemeColor: state.setThemeColor,
+      isDarkMode: state.isDarkMode,
+      toggleDarkMode: state.toggleDarkMode,
+      hasHydrated: state._hasHydrated,
       openOnboarding: state.openOnboarding,
     }))
   );
@@ -40,9 +50,6 @@ export default function SettingsView() {
             Settings
           </h1>
         </div>
-        <div className='flex items-center gap-2'>
-          <ThemeToggle />
-        </div>
       </header>
       <div className='flex-grow p-4 md:p-8 overflow-y-auto'>
         <div className='mx-auto w-full max-w-3xl space-y-6'>
@@ -54,6 +61,19 @@ export default function SettingsView() {
               value={themeColor}
               onChange={(e) => setThemeColor(e.target.value)}
               className='w-24'
+            />
+          </div>
+
+          <div>
+            <Label htmlFor='dark-mode'>Dark Mode</Label>
+            <p className='text-sm text-muted-foreground mb-2'>
+              Switch between light and dark appearance.
+            </p>
+            <Switch
+              id='dark-mode'
+              checked={isDarkMode}
+              onCheckedChange={toggleDarkMode}
+              disabled={!hasHydrated}
             />
           </div>
 

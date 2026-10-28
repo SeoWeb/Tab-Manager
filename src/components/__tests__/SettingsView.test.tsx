@@ -9,8 +9,9 @@
  * In jest (no build-time inlining) the flag is read at render time, so the
  * tests toggle `process.env.INCLUDE_DEBUG_ROUTES` directly.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import SettingsView from '@/components/views/SettingsView';
+import { useAppStore } from '@/stores/appStore';
 
 jest.mock('nanoid', () => ({ nanoid: () => 'test-id' }));
 
@@ -18,8 +19,6 @@ jest.mock('lucide-react', () => ({
   __esModule: true,
   Menu: () => null,
   GraduationCap: () => null,
-  SunIcon: () => null,
-  MoonIcon: () => null,
 }));
 
 // Heavy cloud-sync children: stub — the test exercises only the link gate.
@@ -69,5 +68,36 @@ describe('SettingsView debug-link gating', () => {
     expect(
       screen.queryByRole('link', { name: 'Update Favicons' })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('SettingsView dark mode setting', () => {
+  // The Switch is disabled until the store reports hydration (same gating the
+  // old header toggle had), so force the hydrated state up front.
+  beforeEach(() => {
+    useAppStore.setState({ _hasHydrated: true, isDarkMode: false });
+  });
+
+  it('renders the Dark Mode row and toggles the store setting', () => {
+    render(<SettingsView />);
+    const toggle = screen.getByRole('switch', { name: 'Dark Mode' });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).not.toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(useAppStore.getState().isDarkMode).toBe(true);
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(useAppStore.getState().isDarkMode).toBe(false);
+  });
+
+  it('renders the Dark Mode description', () => {
+    render(<SettingsView />);
+    expect(
+      screen.getByText('Switch between light and dark appearance.')
+    ).toBeInTheDocument();
   });
 });
