@@ -3,7 +3,6 @@ import { Project } from '@/types';
 import SearchBar from './SearchBar';
 import ThemeToggle from './ThemeToggle';
 import ProjectActionsMenu from './ProjectActionsMenu';
-import { BookmarkSyncStatus } from '@/components/sync/BookmarkSyncStatus';
 import { useAppStore } from '@/stores/appStore';
 import { useShallow } from 'zustand/react/shallow';
 import { highlightText } from '@/lib/highlight';
@@ -93,7 +92,6 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
 
           {/* Quick actions for mobile only */}
           <div className='flex items-center gap-1.5 md:hidden'>
-            <BookmarkSyncStatus />
             <ThemeToggle />
             <ProjectActionsMenu project={project} />
           </div>
@@ -207,7 +205,6 @@ const ProjectHeader = React.forwardRef<HTMLInputElement, ProjectHeaderProps>(
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <BookmarkSyncStatus />
           <ThemeToggle />
           <ProjectActionsMenu project={project} />
         </div>
